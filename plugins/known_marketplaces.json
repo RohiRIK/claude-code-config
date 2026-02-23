@@ -1,0 +1,26 @@
+{
+  "claude-plugins-official": {
+    "source": {
+      "source": "github",
+      "repo": "anthropics/claude-plugins-official"
+    },
+    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/claude-plugins-official",
+    "lastUpdated": "2026-02-23T19:30:27.491Z"
+  },
+  "Mixedbread-Grep": {
+    "source": {
+      "source": "git",
+      "url": "https://github.com/mixedbread-ai/mgrep.git"
+    },
+    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/Mixedbread-Grep",
+    "lastUpdated": "2026-01-22T09:22:10.541Z"
+  },
+  "ui-ux-pro-max-skill": {
+    "source": {
+      "source": "github",
+      "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+    },
+    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/ui-ux-pro-max-skill",
+    "lastUpdated": "2026-01-26T11:25:26.184Z"
+  }
+}

@@ -19,19 +19,7 @@ Generate production-ready TypeScript CLIs with comprehensive documentation, type
 ---
 
 
-## Voice Notification
-
-**When executing a workflow, do BOTH:**
-
-1. **Send voice notification**:
-   ```bash
-   curl -s -X POST http://localhost:8888/notify \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Running the WORKFLOWNAME workflow from the CreateCLI skill"}' \
-     > /dev/null 2>&1 &
-   ```
-
-2. **Output text notification**:
+**Output text notification**:
    ```
    Running the **WorkflowName** workflow from the **CreateCLI** skill...
    ```

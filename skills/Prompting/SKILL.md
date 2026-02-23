@@ -3,13 +3,6 @@ name: Prompting
 description: Meta-prompting system for dynamic prompt generation using templates, standards, and patterns. USE WHEN meta-prompting, template generation, prompt optimization, or programmatic prompt composition.
 ---
 
-## Customization
-
-**Before executing, check for user customizations at:**
-`~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/Prompting/`
-
-If this directory exists, load and apply any PREFERENCES.md, configurations, or resources found there. These override default behavior. If the directory does not exist, proceed with skill defaults.
-
 # Prompting - Meta-Prompting & Template System
 
 **Invoke when:** meta-prompting, template generation, prompt optimization, programmatic prompt composition, creating dynamic agents, generating structured prompts from data.
@@ -35,23 +28,6 @@ Complete prompt engineering documentation based on:
 
 **Key Topics:**
 - Markdown-first design (NO XML tags)
-
-## Voice Notification
-
-**When executing a workflow, do BOTH:**
-
-1. **Send voice notification**:
-   ```bash
-   curl -s -X POST http://localhost:8888/notify \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Running the WORKFLOWNAME workflow from the Prompting skill"}' \
-     > /dev/null 2>&1 &
-   ```
-
-2. **Output text notification**:
-   ```
-   Running the **WorkflowName** workflow from the **Prompting** skill...
-   ```
 
 **Full documentation:** `~/.claude/skills/CORE/SkillNotifications.md`
 

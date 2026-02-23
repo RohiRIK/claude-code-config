@@ -1,0 +1,54 @@
+# Secrets & environment
+.env
+.env.*
+*.pem
+*.key
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Runtime / generated data
+history.jsonl
+stats-cache.json
+mcp-needs-auth-cache.json
+security_warnings_state_*.json
+statsig/
+telemetry/
+cache/
+tmp/
+paste-cache/
+shell-snapshots/
+file-history/
+backups/
+debug/
+voice-server/
+
+# Session & project context (machine-specific, auto-generated)
+sessions/
+projects/
+
+# Learned patterns (auto-generated analytics)
+skills/Learned/patterns/
+skills/Learned/summary.md
+skills/Goose/summaries/
+skills/Goose/gooshistory/
+
+# Package manager
+package-lock.json
+node_modules/
+
+# Goose runtime state
+skills/Goose/agent-registry.json
+skills/Goose/recipe-catalog.json
+
+# Tasks & todos (local state)
+tasks/
+todos/
+plans/
+
+# Contexts (local session state)
+contexts/
+plugins/marketplaces/Mixedbread-Grep
+plugins/marketplaces/ui-ux-pro-max-skill

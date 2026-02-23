@@ -27,3 +27,14 @@ This file defines the available recipes (behaviors) for the Goose agent. These r
 ## Execution
 Run any recipe using the wrapper:
 `bun skills/Goose/Tools/run-recipe.ts <recipe_name>`
+
+### Converted Agents
+*   **code-reviewer**: Auto-converted agent.
+*   **security-reviewer**: Auto-converted agent.
+*   **architect**: Auto-converted agent.
+*   **refactor-cleaner**: Auto-converted agent.
+*   **doc-updater**: Auto-converted agent.
+*   **e2e-runner**: Auto-converted agent.
+*   **tdd-guide**: Auto-converted agent.
+*   **planner**: Auto-converted agent.
+*   **build-error-resolver**: Auto-converted agent.

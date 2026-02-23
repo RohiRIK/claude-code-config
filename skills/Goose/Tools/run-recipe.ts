@@ -1,96 +1,157 @@
-import { spawn } from "bun";
+/**
+ * @deprecated Use SpawnAgent.ts instead for non-blocking parallel execution.
+ * This file is kept for backwards compatibility only.
+ *
+ * Migration:
+ *   OLD: bun run-recipe.ts code-reviewer --params input_file="src/"
+ *   NEW: bun SpawnAgent.ts code-reviewer --params user_input="src/"
+ *
+ * For blocking behavior: bun SpawnAgent.ts code-reviewer --wait --params ...
+ */
+
+import { spawn, file, type FileSink } from "bun";
 import { mkdir } from "node:fs/promises";
-import { join, resolve, dirname } from "node:path";
-import { homedir } from "node:os";
+import { join, resolve, parse } from "node:path";
 
-// Resolve paths relative to THIS script, ensuring it works from anywhere
+// --- Configuration ---
 const TOOLS_DIR = import.meta.dir;
-const PROJECT_ROOT = resolve(TOOLS_DIR, "../../.."); // Up 3 levels: Tools -> Goose -> skills -> root
 const RECIPES_DIR = resolve(TOOLS_DIR, "../Recipes");
-const LOG_DIR = join(homedir(), ".gemini", "goose-logs");
+const LOG_DIR = resolve(TOOLS_DIR, "../gooshistory");
 
-// Ensure log dir exists
-await mkdir(LOG_DIR, { recursive: true });
+interface RunOptions {
+  recipeName: string;
+  args: string[];
+}
 
-// Simple Argument Parsing
-const args = process.argv.slice(2);
-const recipeName = args[0];
-const passThroughArgs = args.slice(1);
+interface AgentIdentity {
+  provider: string;
+  model: string;
+}
 
-if (!recipeName || recipeName.startsWith("-")) {
-  console.error(`
+// --- Helpers ---
+
+function parseArgs(): RunOptions {
+  const args = process.argv.slice(2);
+  const recipeName = args[0];
+
+  if (!recipeName || recipeName.startsWith("-")) {
+    console.error(`
 Usage: bun run-recipe.ts <recipe_name> [flags]
 
 Examples:
   bun run-recipe.ts comedian --params input_file="src/index.ts"
-  bun run-recipe.ts commit_reviewer
-  `);
-  process.exit(1);
-}
-
-// Auto-append .yaml if missing
-const recipeFile = recipeName.endsWith(".yaml") ? recipeName : `${recipeName}.yaml`;
-const recipePath = join(RECIPES_DIR, recipeFile);
-
-// Sanitize timestamp for filename (replace : with -)
-const timestamp = new Date().toISOString().replace(/:/g, "-");
-const logFile = join(LOG_DIR, `${timestamp}-${recipeName.replace(".yaml", "")}.log`);
-
-console.log(`[GooseWrapper] Target Recipe: ${recipePath}`);
-console.log(`[GooseWrapper] Logging to: ${logFile}`);
-
-try {
-  // Use Bun's native file writer
-  const logWriter = Bun.file(logFile).writer();
-
-  // Spawn Goose
-  // We inherit the environment to ensure we find 'goose', 'git', etc.
-  const proc = spawn(["goose", "run", "--recipe", recipePath, ...passThroughArgs], {
-    stdout: "pipe",
-    stderr: "pipe",
-    cwd: process.cwd(), // Run in the user's current directory
-    env: { ...process.env, "NO_COLOR": "true" }, // Optional: try to strip ANSI for logs? keeping default for now
-  });
-
-  // Stream Handler with correct UTF-8 decoding
-  const handleStream = async (stream: ReadableStream, isError: boolean) => {
-    const reader = stream.getReader();
-    const decoder = new TextDecoder("utf-8");
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      // { stream: true } handles multi-byte characters split across chunks
-      const text = decoder.decode(value, { stream: true });
-      
-      // 1. Write to Log File
-      logWriter.write(text);
-      
-      // 2. Write to Console
-      if (isError) {
-        process.stderr.write(text);
-      } else {
-        process.stdout.write(text);
-      }
-    }
-  };
-
-  await Promise.all([
-    handleStream(proc.stdout, false),
-    handleStream(proc.stderr, true),
-  ]);
-
-  const exitCode = await proc.exited;
-  logWriter.flush();
-  logWriter.end();
-
-  if (exitCode !== 0) {
-    console.error(`\n[GooseWrapper] Process exited with code ${exitCode}`);
-    process.exit(exitCode);
+`);
+    process.exit(1);
   }
 
-} catch (error) {
-  console.error("\n[GooseWrapper] Fatal Error:", error);
-  process.exit(1);
+  return { recipeName, args: args.slice(1) };
 }
+
+async function pipeOutput(
+  readable: ReadableStream<Uint8Array> | null,
+  writer: FileSink,
+  isErr: boolean
+) {
+  if (!readable) return;
+  const decoder = new TextDecoder();
+  for await (const chunk of readable) {
+    const text = decoder.decode(chunk);
+    writer.write(text);
+    (isErr ? process.stderr : process.stdout).write(text);
+  }
+}
+
+async function extractAgentSignature(logPath: string): Promise<AgentIdentity> {
+  try {
+    const content = await Bun.file(logPath).text();
+    // Look for: "starting session | provider: gemini-cli model: gemini-3-pro-preview"
+    const providerMatch = content.match(/provider:\s*([^\s]+)/);
+    const modelMatch = content.match(/model:\s*([^\s]+)/);
+
+    return {
+      provider: providerMatch ? providerMatch[1] : "Unknown",
+      model: modelMatch ? modelMatch[1] : "Default",
+    };
+  } catch {
+    return { provider: "Unknown", model: "Unknown" };
+  }
+}
+
+// --- Main ---
+
+async function main() {
+  // Deprecation warning
+  console.warn(`
+\x1b[33m╔════════════════════════════════════════════════════════════════════╗
+║  DEPRECATED: run-recipe.ts is deprecated.                          ║
+║  Use SpawnAgent.ts for non-blocking parallel execution.             ║
+║                                                                      ║
+║  Migration:                                                          ║
+║    bun SpawnAgent.ts <recipe> --params user_input="..."             ║
+║    bun SpawnAgent.ts <recipe> --wait --params ...  (blocking)       ║
+╚════════════════════════════════════════════════════════════════════╝\x1b[0m
+`);
+
+  const { recipeName, args } = parseArgs();
+
+  // Setup Paths
+  const parsed = parse(recipeName);
+  const safeName = parsed.ext === ".yaml" ? recipeName : `${recipeName}.yaml`;
+  const recipePath = join(RECIPES_DIR, safeName);
+
+  // Setup Logging
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const logName = `${timestamp}-${parsed.name}.log`;
+  const logPath = join(LOG_DIR, logName);
+
+  console.log(`[Goose] Recipe: ${safeName}`);
+  console.log(`[Goose] Log:    ${logName}`);
+
+  try {
+    await mkdir(LOG_DIR, { recursive: true });
+
+    const logFile = file(logPath);
+    const writer = logFile.writer();
+
+    const proc = spawn(["goose", "run", "--recipe", recipePath, ...args], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: process.cwd(),
+      env: { ...process.env, NO_COLOR: "true" },
+    });
+
+    await Promise.all([
+      pipeOutput(proc.stdout, writer, false),
+      pipeOutput(proc.stderr, writer, true),
+      proc.exited,
+    ]);
+
+    await writer.flush();
+    writer.end();
+
+    const exitCode = proc.exitCode;
+
+    // --- Footer & Signature ---
+    if (exitCode === 0) {
+      const identity = await extractAgentSignature(logPath);
+      console.log(`
+──────────────────────────────────────────────────
+Mission Complete
+Agent:    Goose
+Provider: ${identity.provider}
+Model:    ${identity.model}
+──────────────────────────────────────────────────
+`);
+    } else {
+      console.error(`
+[Goose] Process failed with code ${exitCode}`);
+      process.exit(exitCode ?? 1);
+    }
+
+  } catch (error) {
+    console.error("\n[Goose] Fatal Error:", error);
+    process.exit(1);
+  }
+}
+
+main();

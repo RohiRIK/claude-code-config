@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "plugins": {
+    "code-simplifier@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/code-simplifier/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-22T09:20:40.128Z",
+        "lastUpdated": "2026-01-22T09:20:40.128Z",
+        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
+      }
+    ],
+    "code-review@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/code-review/aa296ec81e8c",
+        "version": "aa296ec81e8c",
+        "installedAt": "2026-01-22T09:23:55.746Z",
+        "lastUpdated": "2026-02-21T16:23:39.444Z",
+        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
+      }
+    ],
+    "typescript-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-22T09:23:55.934Z",
+        "lastUpdated": "2026-01-22T09:23:55.934Z",
+        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
+      }
+    ],
+    "security-guidance@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/aa296ec81e8c",
+        "version": "aa296ec81e8c",
+        "installedAt": "2026-01-22T09:23:55.983Z",
+        "lastUpdated": "2026-02-21T16:23:39.455Z",
+        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
+      }
+    ],
+    "mgrep@Mixedbread-Grep": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/Mixedbread-Grep/mgrep/0.0.0",
+        "version": "0.0.0",
+        "installedAt": "2026-01-22T09:23:56.920Z",
+        "lastUpdated": "2026-01-22T09:23:56.920Z",
+        "gitCommitSha": "b3ce5f7c1f58baee6faf4a26237b2c921b92d507"
+      }
+    ]
+  }
+}
