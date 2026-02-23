@@ -51,7 +51,24 @@ async function main() {
   const summaryPath = join(PROJECTS_DIR, slug, "context-summary.md");
 
   if (!existsSync(summaryPath)) {
-    console.error(`[SessionStart] No context found for ${slug} — fresh start`);
+    // Check if any of the 4 context files exist either
+    const contextFiles = ["context-goals.md", "context-decisions.md", "context-progress.md", "context-gotchas.md"];
+    const anyExist = contextFiles.some(f => existsSync(join(PROJECTS_DIR, slug, f)));
+
+    if (!anyExist) {
+      // Prompt Claude to immediately ask user about creating context files
+      process.stdout.write(
+        `# ACTION REQUIRED — Do This Before Anything Else\n\n` +
+        `No session context files exist for project: \`${cwd}\`\n\n` +
+        `**Your first and only response must be:**\n\n` +
+        `> No context files found for this project. Should I create them so your work is saved across sessions? (yes/no)\n\n` +
+        `Rules:\n` +
+        `- Output that exact message first, nothing else\n` +
+        `- Do not greet, do not answer questions, do not explain\n` +
+        `- Wait for yes/no before proceeding\n` +
+        `- If yes: create the 4 files at \`~/.claude/projects/${slug}/\` (context-goals.md, context-decisions.md, context-progress.md, context-gotchas.md)\n`
+      );
+    }
     return;
   }
 

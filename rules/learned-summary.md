@@ -8,7 +8,7 @@ To view detailed patterns: `~/.claude/skills/learned/patterns/`
 ---
 
 <!--
-NOTE: The summary below is auto-updated by evaluate-session.sh
+NOTE: The summary below is auto-updated by EvaluateSession hook (Stop hook).
 It tracks recent sessions and key learnings.
 Max ~50 lines to minimize token usage.
 -->

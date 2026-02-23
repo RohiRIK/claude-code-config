@@ -6,7 +6,7 @@ import { homedir } from "os";
 // Strategic Compact Suggester
 // Suggests compaction after threshold
 
-const TMP_DIR = join(homedir(), ".claude-backup-20260123", "tmp");
+const TMP_DIR = join(homedir(), ".claude", "tmp");
 const COUNTER_FILE = join(TMP_DIR, "session-tool-count.txt");
 const THRESHOLD = parseInt(process.env.COMPACT_THRESHOLD || "50", 10);
 

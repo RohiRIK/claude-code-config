@@ -15,9 +15,7 @@ const MAX_SUMMARY_LINES = 50;
 const MIN_SESSION_MESSAGES = 5; // Lowered for testing
 
 function getProjectSlug(projectPath: string): string {
-  // Mimic Claude's slug generation: replace all separators with '-'
-  // e.g. /Users/foo -> -Users-foo
-  return projectPath.replace(new RegExp(sep, 'g'), '-');
+  return projectPath.replace(new RegExp("\\" + sep, "g"), "-");
 }
 
 async function findTranscript(sessionId: string | undefined): Promise<{ path: string, id: string } | null> {
@@ -52,21 +50,29 @@ async function findTranscript(sessionId: string | undefined): Promise<{ path: st
   const projectPath = historyEntry.project;
   if (!finalSessionId || !projectPath) return null;
 
-  const slug = getProjectSlug(projectPath);
-  // Try to find the project folder in ~/.claude/projects/
   const projectsDir = join(CLAUDE_DIR, "projects");
-  const projectDirName = slug; // The slug seems to be exact name in projects/
-  
-  // Note: The slug might vary slightly (e.g. windows vs mac), but usually it's direct replacement.
-  // We can try to fuzzy match if exact fails, but let's try exact first.
-  let transcriptPath = join(projectsDir, projectDirName, `${finalSessionId}.jsonl`);
+  const filename = `${finalSessionId}.jsonl`;
+
+  // Try derived slug first, then scan all project dirs for the session file
+  const slug = getProjectSlug(projectPath);
+  let transcriptPath = join(projectsDir, slug, filename);
 
   if (!existsSync(transcriptPath)) {
-    // Fallback: try to find any directory ending with the project name or check known patterns
-    // For now, let's assume the slug is correct.
-    // If exact path fails, we can't do much without listing all dirs.
-    return null;
+    // Claude Code may use a different slug format — scan all dirs
+    const { readdirSync } = await import("fs");
+    try {
+      const dirs = readdirSync(projectsDir);
+      for (const dir of dirs) {
+        const candidate = join(projectsDir, dir, filename);
+        if (existsSync(candidate)) {
+          transcriptPath = candidate;
+          break;
+        }
+      }
+    } catch (_) {}
   }
+
+  if (!existsSync(transcriptPath)) return null;
 
   return { path: transcriptPath, id: finalSessionId };
 }
@@ -170,12 +176,16 @@ async function main() {
     writeFileSync(patternFile, fileContent);
     // console.error(`[ContinuousLearning] Patterns saved to: ${patternFile}`);
 
-    // Update Summary
+    // Update Summary (deduplicate by sessionId)
     if (!existsSync(SUMMARY_FILE)) {
       writeFileSync(SUMMARY_FILE, "# Learned Patterns Summary\n\nThis file is auto-updated.\n\n---\n\n## Recent Sessions\n\n");
     }
 
-    appendFileSync(SUMMARY_FILE, `- **${today}** (${messageCount} msgs): Session ${sessionId ? sessionId.substring(0,8) : 'unknown'}... (Errors: ${errors.length})\n`);
+    const summaryContent = readFileSync(SUMMARY_FILE, "utf-8");
+    const shortId = sessionId ? sessionId.substring(0, 8) : 'unknown';
+    if (!summaryContent.includes(shortId)) {
+      appendFileSync(SUMMARY_FILE, `- **${today}** (${messageCount} msgs): Session ${shortId}... (Errors: ${errors.length})\n`);
+    }
 
     // Trim summary
     const summaryLines = readFileSync(SUMMARY_FILE, "utf-8").split('\n');

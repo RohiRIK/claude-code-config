@@ -1,70 +1,24 @@
 # Coding Style
 
 ## Immutability (CRITICAL)
-
-ALWAYS create new objects, NEVER mutate:
-
-```javascript
-// WRONG: Mutation
-function updateUser(user, name) {
-  user.name = name  // MUTATION!
-  return user
-}
-
-// CORRECT: Immutability
-function updateUser(user, name) {
-  return {
-    ...user,
-    name
-  }
-}
-```
+ALWAYS create new objects, NEVER mutate existing ones. Use spread (`{...obj, key: val}`).
 
 ## File Organization
-
-MANY SMALL FILES > FEW LARGE FILES:
-- High cohesion, low coupling
+- Many small files > few large files
 - 200-400 lines typical, 800 max
-- Extract utilities from large components
+- High cohesion, low coupling
 - Organize by feature/domain, not by type
 
 ## Error Handling
-
-ALWAYS handle errors comprehensively:
-
-```typescript
-try {
-  const result = await riskyOperation()
-  return result
-} catch (error) {
-  console.error('Operation failed:', error)
-  throw new Error('Detailed user-friendly message')
-}
-```
+ALWAYS wrap async operations in try/catch with meaningful error messages.
 
 ## Input Validation
-
-ALWAYS validate user input:
-
-```typescript
-import { z } from 'zod'
-
-const schema = z.object({
-  email: z.string().email(),
-  age: z.number().int().min(0).max(150)
-})
-
-const validated = schema.parse(input)
-```
+ALWAYS validate user input at system boundaries using zod.
 
 ## Code Quality Checklist
-
 Before marking work complete:
-- [ ] Code is readable and well-named
-- [ ] Functions are small (<50 lines)
-- [ ] Files are focused (<800 lines)
-- [ ] No deep nesting (>4 levels)
+- [ ] Readable, well-named
+- [ ] Functions < 50 lines, files < 800 lines
+- [ ] No deep nesting (> 4 levels)
 - [ ] Proper error handling
-- [ ] No console.log statements
-- [ ] No hardcoded values
-- [ ] No mutation (immutable patterns used)
+- [ ] No console.log, no hardcoded values, no mutation

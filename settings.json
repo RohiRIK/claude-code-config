@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/rohirikman/.claude/skills/StrategicCompact/Tools/suggest-compact.sh"
+            "command": "bun /Users/rohirikman/.claude/hooks/SuggestCompact/SuggestCompact.ts"
           }
         ]
       }
@@ -149,7 +149,6 @@
   },
   "enabledPlugins": {
     "code-simplifier@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "mgrep@Mixedbread-Grep": false
