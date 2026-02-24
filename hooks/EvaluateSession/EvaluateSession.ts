@@ -15,7 +15,7 @@ const MAX_SUMMARY_LINES = 50;
 const MIN_SESSION_MESSAGES = 5; // Lowered for testing
 
 function getProjectSlug(projectPath: string): string {
-  return projectPath.replace(new RegExp("\\" + sep, "g"), "-");
+  return projectPath.replace(new RegExp("\\" + sep, "g"), "-").replace(/\./g, "-");
 }
 
 async function findTranscript(sessionId: string | undefined): Promise<{ path: string, id: string } | null> {
@@ -134,24 +134,47 @@ async function main() {
     fileContent += `**Session ID:** ${sessionId || "unknown"}\n`;
     fileContent += `**Messages:** ${messageCount}\n\n---\n\n`;
 
-    // Extract Errors
-    const errors = messages.filter((m: any) => m.type === 'error' || (m.tool_output && m.tool_output.is_error));
-    fileContent += "## Errors Encountered\n";
-    errors.slice(0, 10).forEach((e: any) => {
-        const msg = e.error?.message || e.tool_output?.output || "Unknown error";
-        fileContent += `- ${msg.substring(0, 200).replace(/\n/g, ' ')}\n`;
+    // Collect all tool_use content blocks from assistant messages
+    const toolUseBlocks: any[] = [];
+    messages.forEach((m: any) => {
+      const content = m.message?.content;
+      if (Array.isArray(content)) {
+        content.forEach((block: any) => {
+          if (block.type === 'tool_use') toolUseBlocks.push(block);
+        });
+      }
     });
+
+    // Collect tool result blocks (errors) from user messages
+    const errorBlocks: string[] = [];
+    messages.forEach((m: any) => {
+      const content = m.message?.content;
+      if (Array.isArray(content)) {
+        content.forEach((block: any) => {
+          if (block.type === 'tool_result' && block.is_error) {
+            const output = Array.isArray(block.content)
+              ? block.content.map((c: any) => c.text || '').join(' ')
+              : String(block.content || '');
+            errorBlocks.push(output.substring(0, 200).replace(/\n/g, ' '));
+          }
+        });
+      }
+      // Also catch top-level error messages
+      if (m.type === 'error') {
+        errorBlocks.push((m.error?.message || 'Unknown error').substring(0, 200));
+      }
+    });
+
+    fileContent += "## Errors Encountered\n";
+    errorBlocks.slice(0, 10).forEach(msg => fileContent += `- ${msg}\n`);
     fileContent += "\n";
 
     // Extract Tool Usage
     const toolUsage: Record<string, number> = {};
-    messages.forEach((m: any) => {
-        if (m.type === 'tool_use' && m.tool_use) {
-            const tool = m.tool_use.name;
-            toolUsage[tool] = (toolUsage[tool] || 0) + 1;
-        }
+    toolUseBlocks.forEach((block: any) => {
+      toolUsage[block.name] = (toolUsage[block.name] || 0) + 1;
     });
-    
+
     fileContent += "## Tools Used\n";
     Object.entries(toolUsage)
       .sort(([,a], [,b]) => (b as number) - (a as number))
@@ -159,15 +182,13 @@ async function main() {
       .forEach(([tool, count]) => fileContent += `- ${tool} (${count} times)\n`);
     fileContent += "\n";
 
-    // Extract Files Modified (Look for write_file / replace tools)
+    // Extract Files Modified
     const files = new Set<string>();
-    messages.forEach((m: any) => {
-        if (m.type === 'tool_use' && m.tool_use) {
-            if (m.tool_use.name === 'Write' || m.tool_use.name === 'Edit' || m.tool_use.name === 'MultiEdit') {
-                const path = m.tool_use.input?.file_path || m.tool_use.input?.path;
-                if (path) files.add(path);
-            }
-        }
+    toolUseBlocks.forEach((block: any) => {
+      if (block.name === 'Write' || block.name === 'Edit' || block.name === 'MultiEdit') {
+        const path = block.input?.file_path || block.input?.path;
+        if (path) files.add(path);
+      }
     });
     fileContent += "## Files Modified\n";
     [...files].slice(0, 20).forEach(f => fileContent += `- ${f}\n`);
@@ -184,7 +205,7 @@ async function main() {
     const summaryContent = readFileSync(SUMMARY_FILE, "utf-8");
     const shortId = sessionId ? sessionId.substring(0, 8) : 'unknown';
     if (!summaryContent.includes(shortId)) {
-      appendFileSync(SUMMARY_FILE, `- **${today}** (${messageCount} msgs): Session ${shortId}... (Errors: ${errors.length})\n`);
+      appendFileSync(SUMMARY_FILE, `- **${today}** (${messageCount} msgs): Session ${shortId}... (Errors: ${errorBlocks.length})\n`);
     }
 
     // Trim summary

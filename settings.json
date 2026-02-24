@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Open Zed for review before pushing\necho '[Hook] Opening Zed for pre-push review...' >&2\nsubl . 2>/dev/null &\necho '[Hook] Press Enter to continue with push or Ctrl+C to abort...' >&2\nread -r < /dev/tty"
+            "command": "#!/bin/bash\n# Open Zed for review before pushing\necho '[Hook] Opening Zed for pre-push review...' >&2\nzed . 2>/dev/null &\necho '[Hook] Press Enter to continue with push or Ctrl+C to abort...' >&2\nread -r < /dev/tty"
           }
         ]
       },
@@ -144,6 +144,16 @@
             "command": "bun /Users/rohirikman/.claude/hooks/Cleanup/Cleanup.ts"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun /Users/rohirikman/.claude/hooks/UpdateContext/UpdateContext.ts"
+          }
+        ],
+        "description": "Update context-progress.md at session end"
       }
     ]
   },

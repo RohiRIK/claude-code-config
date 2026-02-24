@@ -15,7 +15,7 @@ const MAX_INJECT_LINES = 60;
 const MAX_AGE_DAYS = 30;
 
 function deriveSlug(cwd: string): string {
-  return cwd.replace(new RegExp("\\" + sep, "g"), "-");
+  return cwd.replace(new RegExp("\\" + sep, "g"), "-").replace(/\./g, "-");
 }
 
 function isStale(filePath: string): boolean {

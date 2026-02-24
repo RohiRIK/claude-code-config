@@ -13,7 +13,7 @@ const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
 const MAX_SUMMARY_LINES = 60;
 
 function deriveSlug(cwd: string): string {
-  return cwd.replace(new RegExp("\\" + sep, "g"), "-");
+  return cwd.replace(new RegExp("\\" + sep, "g"), "-").replace(/\./g, "-");
 }
 
 function readFileSafe(path: string): string {
