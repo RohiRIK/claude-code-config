@@ -34,4 +34,4 @@ Options:
 - [ ] Avoids jargon listed in "What I Avoid"
 
 ## Step 6: Output & Save
-Present the post. Save to `~/.claude/skills/ContentWriter/Output/YYYY-MM-DD-linkedin-<slug>.md` with frontmatter: `platform: linkedin`, `date`, `language: en/he`. Then ask: "Want to adjust the hook or CTA?"
+Present the post. Save to `~/Documents/Posts/YYYY-MM-DD-linkedin-<slug>.md` with frontmatter: `platform: linkedin`, `date`, `language: en/he`. Then ask: "Want to adjust the hook or CTA?"

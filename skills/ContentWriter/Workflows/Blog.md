@@ -31,4 +31,4 @@ CTA: [as defined in Voice.md]
 - [ ] CTA present and natural
 
 ## Step 6: Output & Save
-Present the final post. Save to `~/.claude/skills/ContentWriter/Output/YYYY-MM-DD-blog-<slug>.md` with frontmatter: `platform: blog`, `date`, `title`. Then ask: "Want any section revised?"
+Present the final post. Save to `~/Documents/Posts/YYYY-MM-DD-blog-<slug>.md` with frontmatter: `platform: blog`, `date`, `title`. Then ask: "Want any section revised?"

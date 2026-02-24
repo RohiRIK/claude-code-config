@@ -21,4 +21,4 @@ Creates polished content for Blog, LinkedIn, and X/Twitter. One platform per inv
 - **One platform per invocation** — ask if ambiguous
 - Draft → Review → Refine loop before final output
 - English by default. Hebrew when asked ("בעברית", "in Hebrew") — same voice
-- Output saved to `~/.claude/skills/ContentWriter/Output/YYYY-MM-DD-platform-slug.md`
+- Output saved to `~/Documents/Posts/YYYY-MM-DD-platform-slug.md`

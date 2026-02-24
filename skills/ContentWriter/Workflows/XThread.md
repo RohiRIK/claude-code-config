@@ -35,4 +35,4 @@ Tweet N: Sign-off + CTA (per Voice.md)
 - [ ] Sign-off tweet present
 
 ## Step 6: Output & Save
-Present numbered tweets (1/, 2/, 3/...). Save to `~/.claude/skills/ContentWriter/Output/YYYY-MM-DD-x-<slug>.md` with frontmatter: `platform: x`, `date`, `tweets: <count>`. Then ask: "Want to adjust the hook or add/remove tweets?"
+Present numbered tweets (1/, 2/, 3/...). Save to `~/Documents/Posts/YYYY-MM-DD-x-<slug>.md` with frontmatter: `platform: x`, `date`, `tweets: <count>`. Then ask: "Want to adjust the hook or add/remove tweets?"
