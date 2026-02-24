@@ -21,15 +21,6 @@
         ]
       },
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "#!/bin/bash\n# Open Zed for review before pushing\necho '[Hook] Opening Zed for pre-push review...' >&2\nzed . 2>/dev/null &\necho '[Hook] Press Enter to continue with push or Ctrl+C to abort...' >&2\nread -r < /dev/tty"
-          }
-        ]
-      },
-      {
         "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.(md|txt)$\" && !(tool_input.file_path matches \"README\\\\.md|CLAUDE\\\\.md|AGENTS\\\\.md|CONTRIBUTING\\\\.md\")",
         "hooks": [
           {
