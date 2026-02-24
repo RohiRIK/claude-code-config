@@ -105,7 +105,7 @@ function buildContext(files: Map<string, string>): string {
 }
 
 async function runGemini(
-  model: "gemini-3-flash" | "gemini-3.1-pro",
+  model: "gemini-3-flash-preview" | "gemini-3-pro-preview",
   systemPromptFile: string,
   context: string
 ): Promise<Finding[]> {
@@ -205,7 +205,7 @@ function formatReport(
   const lines: string[] = [
     `# Audit Report — ${now}`,
     `**Files audited**: ${filesAudited}  `,
-    `**Gemini 3 Flash**: ${flashDuration}ms · **Gemini 3.1 Pro**: ${proDuration}ms`,
+    `**Gemini 3 Flash Preview**: ${flashDuration}ms · **Gemini 3 Pro Preview**: ${proDuration}ms`,
     "",
     "---",
     "",
@@ -275,12 +275,12 @@ async function main() {
   let proDuration = 0;
 
   const [flashFindings, proFindings] = await Promise.all([
-    runGemini("gemini-3-flash", join(PROMPTS_DIR, "flash.md"), context).then((r) => {
+    runGemini("gemini-3-flash-preview", join(PROMPTS_DIR, "flash.md"), context).then((r) => {
       flashDuration = Date.now() - startTime;
       console.error(`Flash done (${flashDuration}ms), ${r.length} findings`);
       return r;
     }),
-    runGemini("gemini-3.1-pro", join(PROMPTS_DIR, "pro.md"), context).then((r) => {
+    runGemini("gemini-3-pro-preview", join(PROMPTS_DIR, "pro.md"), context).then((r) => {
       proDuration = Date.now() - startTime;
       console.error(`Pro done (${proDuration}ms), ${r.length} findings`);
       return r;
