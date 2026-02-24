@@ -28,13 +28,14 @@ const SKIP_PATTERNS = [
   "node_modules",
   ".last-ingested",
   "projects", // per-project context, may contain sensitive data
+  "image-cache", // binary/generated assets, not auditable
 ];
 
 // Only audit these extensions
 const AUDIT_EXTENSIONS = new Set([".ts", ".json", ".md", ".yaml", ".yml"]);
 
-// Max chars to send per model (rough token budget)
-const MAX_CHARS = 150_000;
+// Max chars to send per model (Gemini has 1M token context; leave headroom for prompt overhead)
+const MAX_CHARS = 900_000;
 
 interface Finding {
   severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
@@ -106,7 +107,8 @@ function buildContext(files: Map<string, string>): string {
 async function runGemini(
   model: "gemini-3-flash-preview" | "gemini-3-pro-preview",
   systemPromptFile: string,
-  context: string
+  context: string,
+  timeoutMs: number
 ): Promise<Finding[]> {
   // Create isolated throwaway config dir
   const configDir = await mkdtemp(join(tmpdir(), `audit-gemini-`));
@@ -124,15 +126,25 @@ async function runGemini(
           // Isolate session history/cache but keep HOME (auth credentials needed)
           GEMINI_CONFIG_DIR: configDir,
         },
-        timeout: 120_000,
+        timeout: timeoutMs,
         maxBuffer: 10 * 1024 * 1024,
         encoding: "utf-8",
       }
     );
 
     if (result.error) {
-      console.error(`[${model}] spawn error:`, result.error.message);
-      return [];
+      const isTimeout = result.error.message.includes("ETIMEDOUT") || result.signal === "SIGTERM";
+      console.error(`[${model}] ${isTimeout ? "TIMED OUT" : "spawn error"}: ${result.error.message}`);
+      // Return a synthetic finding so the report reflects the failure
+      return [{
+        severity: "HIGH",
+        file: "auditor/index.ts",
+        title: `${model} timed out — results incomplete`,
+        description: isTimeout
+          ? `Model exceeded the ${timeoutMs / 1000}s timeout. Findings from this model are missing. Run a targeted audit (e.g. /audit rules) for reliable results.`
+          : `Model failed to run: ${result.error.message}`,
+        suggestion: "Increase timeout or run targeted audits instead of full system.",
+      }];
     }
 
     const raw = (result.stdout || "") + (result.stderr || "");
@@ -210,7 +222,14 @@ function formatReport(
     "",
   ];
 
-  if (findings.length === 0) {
+  const timeoutFindings = findings.filter(f => f.title.includes("timed out"));
+  const realFindings = findings.filter(f => !f.title.includes("timed out"));
+
+  if (timeoutFindings.length > 0) {
+    lines.push(`> ⚠️ **WARNING: ${timeoutFindings.length} model(s) timed out — audit is INCOMPLETE**`, "");
+  }
+
+  if (realFindings.length === 0 && timeoutFindings.length === 0) {
     lines.push("## Result: Clean", "", "No findings from either auditor.");
     return lines.join("\n");
   }
@@ -267,6 +286,9 @@ async function main() {
   console.error(`Found ${files.size} files. Building context...`);
   const context = buildContext(files);
 
+  // Dynamic timeout: full system audit needs more time than targeted audits
+  const timeoutMs = target ? 180_000 : 360_000;
+  console.error(`Timeout: ${timeoutMs / 1000}s (${target ? "targeted" : "full system"})`);
   console.error("Running Gemini Flash + Pro in parallel (isolated instances)...");
 
   const startTime = Date.now();
@@ -274,12 +296,12 @@ async function main() {
   let proDuration = 0;
 
   const [flashFindings, proFindings] = await Promise.all([
-    runGemini("gemini-3-flash-preview", join(PROMPTS_DIR, "flash.md"), context).then((r) => {
+    runGemini("gemini-3-flash-preview", join(PROMPTS_DIR, "flash.md"), context, timeoutMs).then((r) => {
       flashDuration = Date.now() - startTime;
       console.error(`Flash done (${flashDuration}ms), ${r.length} findings`);
       return r;
     }),
-    runGemini("gemini-3-pro-preview", join(PROMPTS_DIR, "pro.md"), context).then((r) => {
+    runGemini("gemini-3-pro-preview", join(PROMPTS_DIR, "pro.md"), context, timeoutMs).then((r) => {
       proDuration = Date.now() - startTime;
       console.error(`Pro done (${proDuration}ms), ${r.length} findings`);
       return r;
