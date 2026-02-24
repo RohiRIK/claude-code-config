@@ -22,7 +22,7 @@ ALWAYS use `bun` instead of `npm`, `npx`, `yarn`, or `pnpm`:
 
 ## MCP Servers
 
-When configuring MCP servers in `~/.claude.json`, prefer:
+When configuring MCP servers in `~/.claude/settings.json`, prefer:
 
 ```json
 {

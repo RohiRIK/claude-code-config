@@ -60,7 +60,7 @@ Proactively update all 4 files before continuing with heavy work:
 - `context-gotchas.md` and `context-decisions.md` are permanent — never delete entries
 - `context-progress.md` will be auto-trimmed to last 20 items by the Cleanup hook
 
-## What PreCompact does (Option C)
+## What PreCompact does (Option B)
 When compaction fires, the PreCompact hook automatically:
 1. Reads all 4 files
 2. Assembles `context-summary.md` (max 60 lines)

@@ -15,6 +15,8 @@ Located in `~/.claude/agents/`:
 | e2e-runner | E2E testing | Critical user flows |
 | refactor-cleaner | Dead code cleanup | Code maintenance |
 | doc-updater | Documentation | Updating docs |
+| database-reviewer | PostgreSQL/schema review | SQL, migrations, DB design |
+| python-reviewer | Python code review | All Python changes |
 
 ## Immediate Agent Usage
 
