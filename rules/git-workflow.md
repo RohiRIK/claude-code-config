@@ -10,7 +10,7 @@
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
-Note: Attribution disabled globally via ~/.claude/settings.json.
+Note: Do not add Co-Authored-By footers to commits.
 
 ## Pull Request Workflow
 

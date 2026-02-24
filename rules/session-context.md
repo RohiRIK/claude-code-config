@@ -3,7 +3,7 @@
 ## Overview
 
 Claude maintains per-project context files so work is never lost across sessions or compactions.
-Files live at: `~/.claude/projects/<slug>/` where slug = cwd with `/` replaced by `-`.
+Files live at: `~/.claude/projects/<slug>/` where slug = cwd with `/` and `.` replaced by `-`.
 
 Example: working in `/Users/roh/projects/myapp` → slug is `-Users-roh-projects-myapp`
 
@@ -18,13 +18,13 @@ Example: working in `/Users/roh/projects/myapp` → slug is `-Users-roh-projects
 
 ## CRITICAL: Write Progress After Every Task
 
-After completing ANY task (fix, feature, refactor, decision), IMMEDIATELY write to the context file:
+After completing ANY task (fix, feature, refactor, decision), write to the context file:
 
 ```
 ~/.claude/projects/<slug>/context-progress.md  → ✓ <what was done, 1 line>
 ```
 
-Do NOT wait until end of session. Do NOT skip this. Examples:
+The UpdateContext hook (Stop hook) also writes progress at session end from the transcript — treat that as a fallback, not a replacement. Write manually after significant tasks so context survives mid-session compaction. Examples:
 - `✓ Fixed duplicate append bug in UpdateContext hook`
 - `✓ Added session_id dedup to context-progress entries`
 - `✓ Rewrote README with full workflow diagram`
