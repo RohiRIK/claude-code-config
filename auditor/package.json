@@ -1,0 +1,8 @@
+{
+  "name": "@claude-config/auditor",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "audit": "bun run index.ts"
+  }
+}
