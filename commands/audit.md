@@ -2,7 +2,7 @@
 
 Runs two isolated Gemini CLI instances (Flash + Pro) against the ~/.claude system and produces a ranked findings report.
 
-**IMPORTANT**: This command is strictly read-only. It makes zero changes to any files. It only writes a report to `~/.claude/audits/`.
+**IMPORTANT**: This command is strictly read-only. It makes zero changes to any files. It only writes a report to `~/.claude/auditor/reports/`.
 
 ## Usage
 
@@ -26,7 +26,7 @@ Runs two isolated Gemini CLI instances (Flash + Pro) against the ~/.claude syste
 2. Runs **Gemini Flash** (fast: syntax, consistency, schema errors) and **Gemini Pro** (deep: architecture, security, edge cases) in parallel
 3. Each Gemini instance runs in an isolated throwaway config dir — no access to your personal Gemini settings
 4. Merges findings, deduplicates, ranks by severity (CRITICAL → HIGH → MEDIUM → LOW)
-5. Writes report to `~/.claude/audits/YYYY-MM-DD-HH-MM-<target>.md`
+5. Writes report to `~/.claude/auditor/reports/YYYY-MM-DD-HH-MM-<target>.md`
 6. Prints summary
 
 ## What It Does NOT Do

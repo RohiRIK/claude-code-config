@@ -10,7 +10,7 @@ Gives Claude a concrete verification loop — the single biggest quality multipl
 
 Execute these checks in order, stop and fix on first failure:
 
-1. **Type check**: `bun tsc --noEmit 2>&1 | head -50`
+1. **Type check**: Only if `tsconfig.json` exists in cwd: `bun tsc --noEmit 2>&1 | head -50` — skip silently if no tsconfig found
 2. **Lint**: `bun run lint 2>&1 | head -50` (if configured)
 3. **Tests**: `bun test 2>&1 | tail -30` (or `bun run test`)
 4. **Build**: `bun run build 2>&1 | tail -20` (if applicable)

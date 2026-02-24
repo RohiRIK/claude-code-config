@@ -2,13 +2,13 @@
 
 ## On Session Start
 
-If `~/.claude/audits/` contains reports from the last 48 hours, mention it briefly:
+If `~/.claude/auditor/reports/` contains reports from the last 48 hours, mention it briefly:
 - "There is an unreviewed audit report from <date> with X CRITICAL/HIGH findings."
 - Do NOT read the full report unless the user asks.
 
 ## When User Asks About Audit Results
 
-Read the most recent report from `~/.claude/audits/` and summarize findings by severity.
+Read the most recent report from `~/.claude/auditor/reports/` and summarize findings by severity.
 
 ## After Fixing Audit Findings
 

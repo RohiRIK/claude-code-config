@@ -5,7 +5,7 @@
  * Read-only auditor: sends ~/.claude files to isolated Gemini CLI instances
  * (Flash for quick checks, Pro for deep analysis) and writes a merged report.
  *
- * PERMISSIONS: reads ~/.claude, writes ~/.claude/audits/ only. Makes NO changes.
+ * PERMISSIONS: reads ~/.claude, writes ~/.claude/auditor/reports/ only. Makes NO changes.
  *
  * Usage:
  *   bun run ~/.claude/auditor/index.ts           # audits entire ~/.claude
@@ -18,12 +18,11 @@ import { tmpdir } from "os";
 import { spawnSync } from "child_process";
 
 const CLAUDE_DIR = join(process.env.HOME!, ".claude");
-const AUDITS_DIR = join(CLAUDE_DIR, "audits");
+const REPORTS_DIR = join(CLAUDE_DIR, "auditor", "reports");
 const PROMPTS_DIR = join(CLAUDE_DIR, "auditor", "prompts");
 
 // Files/dirs to skip when reading ~/.claude
 const SKIP_PATTERNS = [
-  "audits",
   "auditor",
   ".git",
   "node_modules",
@@ -162,7 +161,7 @@ function mergeFindings(
   const all: (Finding & { sources: string[] })[] = [];
 
   for (const f of flashFindings) {
-    all.push({ ...f, sources: ["gemini-flash"] });
+    all.push({ ...f, sources: ["gemini-3-flash-preview"] });
   }
 
   for (const p of proFindings) {
@@ -173,7 +172,7 @@ function mergeFindings(
         f.title.toLowerCase().includes(p.title.toLowerCase().slice(0, 20))
     );
     if (existing) {
-      existing.sources.push("gemini-pro");
+      existing.sources.push("gemini-3-pro-preview");
       // Boost severity if pro also flagged it
       if (
         severityRank(p.severity) > severityRank(existing.severity)
@@ -181,7 +180,7 @@ function mergeFindings(
         existing.severity = p.severity;
       }
     } else {
-      all.push({ ...p, sources: ["gemini-pro"] });
+      all.push({ ...p, sources: ["gemini-3-pro-preview"] });
     }
   }
 
@@ -291,14 +290,14 @@ async function main() {
   const report = formatReport(merged, files.size, flashDuration, proDuration);
 
   // Write report
-  await mkdir(AUDITS_DIR, { recursive: true });
+  await mkdir(REPORTS_DIR, { recursive: true });
   const ts = new Date()
     .toISOString()
     .replace("T", "-")
     .replace(/:/g, "-")
     .slice(0, 16);
   const slug = target ? target.replace(/\//g, "-").replace(/\./g, "-") : "full";
-  const reportPath = join(AUDITS_DIR, `${ts}-${slug}.md`);
+  const reportPath = join(REPORTS_DIR, `${ts}-${slug}.md`);
   await writeFile(reportPath, report, "utf-8");
 
   console.error(`\nReport saved: ${reportPath}`);

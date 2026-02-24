@@ -4,7 +4,7 @@ Run this **after** implementation is complete to simplify and clean up.
 
 ## What It Does
 
-Invokes the `code-simplifier` agent (plugin) on recently modified files to:
+Invokes the `code-simplifier:code-simplifier` agent (plugin) on recently modified files to:
 - Remove unnecessary complexity and over-engineering
 - Consolidate duplicate logic
 - Improve naming and readability

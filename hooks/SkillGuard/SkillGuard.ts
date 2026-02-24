@@ -46,10 +46,20 @@ interface HookInput {
 async function readStdin(timeout = 1000): Promise<string> {
   return new Promise((resolve) => {
     let data = '';
-    const timer = setTimeout(() => resolve(data), timeout);
-    process.stdin.on('data', chunk => { data += chunk.toString(); });
-    process.stdin.on('end', () => { clearTimeout(timer); resolve(data); });
-    process.stdin.on('error', () => { clearTimeout(timer); resolve(''); });
+    const onData = (chunk: Buffer) => { data += chunk.toString(); };
+    const cleanup = (result: string) => {
+      clearTimeout(timer);
+      process.stdin.removeListener('data', onData);
+      process.stdin.removeListener('end', onEnd);
+      process.stdin.removeListener('error', onError);
+      resolve(result);
+    };
+    const onEnd = () => cleanup(data);
+    const onError = () => cleanup('');
+    const timer = setTimeout(() => cleanup(data), timeout);
+    process.stdin.on('data', onData);
+    process.stdin.on('end', onEnd);
+    process.stdin.on('error', onError);
   });
 }
 

@@ -3,7 +3,7 @@
 // Appends session progress (files modified, date) to context-progress.md
 // at the end of each session. Reads the transcript to find modified files.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "fs";
 import { join, sep } from "path";
 import { homedir } from "os";
 
@@ -55,7 +55,6 @@ async function findTranscript(
   let path = join(PROJECTS_DIR, slug, filename);
 
   if (!existsSync(path)) {
-    const { readdirSync } = await import("fs");
     try {
       for (const dir of readdirSync(PROJECTS_DIR)) {
         const candidate = join(PROJECTS_DIR, dir, filename);

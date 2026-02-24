@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "fs";
 import { join, sep } from "path";
 import { homedir } from "os";
 
@@ -59,7 +59,6 @@ async function findTranscript(sessionId: string | undefined): Promise<{ path: st
 
   if (!existsSync(transcriptPath)) {
     // Claude Code may use a different slug format — scan all dirs
-    const { readdirSync } = await import("fs");
     try {
       const dirs = readdirSync(projectsDir);
       for (const dir of dirs) {

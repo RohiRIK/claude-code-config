@@ -1,6 +1,6 @@
 # ~/.claude — Claude Code Global Config
 
-> Personal Claude Code setup. Applies to all projects.
+> Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
 > Last updated: 2026-02-24
 
 ---

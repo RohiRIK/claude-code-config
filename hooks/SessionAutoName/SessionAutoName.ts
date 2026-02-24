@@ -99,11 +99,9 @@ async function generateName(prompt: string): Promise<string | null> {
 async function readStdin(): Promise<HookInput | null> {
   try {
     let data = "";
-    const timer = setTimeout(() => {}, 2000);
     for await (const chunk of Bun.stdin.stream()) {
       data += new TextDecoder().decode(chunk);
     }
-    clearTimeout(timer);
     return data.trim() ? JSON.parse(data) : null;
   } catch {
     return null;
