@@ -16,6 +16,21 @@ Example: working in `/Users/roh/projects/myapp` → slug is `-Users-roh-projects
 | `context-progress.md` | Completed + in-progress tasks | Append `✓ item` after each task done |
 | `context-gotchas.md` | Warnings, blockers, pitfalls | Append whenever you find a gotcha |
 
+## CRITICAL: Write Progress After Every Task
+
+After completing ANY task (fix, feature, refactor, decision), IMMEDIATELY write to the context file:
+
+```
+~/.claude/projects/<slug>/context-progress.md  → ✓ <what was done, 1 line>
+```
+
+Do NOT wait until end of session. Do NOT skip this. Examples:
+- `✓ Fixed duplicate append bug in UpdateContext hook`
+- `✓ Added session_id dedup to context-progress entries`
+- `✓ Rewrote README with full workflow diagram`
+
+If you just completed something and haven't written it — write it NOW before continuing.
+
 ## Rules (MANDATORY)
 
 ### On session start

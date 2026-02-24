@@ -114,13 +114,16 @@ async function main() {
     const today = new Date().toISOString().split("T")[0];
     const progressFile = join(projectDir, "context-progress.md");
 
-    if (filesModified.size > 0) {
-      const fileList = [...filesModified].slice(0, 5).map(f => f.replace(homedir(), "~")).join(", ");
-      appendLine(progressFile, `✓ [${today}] Modified: ${fileList}`);
-    } else {
-      // Still log that session happened (read-only / exploration)
-      appendLine(progressFile, `✓ [${today}] Session (read-only, ${messages.length} messages)`);
-    }
+    // Deduplicate by session_id — skip if this session was already logged
+    const sessionTag = input.session_id ? input.session_id.substring(0, 8) : null;
+    const existingContent = readFileSafe(progressFile);
+    if (sessionTag && existingContent.includes(sessionTag)) return;
+
+    const sessionLine = filesModified.size > 0
+      ? `✓ [${today}]${sessionTag ? ` [${sessionTag}]` : ""} Modified: ${[...filesModified].slice(0, 5).map(f => f.replace(homedir(), "~")).join(", ")}`
+      : `✓ [${today}]${sessionTag ? ` [${sessionTag}]` : ""} Session (read-only, ${messages.length} messages)`;
+
+    appendLine(progressFile, sessionLine);
 
     // Trim context-progress.md to last 20 lines (non-blank)
     const content = readFileSafe(progressFile);
