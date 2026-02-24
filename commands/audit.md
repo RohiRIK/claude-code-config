@@ -1,43 +1,39 @@
 # /audit — Read-Only System Auditor
 
-Runs two isolated Gemini CLI instances (Flash + Pro) against the ~/.claude system and produces a ranked findings report.
+Runs two isolated Gemini CLI instances (Flash + Pro) and produces a ranked findings report.
 
-**IMPORTANT**: This command is strictly read-only. It makes zero changes to any files. It only writes a report to `~/.claude/auditor/reports/`.
+**IMPORTANT**: Strictly read-only. Only writes to `~/.claude/auditor/reports/`.
 
-## Usage
+## Modes
 
-```
-/audit              # audits entire ~/.claude system
-/audit <path>       # audits a specific file or subdirectory
-```
+| Command | What it audits | Time |
+|---------|---------------|------|
+| `/audit` | **Core** — rules, hooks, agents, settings.json, CLAUDE.md | ~2 min |
+| `/audit full` | **All subsystems in parallel** — core + skills | ~3 min |
+| `/audit <path>` | **Targeted** — specific file or directory | ~2 min |
 
 ## Examples
 
 ```
-/audit
-/audit hooks/SessionStart
+/audit                    # core system (recommended daily driver)
+/audit full               # all subsystems in parallel
+/audit hooks              # just hooks
+/audit skills/ContentWriter
 /audit settings.json
-/audit rules/
 ```
 
 ## What It Does
 
-1. Collects all `.ts`, `.json`, `.md`, `.yaml` files from `~/.claude` (skips `audits/`, `.git`, `node_modules`, `projects/`)
-2. Runs **Gemini Flash** (fast: syntax, consistency, schema errors) and **Gemini Pro** (deep: architecture, security, edge cases) in parallel
-3. Each Gemini instance runs in an isolated throwaway config dir — no access to your personal Gemini settings
+1. Collects `.ts`, `.json`, `.md`, `.yaml` files from target (skips `auditor/`, `.git`, `node_modules`, `projects/`, `image-cache/`)
+2. Runs **Gemini Flash** (syntax, consistency, schema) and **Gemini Pro** (architecture, security, cross-file issues) in parallel
+3. Each instance runs in an isolated throwaway config dir
 4. Merges findings, deduplicates, ranks by severity (CRITICAL → HIGH → MEDIUM → LOW)
-5. Writes report to `~/.claude/auditor/reports/YYYY-MM-DD-HH-MM-<target>.md`
-6. Prints summary
-
-## What It Does NOT Do
-
-- Does NOT modify any files
-- Does NOT execute hooks or scripts
-- Does NOT have access to your personal `~/.gemini` config
+5. If a model times out, report shows ⚠️ WARNING — results are incomplete
+6. Writes report to `~/.claude/auditor/reports/YYYY-MM-DD-HH-MM-<mode>.md`
 
 ## After Running
 
-Review findings and decide what to fix. After fixing, update context:
+Review findings and decide what to fix. Update context after fixing:
 ```
 ✓ Fixed audit finding: <title> in <file>
 ```

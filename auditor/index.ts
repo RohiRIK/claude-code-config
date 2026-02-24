@@ -272,26 +272,98 @@ function formatReport(
   return lines.join("\n");
 }
 
+// Core system files — what matters for cross-file consistency checks
+const CORE_SUBSYSTEMS = ["rules", "hooks", "agents", "settings.json", "CLAUDE.md", "auditor/index.ts"];
+// Full system subsystems for parallel audit
+const FULL_SUBSYSTEMS = ["rules", "hooks", "agents", "skills", "settings.json", "CLAUDE.md"];
+
+async function runSubsystemAudit(
+  subsystem: string,
+  startTime: number
+): Promise<{ findings: (Finding & { sources: string[] })[]; flashMs: number; proMs: number; files: number }> {
+  const files = await collectFiles(subsystem);
+  const context = buildContext(files);
+  const timeoutMs = 180_000;
+
+  let flashMs = 0;
+  let proMs = 0;
+
+  const [flashFindings, proFindings] = await Promise.all([
+    runGemini("gemini-3-flash-preview", join(PROMPTS_DIR, "flash.md"), context, timeoutMs).then((r) => {
+      flashMs = Date.now() - startTime;
+      console.error(`  [${subsystem}] Flash done (${flashMs}ms), ${r.length} findings`);
+      return r;
+    }),
+    runGemini("gemini-3-pro-preview", join(PROMPTS_DIR, "pro.md"), context, timeoutMs).then((r) => {
+      proMs = Date.now() - startTime;
+      console.error(`  [${subsystem}] Pro done (${proMs}ms), ${r.length} findings`);
+      return r;
+    }),
+  ]);
+
+  return { findings: mergeFindings(flashFindings, proFindings) as (Finding & { sources: string[] })[], flashMs, proMs, files: files.size };
+}
+
 async function main() {
   const target = process.argv[2];
+  const startTime = Date.now();
 
-  console.error("Collecting files...");
-  const files = await collectFiles(target);
+  // --- Mode: /audit full — parallel subsystem audit ---
+  if (target === "full") {
+    console.error(`Running FULL audit: ${FULL_SUBSYSTEMS.length} subsystems in parallel...`);
+    const results = await Promise.all(
+      FULL_SUBSYSTEMS.map((sub) => runSubsystemAudit(sub, startTime))
+    );
+    const allFindings = results.flatMap((r) => r.findings);
+    const totalFiles = results.reduce((acc, r) => acc + r.files, 0);
+    const maxFlashMs = Math.max(...results.map((r) => r.flashMs));
+    const maxProMs = Math.max(...results.map((r) => r.proMs));
+    const merged = mergeFindings(
+      allFindings.filter((f) => f.sources?.includes("gemini-3-flash-preview")),
+      allFindings.filter((f) => f.sources?.includes("gemini-3-pro-preview"))
+    );
+    const report = formatReport(merged, totalFiles, maxFlashMs, maxProMs);
+    await mkdir(REPORTS_DIR, { recursive: true });
+    const ts = new Date().toISOString().replace("T", "-").replace(/:/g, "-").slice(0, 16);
+    const reportPath = join(REPORTS_DIR, `${ts}-full.md`);
+    await writeFile(reportPath, report, "utf-8");
+    console.error(`\nReport saved: ${reportPath}`);
+    console.log(report);
+    return;
+  }
+
+  // --- Mode: /audit (no args) — core system audit ---
+  let files: Map<string, string>;
+  let slug: string;
+  let timeoutMs: number;
+
+  if (!target) {
+    console.error(`Running CORE audit: ${CORE_SUBSYSTEMS.join(", ")}...`);
+    files = new Map();
+    for (const sub of CORE_SUBSYSTEMS) {
+      const subFiles = await collectFiles(sub);
+      for (const [k, v] of subFiles) files.set(k, v);
+    }
+    slug = "core";
+    timeoutMs = 180_000;
+  } else {
+    // --- Mode: /audit <path> — targeted audit ---
+    console.error("Collecting files...");
+    files = await collectFiles(target);
+    slug = target.replace(/\//g, "-").replace(/\./g, "-");
+    timeoutMs = 180_000;
+  }
 
   if (files.size === 0) {
     console.error("No auditable files found.");
     process.exit(1);
   }
 
-  console.error(`Found ${files.size} files. Building context...`);
+  console.error(`Found ${files.size} files. Building context... Timeout: ${timeoutMs / 1000}s`);
   const context = buildContext(files);
 
-  // Dynamic timeout: full system audit needs more time than targeted audits
-  const timeoutMs = target ? 180_000 : 360_000;
-  console.error(`Timeout: ${timeoutMs / 1000}s (${target ? "targeted" : "full system"})`);
   console.error("Running Gemini Flash + Pro in parallel (isolated instances)...");
 
-  const startTime = Date.now();
   let flashDuration = 0;
   let proDuration = 0;
 
@@ -318,7 +390,7 @@ async function main() {
     .replace("T", "-")
     .replace(/:/g, "-")
     .slice(0, 16);
-  const slug = target ? target.replace(/\//g, "-").replace(/\./g, "-") : "full";
+  // slug already defined above for targeted/core modes
   const reportPath = join(REPORTS_DIR, `${ts}-${slug}.md`);
   await writeFile(reportPath, report, "utf-8");
 
