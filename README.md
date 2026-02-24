@@ -3,6 +3,8 @@
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
 > Last updated: 2026-02-24
 
+![Claude Code Global Config](assets/system-header.png)
+
 ---
 
 ## The Workflow
