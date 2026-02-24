@@ -115,15 +115,12 @@ async function runGemini(
 
   try {
     const systemPrompt = await readFile(systemPromptFile, "utf-8");
-    // Pipe large file context via stdin; --prompt appends the instruction
-    // This avoids CLI arg size limits that silently drop large prompts
-    const stdinContent = `## Files to Audit\n\n${context}`;
+    const fullPrompt = `${systemPrompt}\n\n## Files to Audit\n\n${context}`;
 
     const result = spawnSync(
       "gemini",
-      ["--model", model, "--prompt", systemPrompt],
+      ["--model", model, "--prompt", fullPrompt],
       {
-        input: stdinContent,
         env: {
           ...process.env,
           // Isolate session history/cache but keep HOME (auth credentials needed)
