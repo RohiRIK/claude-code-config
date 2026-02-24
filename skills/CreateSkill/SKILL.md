@@ -202,25 +202,6 @@ Brief description.
 
 ---
 
-## Voice Notification
-
-**When executing a workflow, do BOTH:**
-
-1. **Send voice notification**:
-   ```bash
-   curl -s -X POST http://localhost:8888/notify \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Running the WORKFLOWNAME workflow from the CreateSkill skill"}' \
-     > /dev/null 2>&1 &
-   ```
-
-2. **Output text notification**:
-   ```
-   Running the **WorkflowName** workflow from the **CreateSkill** skill...
-   ```
-
-**Full documentation:** `~/.claude/skills/CORE/SkillNotifications.md`
-
 ## Workflow Routing
 
 | Workflow | Trigger | File |
