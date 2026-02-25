@@ -8,8 +8,6 @@ It contains a condensed summary of patterns extracted from sessions.
 ## Recent Sessions
 
 - **2026-01-22** (342 msgs): Session e632f303...
-- **2026-02-23** (586 msgs): Session 93a4c4fb... (Errors: 0)
-- **2026-02-23** (594 msgs): Session 93a4c4fb... (Errors: 0)
 - **2026-02-23** (623 msgs): Session 93a4c4fb... (Errors: 0)
 - **2026-02-23** (631 msgs): Session 93a4c4fb... (Errors: 0)
 - **2026-02-23** (638 msgs): Session 93a4c4fb... (Errors: 0)
@@ -47,3 +45,5 @@ It contains a condensed summary of patterns extracted from sessions.
 - **2026-02-23** (46 msgs): Session 4934abd9... (Errors: 0)
 - **2026-02-24** (247 msgs): Session 68529d0a... (Errors: 0)
 - **2026-02-24** (13 msgs): Session a1870b8c... (Errors: 0)
+- **2026-02-24** (7 msgs): Session 9378b2ec... (Errors: 0)
+- **2026-02-25** (41 msgs): Session a05ce3c7... (Errors: 1)
