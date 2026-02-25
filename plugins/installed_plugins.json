@@ -24,10 +24,10 @@
     "security-guidance@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/99e11d959269",
-        "version": "99e11d959269",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/55b58ec6e564",
+        "version": "55b58ec6e564",
         "installedAt": "2026-01-22T09:23:55.983Z",
-        "lastUpdated": "2026-02-24T07:32:52.091Z",
+        "lastUpdated": "2026-02-25T07:36:49.906Z",
         "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
       }
     ],

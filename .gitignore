@@ -3,6 +3,7 @@
 .env.*
 *.pem
 *.key
+.credentials.json
 
 # macOS
 .DS_Store
@@ -29,9 +30,11 @@ voice-server/
 sessions/
 projects/
 
+# Assets
+assets/Arcaived/
+
 # Learned patterns (auto-generated analytics)
-skills/Learned/patterns/
-skills/Learned/summary.md
+skills/Learned/
 skills/Goose/summaries/
 skills/Goose/gooshistory/
 
