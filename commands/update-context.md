@@ -1,73 +1,79 @@
-# /update-context — Manually Update Context Files
+# /update-context — Auto-Update Context Files from Session
 
-Update one or more of the 4 project context files for the current project.
+Automatically extracts what happened in this session and writes it to the project context files. No questions asked.
 
 ## Usage
 
 ```
-/update-context                        # interactive — pick file + enter content
-/update-context goal "new goal here"   # update context-goals.md directly
-/update-context progress "✓ did X"    # append to context-progress.md
-/update-context decision "chose Y because Z"  # append to context-decisions.md
-/update-context gotcha "⚠ watch out for W"   # append to context-gotchas.md
+/update-context              # auto-extract from session and write all 4 files
+/update-context goal "..."   # override goal only
+/update-context progress "✓ did X"   # append one progress item manually
+/update-context decision "chose Y because Z"
+/update-context gotcha "⚠ watch out for W"
 ```
 
 ## Instructions for Claude
 
 ### Step 1 — Resolve project
 
-Read `~/.claude/projects/registry.json`, match `cwd` to get `<name>`.
+Read `~/.claude/projects/registry.json`, match `cwd` → get `<name>`.
 `projectDir` = `~/.claude/projects/<name>/`
 
-If project not registered: say so and suggest `/register-project` first.
+If not registered: say so, suggest `/register-project`, then stop.
 
-### Step 2 — Determine which file and content
+### Step 2 — If called with no arguments: AUTO mode
 
-**If arguments provided:** map the first argument to a file:
-| Argument | File |
-|----------|------|
-| `goal` / `goals` | `context-goals.md` |
-| `progress` / `prog` | `context-progress.md` |
-| `decision` / `decisions` | `context-decisions.md` |
-| `gotcha` / `gotchas` / `warning` | `context-gotchas.md` |
+Look back at the current conversation and extract:
 
-**If no arguments:** ask:
-> Which context file do you want to update?
-> 1. Goals (`context-goals.md`) — current objective
-> 2. Progress (`context-progress.md`) — append a completed item
-> 3. Decisions (`context-decisions.md`) — append a decision
-> 4. Gotchas (`context-gotchas.md`) — append a warning
->
-> Enter 1–4:
+**Progress** (what was completed this session):
+- Scan for completed tasks, fixes, features, commands run
+- Write each as: `✓ [YYYY-MM-DD] <what was done, 1 line, max 100 chars>`
+- Today's date = use current date
+- Append all new items to `context-progress.md`
+- Skip items already present in the file
 
-Then ask for the content if not provided.
+**Decisions** (architectural or significant choices made):
+- Scan for decisions like "we chose X over Y", "we decided to...", "going with..."
+- Write each as: `- <decision and reason, 1 line>`
+- Append new items to `context-decisions.md`
+- Skip duplicates
 
-### Step 3 — Write the file
+**Gotchas** (warnings, blockers, things to watch):
+- Scan for "watch out", "gotcha", "bug", "issue", "broken", edge cases discovered
+- Write each as: `⚠ <warning, 1 line>`
+- Append new items to `context-gotchas.md`
 
-**context-goals.md:** REPLACE entire file (goals change, not accumulate).
-Max 5 lines. Format: plain bullet points.
+**Goal** (only update if goal clearly changed this session):
+- If the goal shifted, REPLACE `context-goals.md` with new goal (max 3 bullet points)
+- If goal is unchanged, leave the file as-is
 
-**context-progress.md:** APPEND a new line.
-Format: `✓ [YYYY-MM-DD] <what was done>`
-Auto-prefix today's date if not included.
+### Step 3 — If called with arguments: MANUAL mode
 
-**context-decisions.md:** APPEND a new line.
-Format: `- <decision made and why>`
+Map argument to file and write exactly what was provided — no extraction needed:
 
-**context-gotchas.md:** APPEND a new line.
-Format: `⚠ <warning or blocker>`
+| Argument | File | Mode |
+|----------|------|------|
+| `goal` / `goals` | `context-goals.md` | replace |
+| `progress` / `prog` | `context-progress.md` | append |
+| `decision` / `decisions` | `context-decisions.md` | append |
+| `gotcha` / `gotchas` / `warning` | `context-gotchas.md` | append |
 
 ### Step 4 — Confirm
 
-Show what was written:
-> Updated `context-<file>.md` for **<name>**:
-> ```
-> <the line(s) written>
-> ```
+Print a summary of what was written:
+
+```
+Updated context for **<name>**:
+  context-progress.md  → +N items
+  context-decisions.md → +N items
+  context-gotchas.md   → +N items
+  context-goals.md     → unchanged / replaced
+```
 
 ## Rules
 
 - Never delete existing entries in progress/decisions/gotchas — append only
-- goals.md is the only file that gets replaced
+- goals.md is the ONLY file that gets replaced
 - Keep each line under 100 chars
-- If the user writes a multi-line goal, condense to 1–3 bullet points
+- Do NOT ask the user questions — extract and write autonomously
+- If nothing new to write, say "Nothing new to add — context is up to date"
