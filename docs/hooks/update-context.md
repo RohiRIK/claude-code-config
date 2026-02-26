@@ -39,7 +39,7 @@ The UpdateContext hook appends session progress to the context-progress.md file.
 
 ## Location
 
-Writes to: `~/.claude/projects/<slug>/context-progress.md`
+Writes to: `~/.claude/projects/<name>/context-progress.md` (name from registry)
 
 ## Notes
 

@@ -90,7 +90,7 @@ Trigger at session events.
 
 ## Context Files
 
-Location: `~/.claude/projects/<slug>/`
+Location: `~/.claude/projects/<name>/` (friendly name from `registry.json`)
 
 | File | Purpose | TTL | Managed by |
 |------|---------|-----|-----------|
@@ -100,11 +100,17 @@ Location: `~/.claude/projects/<slug>/`
 | `context-progress.md` | Completed tasks | Trimmed to 20 | Claude+Cleanup |
 | `context-gotchas.md` | Warnings | Permanent | Claude |
 
-## Slug Derivation
+## Project Name Resolution
+
+Registry at `~/.claude/projects/registry.json` maps paths → friendly names.
 
 ```
-/Users/roh/projects/myapp → -Users-roh-projects-myapp
+1. Exact match:  /Users/roh/projects/myapp → "my-app"
+2. Prefix match: /Users/roh/projects/myapp/docs → "my-app" (inherits)
+3. Slug fallback: /Users/roh/projects/myapp → -Users-roh-projects-myapp
 ```
+
+Use `/register-project` to add entries. Use `/check-context` to verify.
 
 ## Detailed Documentation
 

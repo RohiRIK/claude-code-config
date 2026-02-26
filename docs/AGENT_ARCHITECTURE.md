@@ -187,7 +187,7 @@ Executes skill tools, generates image
    SessionStart hook fires
         │
         ▼
-   Reads ~/.claude/projects/<slug>/context-summary.md
+   Reads ~/.claude/projects/<name>/context-summary.md (registry lookup)
         │
         ▼
    Injects context into Claude's prompt
@@ -257,7 +257,7 @@ Executes skill tools, generates image
 The context system persists knowledge across sessions:
 
 ```
-~/.claude/projects/<slug>/
+~/.claude/projects/<name>/   # friendly name from registry.json
 ├── context-summary.md    # Injected at session start (60 lines max)
 ├── context-goals.md      # Current goal (1-3 lines)
 ├── context-decisions.md  # Architectural decisions (permanent)

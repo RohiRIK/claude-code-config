@@ -16,7 +16,7 @@ The PreCompact hook runs automatically before Claude compacts the context window
 
 ```
 1. Read stdin input (JSON with cwd)
-2. Derive project slug from cwd
+2. Resolve project name via registry.json (exact → prefix → slug fallback)
 3. Read 4 context files:
    - context-goals.md
    - context-decisions.md
@@ -62,7 +62,7 @@ if (gotchas) {
 
 ## Output
 
-Writes to: `~/.claude/projects/<slug>/context-summary.md`
+Writes to: `~/.claude/projects/<name>/context-summary.md` (name from registry)
 
 ## Configuration
 

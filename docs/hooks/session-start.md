@@ -16,12 +16,12 @@ The SessionStart hook runs when a new Claude Code session begins. It reads the p
 
 ```
 1. Read stdin input (JSON with cwd)
-2. Derive project slug from cwd
-3. Check for context-summary.md
+2. Resolve project name via registry.json (exact → prefix → slug fallback)
+3. Check for context-summary.md in ~/.claude/projects/<name>/
 4. If exists and not stale (<30 days):
    → Inject into Claude's prompt
-5. If not exists:
-   → Prompt Claude to create context files
+5. If new project (isNew=true):
+   → Auto-register with folder name, prompt Claude to create context files
 ```
 
 ## Input
@@ -35,16 +35,17 @@ The SessionStart hook runs when a new Claude Code session begins. It reads the p
 }
 ```
 
-## Slug Derivation
+## Project Resolution
 
-```typescript
-function deriveSlug(cwd: string): string {
-  return cwd
-    .replace(new RegExp("\\" + sep, "g"), "-")
-    .replace(/\./g, "-");
-}
-// /Users/roh/projects/myapp → -Users-roh-projects-myapp
+Uses `resolveProject(cwd)` from `hooks/lib/resolveProject.ts`:
+
 ```
+1. Exact match in registry.json  → use registered name
+2. Longest prefix match          → inherit parent project name
+3. Slug fallback                 → cwd with / and . replaced by -
+```
+
+Registry: `~/.claude/projects/registry.json` → `{ "/abs/path": "friendly-name" }`
 
 ## Behavior
 
@@ -78,7 +79,7 @@ Skips injection silently.
 
 ## Files
 
-- **Reads:** `~/.claude/projects/<slug>/context-summary.md`
+- **Reads:** `~/.claude/projects/<name>/context-summary.md` (name from registry)
 - **Writes:** Resets tool counter at `~/.claude/tmp/session-tool-count.txt`
 
 ## Related
