@@ -11,53 +11,53 @@ This document describes the architecture of the Claude Code agent system - how a
 ## High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           USER INTERFACE                                 │
-│                   (Claude Code CLI / IDE Plugin)                        │
-└─────────────────────────────────┬───────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           SESSION LIFECYCLE                             │
-│                                                                         │
-│   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐       │
-│   │ Session  │───▶│  Claude   │───▶│ PreCompact│───▶│  Session  │       │
-│   │  Start   │    │  Working  │    │   Hook    │    │   End     │       │
-│   └──────────┘    └──────────┘    └──────────┘    └──────────┘       │
-│        │                │                │                │             │
-│        ▼                ▼                ▼                ▼             │
-│   ┌─────────┐    ┌────────────┐  ┌────────────┐  ┌───────────┐      │
-│   │Context  │    │   Agents   │  │  Context   │  │Evaluate   │      │
-│   │Inject   │    │ (on-demand)│  │  Summary   │  │Session    │      │
-│   └─────────┘    └────────────┘  └────────────┘  └───────────┘      │
-└─────────────────────────────────────────────────────────────────────────┘
-                                  │
-          ┌───────────────────────┼───────────────────────┐
-          ▼                       ▼                       ▼
-┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
-│     AGENTS      │   │     SKILLS     │   │     HOOKS      │
-│  (Specialists)  │   │   (Tools)      │   │  (Lifecycle)   │
-│                 │   │                 │   │                │
-│ - planner       │   │ - Art          │   │ - SessionStart │
-│ - architect     │   │ - Goose        │   │ - PreCompact   │
-│ - code-reviewer │   │ - Prompting    │   │ - EvaluateSession
-│ - security-     │   │ - agent-browser│   │ - Cleanup     │
-│   reviewer       │   │ - TddWorkflow │   │ - SuggestCompact
-│ - tdd-guide     │   │ - ...         │   │ - ...         │
-└─────────────────┘   └─────────────────┘   └─────────────────┘
-          │                       │                       │
-          └───────────────────────┼───────────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              AUDITOR                                     │
-│                    (Dual-AI Security Audit)                             │
-│                                                                         │
-│   ┌─────────────┐     ┌─────────────┐                                  │
-│   │  Gemini 3   │     │   Gemini 3  │                                  │
-│   │   Flash    │     │     Pro     │                                  │
-│   │(fast check)│────▶│ (deep audit)│────▶ Merge Findings              │
-│   └─────────────┘     └─────────────┘                                  │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│               USER INTERFACE                             │
+│          (Claude Code CLI / IDE Plugin)                  │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│                  SESSION LIFECYCLE                       │
+│                                                          │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌──────┐ │
+│  │ Session   │─▶│  Claude   │─▶│PreCompact │─▶│ End  │ │
+│  │  Start    │  │  Working  │  │   Hook    │  │      │ │
+│  └───────────┘  └───────────┘  └───────────┘  └──────┘ │
+│       │               │               │            │     │
+│       ▼               ▼               ▼            ▼     │
+│  ┌─────────┐  ┌────────────┐  ┌──────────┐  ┌────────┐ │
+│  │Context  │  │  Agents    │  │ Context  │  │Evaluate│ │
+│  │ Inject  │  │ (on-demand)│  │ Summary  │  │Session │ │
+│  └─────────┘  └────────────┘  └──────────┘  └────────┘ │
+└──────────────────────────────────────────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+│    AGENTS      │ │    SKILLS      │ │    HOOKS       │
+│ (Specialists)  │ │  (Tools)       │ │ (Lifecycle)    │
+│                │ │                │ │                │
+│ - planner      │ │ - Art          │ │ - SessionStart │
+│ - architect    │ │ - Goose        │ │ - PreCompact   │
+│ - code-reviewer│ │ - Prompting    │ │ - EvaluateSess │
+│ - security-rev │ │ - agent-browser│ │ - Cleanup      │
+│ - tdd-guide    │ │ - TddWorkflow  │ │ - SuggestCompact│
+│ - ...          │ │ - ...          │ │ - ...          │
+└────────────────┘ └────────────────┘ └────────────────┘
+         │               │               │
+         └───────────────┼───────────────┘
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│                     AUDITOR                              │
+│              (Dual-AI Security Audit)                    │
+│                                                          │
+│  ┌──────────────┐         ┌──────────────┐              │
+│  │  Gemini 3    │         │  Gemini 3    │              │
+│  │    Flash     │────────▶│     Pro      │──▶ Findings  │
+│  │ (fast check) │         │ (deep audit) │              │
+│  └──────────────┘         └──────────────┘              │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -236,7 +236,8 @@ Executes skill tools, generates image
 │   ├── EvaluateSession/
 │   └── ...
 ├── projects/                 # Per-project context
-│   └── -Users-roh-projects-myapp/
+│   ├── registry.json         # path → friendly name map
+│   └── <name>/               # e.g. my-app, claude-config
 │       ├── context-summary.md
 │       ├── context-goals.md
 │       └── ...
@@ -265,7 +266,7 @@ The context system persists knowledge across sessions:
 └── context-gotchas.md   # Warnings/blockers (permanent)
 ```
 
-**Slug derivation:** `/Users/roh/projects/myapp` → `-Users-roh-projects-myapp`
+**Name resolution:** registry.json exact match → prefix match → slug fallback. Use `/register-project` to register, `/check-context` to verify.
 
 ---
 
