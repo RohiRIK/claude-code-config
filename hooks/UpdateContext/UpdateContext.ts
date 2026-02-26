@@ -1,137 +1,118 @@
 #!/usr/bin/env bun
-// UpdateContext Stop Hook
-// Appends session progress (files modified, date) to context-progress.md
-// at the end of each session. Reads the transcript to find modified files.
-
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "fs";
-import { join, sep } from "path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
+import { join } from "path";
 import { homedir } from "os";
+import { resolveProject, PROJECTS_DIR, CLAUDE_DIR } from "../lib/resolveProject.js";
+import { readStdinPassthrough, parseHookInput, readFileSafe, appendLine } from "../lib/hookUtils.js";
 
-const CLAUDE_DIR = join(homedir(), ".claude");
-const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
+const TOOL_NAMES = new Set(["Write", "Edit", "MultiEdit"]);
+const MAX_PROGRESS_LINES = 20;
+const MAX_DISPLAY_FILES = 5;
 
-function deriveSlug(cwd: string): string {
-  return cwd.replace(new RegExp("\\" + sep, "g"), "-").replace(/\./g, "-");
-}
-
-function readFileSafe(path: string): string {
-  if (!existsSync(path)) return "";
-  return readFileSync(path, "utf-8").trim();
-}
-
-function appendLine(path: string, line: string) {
-  const existing = readFileSafe(path);
-  const newContent = existing ? `${existing}\n${line}\n` : `${line}\n`;
-  writeFileSync(path, newContent);
-}
-
-async function findTranscript(
+function findTranscriptPath(
   transcriptPath: string | undefined,
   sessionId: string | undefined
-): Promise<string | null> {
+): string | null {
   if (transcriptPath && existsSync(transcriptPath)) return transcriptPath;
 
   const historyFile = join(CLAUDE_DIR, "history.jsonl");
   if (!existsSync(historyFile)) return null;
 
   const lines = readFileSync(historyFile, "utf-8").trim().split("\n");
-  let entry: any = null;
+  let entry: Record<string, any> | null = null;
 
   if (sessionId) {
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
-        const l = JSON.parse(lines[i]);
-        if (l.sessionId === sessionId) { entry = l; break; }
-      } catch (_) {}
+        const parsed = JSON.parse(lines[i]);
+        if (parsed.sessionId === sessionId) { entry = parsed; break; }
+      } catch {}
     }
   } else {
-    try { entry = JSON.parse(lines[lines.length - 1]); } catch (_) {}
+    try { entry = JSON.parse(lines[lines.length - 1]); } catch {}
   }
 
   if (!entry?.sessionId || !entry?.project) return null;
 
   const filename = `${entry.sessionId}.jsonl`;
-  const slug = deriveSlug(entry.project);
-  let path = join(PROJECTS_DIR, slug, filename);
+  const { projectDir } = resolveProject(entry.project);
+  const primary = join(projectDir, filename);
+  if (existsSync(primary)) return primary;
 
-  if (!existsSync(path)) {
-    try {
-      for (const dir of readdirSync(PROJECTS_DIR)) {
-        const candidate = join(PROJECTS_DIR, dir, filename);
-        if (existsSync(candidate)) { path = candidate; break; }
-      }
-    } catch (_) {}
-  }
+  // Search all project dirs as fallback
+  try {
+    for (const dir of readdirSync(PROJECTS_DIR)) {
+      const candidate = join(PROJECTS_DIR, dir, filename);
+      if (existsSync(candidate)) return candidate;
+    }
+  } catch {}
 
-  return existsSync(path) ? path : null;
+  return null;
 }
 
-async function main() {
-  let inputStr = "";
-  try {
-    for await (const chunk of Bun.stdin.stream()) {
-      inputStr += new TextDecoder().decode(chunk);
-      process.stdout.write(chunk);
+function collectModifiedFiles(messages: Array<Record<string, any>>): Set<string> {
+  const files = new Set<string>();
+  for (const m of messages) {
+    const content = m.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (block.type === "tool_use" && TOOL_NAMES.has(block.name)) {
+        const p = block.input?.file_path || block.input?.path;
+        if (p) files.add(p);
+      }
     }
-  } catch (_) {}
+  }
+  return files;
+}
+
+function parseJsonLines(raw: string): Array<Record<string, any>> {
+  return raw.trim().split("\n")
+    .map(line => { try { return JSON.parse(line); } catch { return null; } })
+    .filter(Boolean) as Array<Record<string, any>>;
+}
+
+async function main(): Promise<void> {
+  const raw = await readStdinPassthrough();
 
   try {
-    let input: any = {};
-    try { input = JSON.parse(inputStr); } catch (_) {}
+    const parsed = parseHookInput(raw);
+    if (!parsed) return;
 
-    const cwd: string = input.cwd || input.working_directory || input.session?.cwd || "";
-    if (!cwd) return;
-
-    const slug = deriveSlug(cwd);
-    const projectDir = join(PROJECTS_DIR, slug);
+    const { input, cwd } = parsed;
+    const { name, projectDir } = resolveProject(cwd);
     if (!existsSync(projectDir)) mkdirSync(projectDir, { recursive: true });
 
-    // Find and parse transcript
-    const tPath = await findTranscript(input.transcript_path, input.session_id);
+    const tPath = findTranscriptPath(input.transcript_path, input.session_id);
     if (!tPath) return;
 
-    const messages = readFileSync(tPath, "utf-8")
-      .trim().split("\n")
-      .map(l => { try { return JSON.parse(l); } catch (_) { return null; } })
-      .filter(Boolean);
-
+    const messages = parseJsonLines(readFileSync(tPath, "utf-8"));
     if (messages.length < 3) return;
 
-    // Collect files modified this session
-    const filesModified = new Set<string>();
-    messages.forEach((m: any) => {
-      const content = m.message?.content;
-      if (!Array.isArray(content)) return;
-      content.forEach((block: any) => {
-        if (block.type === "tool_use" && (block.name === "Write" || block.name === "Edit" || block.name === "MultiEdit")) {
-          const p = block.input?.file_path || block.input?.path;
-          if (p) filesModified.add(p);
-        }
-      });
-    });
-
-    const today = new Date().toISOString().split("T")[0];
     const progressFile = join(projectDir, "context-progress.md");
 
-    // Deduplicate by session_id — skip if this session was already logged
+    // Deduplicate by session_id
     const sessionTag = input.session_id ? input.session_id.substring(0, 8) : null;
-    const existingContent = readFileSafe(progressFile);
-    if (sessionTag && existingContent.includes(sessionTag)) return;
+    const existing = readFileSafe(progressFile);
+    if (sessionTag && existing.includes(sessionTag)) return;
+
+    const filesModified = collectModifiedFiles(messages);
+    const today = new Date().toISOString().split("T")[0];
+    const tagPart = sessionTag ? ` [${sessionTag}]` : "";
 
     const sessionLine = filesModified.size > 0
-      ? `✓ [${today}]${sessionTag ? ` [${sessionTag}]` : ""} Modified: ${[...filesModified].slice(0, 5).map(f => f.replace(homedir(), "~")).join(", ")}`
-      : `✓ [${today}]${sessionTag ? ` [${sessionTag}]` : ""} Session (read-only, ${messages.length} messages)`;
+      ? `✓ [${today}]${tagPart} Modified: ${[...filesModified].slice(0, MAX_DISPLAY_FILES).map(f => f.replace(homedir(), "~")).join(", ")}`
+      : `✓ [${today}]${tagPart} Session (read-only, ${messages.length} messages)`;
 
     appendLine(progressFile, sessionLine);
 
-    // Trim context-progress.md to last 20 lines (non-blank)
+    // Trim to last N lines
     const content = readFileSafe(progressFile);
     const lines = content.split("\n").filter(Boolean);
-    if (lines.length > 20) {
-      writeFileSync(progressFile, lines.slice(-20).join("\n") + "\n");
+    if (lines.length > MAX_PROGRESS_LINES) {
+      writeFileSync(progressFile, lines.slice(-MAX_PROGRESS_LINES).join("\n") + "\n");
     }
 
-    console.error(`[UpdateContext] context-progress.md updated for ${slug}`);
+    console.error(`[UpdateContext] context-progress.md updated for ${name}`);
   } catch (err) {
     console.error("[UpdateContext] Error:", err);
   }
