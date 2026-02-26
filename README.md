@@ -1,7 +1,7 @@
 # ~/.claude — Claude Code Global Config
 
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
-> Last updated: 2026-02-24
+> Last updated: 2026-02-26
 
 ![Claude Code Global Config](assets/claude-config-header.png)
 
@@ -62,6 +62,9 @@ Good plan → 1-shot implementation.
 | `/tdd` | New features — writes tests FIRST |
 | `/code-review` | After writing code |
 | `/init-context` | New project — creates 4 context files |
+| `/check-context` | Start of session — verify Claude has the right context |
+| `/update-context` | End of session — auto-extract progress/decisions/gotchas |
+| `/register-project` | Register or rename a project in the context registry |
 | `/learn` | End of session — extract reusable patterns |
 | `/e2e` | Critical user flows — Playwright tests |
 | `/build-fix` | When build fails |
@@ -113,7 +116,7 @@ Auto-invoked by Claude when relevant. Located in `~/.claude/agents/`.
 
 Per-project memory. Survives /compact and session restarts.
 
-**Files** at `~/.claude/projects/<slug>/`:
+**Files** at `~/.claude/projects/<name>/` (friendly name, not path slug):
 
 | File | Contains |
 |------|---------|
@@ -123,13 +126,20 @@ Per-project memory. Survives /compact and session restarts.
 | `context-gotchas.md` | Warnings and blockers (permanent) |
 | `context-summary.md` | Auto-assembled by PreCompact, injected by SessionStart |
 
+**Registry** at `~/.claude/projects/registry.json`:
+Maps absolute paths → friendly names. Supports prefix matching so subdirs inherit parent project context.
+
 **How it works:**
 ```
 Work → /compact fires → PreCompact assembles context-summary.md
-New session → SessionStart injects context-summary.md → "Restored Project Context"
+New session → SessionStart reads registry → injects context → "Restored Project Context"
 ```
 
-**Setup for a new project:** `/init-context`
+**Context commands:**
+- `/init-context` — create 4 context files for a new project
+- `/check-context` — verify Claude has correct context at session start
+- `/update-context` — auto-extract progress/decisions/gotchas from current session
+- `/register-project` — register or rename a project path in registry.json
 
 ---
 
@@ -185,7 +195,8 @@ Located in `~/.claude/skills/`. Invoked via Skill tool when relevant.
 │   └── learned-summary.md
 ├── skills/                      ← 13 skills
 └── projects/                    ← per-project context files
-    └── <slug>/
+    ├── registry.json            ← path → friendly name map
+    └── <name>/                  ← friendly name (e.g. claude-config)
         ├── context-goals.md
         ├── context-decisions.md
         ├── context-progress.md

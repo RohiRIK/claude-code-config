@@ -15,11 +15,17 @@ All notable changes to this global Claude Code configuration.
 - **Prefix matching** — subdirectories of a registered project inherit the parent's context (e.g. `project/docs` → same context as `project`)
 - **CHANGELOG.md** — full changelog generated from all commits since Feb 23
 
+### Commands
+- **`/check-context`** — verify Claude has correct context at session start; reads files + cross-checks vs injected context; detects stale summaries
+- **`/update-context`** — auto-extracts progress, decisions, gotchas from current session and writes to context files; no prompts
+- **`/register-project`** — register or rename a project with conflict detection and migration offer
+
 ### Migrations
 - Context files migrated from slug folder (`-Users-rohirikman--claude/`) → `claude-config/`
 
 ### Chores
 - Cleaned up stale entries from `registry.json` after test run
+- Updated README: commands table, context system section, directory structure
 
 ---
 
