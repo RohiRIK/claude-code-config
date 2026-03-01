@@ -2,6 +2,8 @@
 
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
 > Last updated: 2026-02-26
+>
+> Inspired by [danielmiessler/Personal\_AI\_Infrastructure](https://github.com/danielmiessler/Personal_AI_Infrastructure) and [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code).
 
 ![Claude Code Global Config](assets/claude-config-header.png)
 

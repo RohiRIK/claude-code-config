@@ -32,23 +32,27 @@ function buildSummary(name: string, cwd: string, projectDir: string): string {
 }
 
 async function main(): Promise<void> {
-  const raw = await readStdin();
-  const parsed = parseHookInput(raw);
+  try {
+    const raw = await readStdin();
+    const parsed = parseHookInput(raw);
 
-  if (!parsed) {
-    console.error("[PreCompact] No cwd found in input, skipping");
-    return;
+    if (!parsed) {
+      console.error("[PreCompact] No cwd found in input, skipping");
+      return;
+    }
+
+    const { cwd } = parsed;
+    const { name, projectDir } = resolveProject(cwd);
+
+    if (!existsSync(projectDir)) mkdirSync(projectDir, { recursive: true });
+
+    const finalSummary = buildSummary(name, cwd, projectDir);
+
+    writeFileSync(join(projectDir, "context-summary.md"), finalSummary);
+    console.error(`[PreCompact] Saved context summary for "${name}" (${finalSummary.split("\n").length} lines)`);
+  } catch (err) {
+    console.error("[PreCompact] Failed to save context summary:", err);
   }
-
-  const { cwd } = parsed;
-  const { name, projectDir } = resolveProject(cwd);
-
-  if (!existsSync(projectDir)) mkdirSync(projectDir, { recursive: true });
-
-  const finalSummary = buildSummary(name, cwd, projectDir);
-
-  writeFileSync(join(projectDir, "context-summary.md"), finalSummary);
-  console.error(`[PreCompact] Saved context summary for "${name}" (${finalSummary.split("\n").length} lines)`);
 }
 
 main();

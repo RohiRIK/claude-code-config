@@ -15,7 +15,6 @@
 import { readdir, readFile, stat, writeFile, mkdir, mkdtemp, rm } from "fs/promises";
 import { join, relative, extname } from "path";
 import { tmpdir } from "os";
-import { spawnSync } from "child_process";
 
 const CLAUDE_DIR = join(process.env.HOME!, ".claude");
 const REPORTS_DIR = join(CLAUDE_DIR, "auditor", "reports");
@@ -117,37 +116,48 @@ async function runGemini(
     const systemPrompt = await readFile(systemPromptFile, "utf-8");
     const fullPrompt = `${systemPrompt}\n\n## Files to Audit\n\n${context}`;
 
-    const result = spawnSync(
-      "gemini",
-      ["--model", model, "--prompt", fullPrompt],
+    const proc = Bun.spawn(
+      ["gemini", "--model", model, "--prompt", fullPrompt],
       {
         env: {
           ...process.env,
           // Isolate session history/cache but keep HOME (auth credentials needed)
           GEMINI_CONFIG_DIR: configDir,
         },
-        timeout: timeoutMs,
-        maxBuffer: 10 * 1024 * 1024,
-        encoding: "utf-8",
+        stdout: "pipe",
+        stderr: "pipe",
       }
     );
 
-    if (result.error) {
-      const isTimeout = result.error.message.includes("ETIMEDOUT") || result.signal === "SIGTERM";
-      console.error(`[${model}] ${isTimeout ? "TIMED OUT" : "spawn error"}: ${result.error.message}`);
-      // Return a synthetic finding so the report reflects the failure
+    const timeoutHandle = new Promise<never>((_, reject) =>
+      setTimeout(() => { proc.kill(); reject(new Error("ETIMEDOUT")); }, timeoutMs)
+    );
+
+    let stdout = "";
+    let stderr = "";
+    try {
+      [stdout, stderr] = await Promise.race([
+        Promise.all([
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+        ]),
+        timeoutHandle,
+      ]);
+    } catch (err: any) {
+      const isTimeout = err.message?.includes("ETIMEDOUT");
+      console.error(`[${model}] ${isTimeout ? "TIMED OUT" : "spawn error"}: ${err.message}`);
       return [{
         severity: "HIGH",
         file: "auditor/index.ts",
         title: `${model} timed out — results incomplete`,
         description: isTimeout
           ? `Model exceeded the ${timeoutMs / 1000}s timeout. Findings from this model are missing. Run a targeted audit (e.g. /audit rules) for reliable results.`
-          : `Model failed to run: ${result.error.message}`,
+          : `Model failed to run: ${err.message}`,
         suggestion: "Increase timeout or run targeted audits instead of full system.",
       }];
     }
 
-    const raw = (result.stdout || "") + (result.stderr || "");
+    const raw = stdout + stderr;
     return parseFindings(raw);
   } finally {
     await rm(configDir, { recursive: true, force: true });

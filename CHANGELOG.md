@@ -4,6 +4,25 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-01 (latest)
+
+### Features
+- **README inspiration credits** — added attribution links to danielmiessler/Personal_AI_Infrastructure and affaan-m/everything-claude-code
+
+### Fixes
+- **PreToolUse Write hook** (`settings.json`) — added `context-*.md` exemption so context persistence files are never blocked
+- **PreCompact error handling** (`hooks/PreCompact/PreCompact.ts`) — wrapped `main()` in try/catch to handle disk/permission errors gracefully
+- **Auditor true parallelism** (`auditor/index.ts`) — replaced `spawnSync` (blocked event loop) with `Bun.spawn` + async timeout race so Flash and Pro run concurrently
+
+---
+
+## 2026-02-26 (latest)
+
+### Fixes
+- **Filesystem MCP allow list** — added `/Users/rohirikman/.claude/projects` so context system can read/write project files via MCP tools
+
+---
+
 ## 2026-02-26
 
 ### Features
