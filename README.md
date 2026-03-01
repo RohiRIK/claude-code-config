@@ -1,7 +1,7 @@
 # ~/.claude — Claude Code Global Config
 
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
-> Last updated: 2026-02-26
+> Last updated: 2026-03-01
 >
 > Inspired by [danielmiessler/Personal\_AI\_Infrastructure](https://github.com/danielmiessler/Personal_AI_Infrastructure) and [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code).
 
@@ -151,7 +151,7 @@ Located in `~/.claude/skills/`. Invoked via Skill tool when relevant.
 
 | Skill | Purpose |
 |-------|---------|
-| `Learned` | Auto-saves patterns from each session |
+| `Learned` | Retrieval system for session patterns. Use `/learn` to extract lessons; `EvaluateSession` writes daily pattern files to `skills/Learned/patterns/YYYY-MM-DD.md` and a rolling summary to `skills/Learned/summary.md` |
 | `ContinuousLearning` | Orchestrates learning system |
 | `StrategicCompact` | Guides when/how to compact |
 | `TddWorkflow` | TDD orchestration |
@@ -205,6 +205,25 @@ Located in `~/.claude/skills/`. Invoked via Skill tool when relevant.
         ├── context-gotchas.md
         └── context-summary.md
 ```
+
+---
+
+## Design Decisions
+
+### Hooks are TypeScript (not bash)
+Inspired by [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code), all hooks are written in TypeScript and run via `bun` instead of raw bash. This gives:
+- Type safety and IDE support
+- Shared utility libs (`hooks/lib/hookUtils.ts`, `hooks/lib/resolveProject.ts`)
+- Testable, maintainable logic without heredoc nightmares
+- Consistent stdin/stdout parsing across all hooks
+
+### Learning loop
+The `EvaluateSession` hook (Stop) reads the session transcript at the end of every session and writes:
+1. `skills/Learned/patterns/YYYY-MM-DD.md` — tools used, files modified, errors encountered
+2. `skills/Learned/summary.md` — rolling 50-line log of sessions
+
+The `/learn` command triggers the `Learned` skill to retrieve and apply past patterns.
+`rules/learned-summary.md` (always loaded into context) points Claude to these files so patterns are available without manual retrieval.
 
 ---
 
