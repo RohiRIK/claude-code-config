@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "fs";
-import { join, sep } from "path";
+import { join } from "path";
 import { homedir } from "os";
+import { resolveProject, PROJECTS_DIR } from "../lib/resolveProject.js";
 
 // Evaluate Session Hook
 // Extracts patterns from transcript
@@ -12,11 +13,8 @@ const PATTERNS_DIR = join(LEARNED_DIR, "patterns");
 const SUMMARY_FILE = join(LEARNED_DIR, "summary.md");
 const HISTORY_FILE = join(CLAUDE_DIR, "history.jsonl");
 const MAX_SUMMARY_LINES = 50;
+const SUMMARY_HEADER_LINES = 10;
 const MIN_SESSION_MESSAGES = 5; // Lowered for testing
-
-function getProjectSlug(projectPath: string): string {
-  return projectPath.replace(new RegExp("\\" + sep, "g"), "-").replace(/\./g, "-");
-}
 
 async function findTranscript(sessionId: string | undefined): Promise<{ path: string, id: string } | null> {
   if (!existsSync(HISTORY_FILE)) return null;
@@ -50,19 +48,18 @@ async function findTranscript(sessionId: string | undefined): Promise<{ path: st
   const projectPath = historyEntry.project;
   if (!finalSessionId || !projectPath) return null;
 
-  const projectsDir = join(CLAUDE_DIR, "projects");
   const filename = `${finalSessionId}.jsonl`;
 
-  // Try derived slug first, then scan all project dirs for the session file
-  const slug = getProjectSlug(projectPath);
-  let transcriptPath = join(projectsDir, slug, filename);
+  // Try registry-resolved project dir first, then scan all project dirs for the session file
+  const { projectDir } = resolveProject(projectPath);
+  let transcriptPath = join(projectDir, filename);
 
   if (!existsSync(transcriptPath)) {
     // Claude Code may use a different slug format — scan all dirs
     try {
-      const dirs = readdirSync(projectsDir);
+      const dirs = readdirSync(PROJECTS_DIR);
       for (const dir of dirs) {
-        const candidate = join(projectsDir, dir, filename);
+        const candidate = join(PROJECTS_DIR, dir, filename);
         if (existsSync(candidate)) {
           transcriptPath = candidate;
           break;
@@ -204,14 +201,17 @@ async function main() {
     const summaryContent = readFileSync(SUMMARY_FILE, "utf-8");
     const shortId = sessionId ? sessionId.substring(0, 8) : 'unknown';
     if (!summaryContent.includes(shortId)) {
-      appendFileSync(SUMMARY_FILE, `- **${today}** (${messageCount} msgs): Session ${shortId}... (Errors: ${errorBlocks.length})\n`);
-    }
+      const newLine = `- **${today}** (${messageCount} msgs): Session ${shortId}... (Errors: ${errorBlocks.length})\n`;
+      appendFileSync(SUMMARY_FILE, newLine);
 
-    // Trim summary
-    const summaryLines = readFileSync(SUMMARY_FILE, "utf-8").split('\n');
-    if (summaryLines.length > MAX_SUMMARY_LINES) {
-      const newSummary = summaryLines.slice(0, 10).concat(summaryLines.slice(summaryLines.length - (MAX_SUMMARY_LINES - 10))).join('\n');
-      writeFileSync(SUMMARY_FILE, newSummary);
+      // Trim using in-memory content — avoid a second disk read
+      const updatedLines = (summaryContent + newLine).split('\n');
+      if (updatedLines.length > MAX_SUMMARY_LINES) {
+        const newSummary = updatedLines.slice(0, SUMMARY_HEADER_LINES)
+          .concat(updatedLines.slice(updatedLines.length - (MAX_SUMMARY_LINES - SUMMARY_HEADER_LINES)))
+          .join('\n');
+        writeFileSync(SUMMARY_FILE, newSummary);
+      }
     }
 
     // console.error(`[ContinuousLearning] Summary updated: ${SUMMARY_FILE}`);

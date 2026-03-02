@@ -9,8 +9,6 @@ Complete visual content system for creating illustrations, diagrams, and visual 
 
 ## Customization
 
-**Before executing, check for user customizations at:**
-`~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/Art/`
 
 If this directory exists, load and apply:
 - `PREFERENCES.md` - Aesthetic preferences, default model, output location
@@ -72,18 +70,7 @@ Route to the appropriate workflow based on the request.
 
 ---
 
-## Reference Images
 
-**User customization** may include reference images for consistent style.
-
-Check `~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/Art/PREFERENCES.md` for:
-- Reference image locations
-- Style examples by use case
-- Character and scene reference guidance
-
-**Usage:** Before generating images, load relevant user-provided references to match their preferred style.
-
----
 
 ## Image Generation
 

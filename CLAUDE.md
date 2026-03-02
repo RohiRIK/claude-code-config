@@ -33,7 +33,7 @@ planner · architect · tdd-guide · code-reviewer · security-reviewer · build
 - Long-running commands → tmux
 
 ## Context System
-Per-project context at `~/.claude/projects/<slug>/`:
+Per-project context at `~/.claude/projects/<name>/` (registry-based, use `/register-project` to see name):
 - `context-goals.md` · `context-decisions.md` · `context-progress.md` · `context-gotchas.md`
 - PreCompact hook assembles → `context-summary.md` → SessionStart injects at next session
 

@@ -15,6 +15,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { readStdin } from "../lib/hookUtils.js";
 
 const NAMES_FILE = join(homedir(), ".claude", "tmp", "session-names.json");
 const API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -96,20 +97,9 @@ async function generateName(prompt: string): Promise<string | null> {
   }
 }
 
-async function readStdin(): Promise<HookInput | null> {
-  try {
-    let data = "";
-    for await (const chunk of Bun.stdin.stream()) {
-      data += new TextDecoder().decode(chunk);
-    }
-    return data.trim() ? JSON.parse(data) : null;
-  } catch {
-    return null;
-  }
-}
-
 async function main() {
-  const input = await readStdin();
+  const raw = await readStdin();
+  const input: HookInput | null = raw.trim() ? JSON.parse(raw) : null;
   if (!input?.session_id) process.exit(0);
 
   const { session_id, prompt, user_prompt } = input;

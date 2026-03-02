@@ -2,9 +2,25 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { resolveProject } from "../lib/resolveProject.js";
-import { readStdin, parseHookInput, readFileSafe, trimToLines } from "../lib/hookUtils.js";
+import { readStdin, parseHookInput, readFileSafe } from "../lib/hookUtils.js";
 
-const MAX_SUMMARY_LINES = 60;
+const BUDGET_GOALS = 10;
+const BUDGET_PROGRESS = 20;
+const BUDGET_DECISIONS = 15;
+const BUDGET_GOTCHAS = 15;
+
+function budgetSection(raw: string, label: string, budget: number): string {
+  if (!raw.trim()) return "";
+  const lines = raw.split("\n").filter(Boolean);
+  const header = [`## ${label}`, ""];                          // 2 lines overhead
+  const available = Math.max(0, budget - header.length - 1);   // -1 for truncation notice
+  if (lines.length <= available) {
+    return [...header, ...lines, ""].join("\n");
+  }
+  const kept = lines.slice(-available);
+  const omitted = lines.length - available;
+  return [...header, ...kept, `… (${omitted} more entries not shown)`, ""].join("\n");
+}
 
 function buildSummary(name: string, cwd: string, projectDir: string): string {
   const goals = readFileSafe(join(projectDir, "context-goals.md"));
@@ -13,22 +29,15 @@ function buildSummary(name: string, cwd: string, projectDir: string): string {
   const gotchas = readFileSafe(join(projectDir, "context-gotchas.md"));
   const timestamp = new Date().toISOString().replace("T", " ").replace(/\..+/, "");
 
-  let summary = `# Context Summary\n`;
-  summary += `**Project:** ${name} (${cwd})\n`;
-  summary += `**Compaction checkpoint:** ${timestamp}\n\n`;
+  const parts = [
+    `# Context Summary\n**Project:** ${name} (${cwd})\n**Compaction checkpoint:** ${timestamp}\n`,
+    budgetSection(goals,      "Current Goal",       BUDGET_GOALS),
+    budgetSection(progress,   "Recent Progress",    BUDGET_PROGRESS),
+    budgetSection(decisions,  "Key Decisions",      BUDGET_DECISIONS),
+    budgetSection(gotchas,    "Gotchas / Watch Out", BUDGET_GOTCHAS),
+  ];
 
-  if (goals) summary += `## Current Goal\n${goals}\n\n`;
-  if (progress) {
-    const recent = progress.split("\n").filter(Boolean).slice(-10).join("\n");
-    summary += `## Recent Progress\n${recent}\n\n`;
-  }
-  if (decisions) {
-    const recent = decisions.split("\n").filter(Boolean).slice(-8).join("\n");
-    summary += `## Key Decisions\n${recent}\n\n`;
-  }
-  if (gotchas) summary += `## Gotchas / Watch Out\n${gotchas}\n\n`;
-
-  return trimToLines(summary, MAX_SUMMARY_LINES);
+  return parts.join("");
 }
 
 async function main(): Promise<void> {

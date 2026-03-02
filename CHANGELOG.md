@@ -4,7 +4,41 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
-## 2026-03-01 (latest)
+## 2026-03-02 (latest) — README refactor + docs/ restructure + ASCII header
+
+### Features
+- **README refactored** — shrunk from 281-line monolith to ~85-line index; added ASCII banner header replacing placeholder image; replaced flat system flow with 3-column tree diagram showing all 3 layers and their outputs
+- **`docs/workflow-daily.md`** (new) — Layer 1: Boris Cherny task loop with full ASCII flow, step-by-step breakdown, all commands/agents/hooks tables
+- **`docs/memory-short-term.md`** (new) — Layer 2: context-mode MCP — flow diagram, per-tool guide with examples, Bash vs context-mode decision table, diagnostics
+- **`docs/memory-long-term.md`** (new) — Layer 3: session context loop + learning loop (both ASCII diagrams), 4 context files table, context commands, hooks, skills, promote-to-gotchas pattern
+
+### Docs
+- All content from old README preserved and distributed to appropriate layer doc
+- `docs/AGENT_ARCHITECTURE.md` untouched
+
+---
+
+## 2026-03-01 (latest) — slug→registry migration + hook deduplication
+
+### Fixes
+- **EvaluateSession slug migration** (`hooks/EvaluateSession/EvaluateSession.ts`) — replaced local `getProjectSlug()` with `resolveProject()` so EvaluateSession now uses the registry like all other hooks; added `PROJECTS_DIR` import to remove redundant constant; fixed double file-read of `SUMMARY_FILE` (in-memory concat instead of re-read); extracted magic `10` → `SUMMARY_HEADER_LINES` constant
+- **Cleanup.ts deduplication** (`hooks/Cleanup/Cleanup.ts`) — replaced local `PROJECTS_DIR` constant with import from `resolveProject.ts`; replaced inline trim logic with `trimToLines()` from `hookUtils.ts`
+- **SessionAutoName.ts deduplication** (`hooks/SessionAutoName/SessionAutoName.ts`) — replaced local `readStdin()` function with shared `hookUtils.readStdin`
+
+### Docs
+- **`rules/session-context.md`** — replaced all `<slug>` path references with `<name>` (registry-based); updated example to show friendly name lookup
+- **`CLAUDE.md`** — updated Context System section from `<slug>` to `<name>` with pointer to `/register-project`
+
+### Context migration
+- Merged stale context entries from old slug dir (`-Users-rohirikman--claude/`) into `claude-config/` — context `.md` files deleted; `.jsonl` transcripts kept
+
+### Learned patterns saved
+- `hook-shared-lib-checklist.md` — always check hookUtils + resolveProject before writing local utilities
+- `append-then-trim-in-memory.md` — avoid double file reads after appendFileSync by computing updated content in memory
+
+---
+
+## 2026-03-01
 
 ### Features
 - **README inspiration credits** — added attribution links to danielmiessler/Personal_AI_Infrastructure and affaan-m/everything-claude-code

@@ -3,9 +3,9 @@
 ## Overview
 
 Claude maintains per-project context files so work is never lost across sessions or compactions.
-Files live at: `~/.claude/projects/<slug>/` where slug = cwd with `/` and `.` replaced by `-`.
+Files live at: `~/.claude/projects/<name>/` where name comes from the registry (run `/register-project` to see yours).
 
-Example: working in `/Users/roh/projects/myapp` → slug is `-Users-roh-projects-myapp`
+Example: working in `/Users/roh/projects/myapp` → name is `myapp` (or whatever the registry has)
 
 ## The 4 Context Files (YOU maintain these)
 
@@ -21,7 +21,7 @@ Example: working in `/Users/roh/projects/myapp` → slug is `-Users-roh-projects
 After completing ANY task (fix, feature, refactor, decision), write to the context file:
 
 ```
-~/.claude/projects/<slug>/context-progress.md  → ✓ <what was done, 1 line>
+~/.claude/projects/<name>/context-progress.md  → ✓ <what was done, 1 line>
 ```
 
 The UpdateContext hook (Stop hook) also writes progress at session end from the transcript — treat that as a fallback, not a replacement. Write manually after significant tasks so context survives mid-session compaction. Examples:
@@ -40,10 +40,10 @@ If you just completed something and haven't written it — write it NOW before c
 ### After completing any significant task
 Update the relevant file immediately using the Write or Edit tool:
 ```
-~/.claude/projects/<slug>/context-progress.md  → append: ✓ <what was done>
-~/.claude/projects/<slug>/context-decisions.md → append: - <decision made and why>
-~/.claude/projects/<slug>/context-gotchas.md   → append: ⚠ <warning or blocker>
-~/.claude/projects/<slug>/context-goals.md     → rewrite when goal changes
+~/.claude/projects/<name>/context-progress.md  → append: ✓ <what was done>
+~/.claude/projects/<name>/context-decisions.md → append: - <decision made and why>
+~/.claude/projects/<name>/context-gotchas.md   → append: ⚠ <warning or blocker>
+~/.claude/projects/<name>/context-goals.md     → rewrite when goal changes
 ```
 
 ### When context window is getting large (Option A)
@@ -89,3 +89,18 @@ You do not need to manage `context-summary.md` — the hook handles it.
 ⚠ Supabase RLS must be enabled before going to production
 ⚠ Next.js middleware runs on edge — no Node.js APIs
 ```
+
+## Promoting Learned Patterns to Durable Gotchas
+
+`skills/Learned/` files are ephemeral — the rolling summary trims old sessions.
+If `/learn` or `EvaluateSession` surfaces a lesson that should persist permanently,
+promote it manually:
+
+1. Append to `~/.claude/projects/<name>/context-gotchas.md`:
+   `⚠ <lesson learned, 1 line>`
+2. Gotchas are NEVER trimmed — they survive every compaction
+
+Examples of what to promote:
+- A bug pattern that bit you twice
+- A library quirk or env constraint
+- A decision reversal and why
