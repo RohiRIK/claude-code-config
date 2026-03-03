@@ -163,8 +163,7 @@
             "type": "command",
             "command": "bun /Users/rohirikman/.claude/hooks/UpdateContext/UpdateContext.ts"
           }
-        ],
-        "description": "Update context-progress.md at session end"
+        ]
       }
     ]
   },
@@ -172,7 +171,17 @@
     "code-simplifier@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "mgrep@Mixedbread-Grep": false
+    "mgrep@Mixedbread-Grep": false,
+    "context-mode@claude-context-mode": true
+  },
+  "mcpServers": {
+    "filesystem": {
+      "command": "/Users/rohirikman/.bun/bin/mcp-server-filesystem",
+      "args": [
+        "/Users/rohirikman/.claude/projects",
+        "/Users/rohirikman/Library/CloudStorage/GoogleDrive-rohi5054@gmail.com/My Drive/06-Projects/12-Project-Agis-AI-Driven-SOC"
+      ]
+    }
   },
   "effortLevel": "low"
 }

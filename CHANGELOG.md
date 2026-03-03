@@ -4,7 +4,18 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
-## 2026-03-02 (latest) — README refactor + docs/ restructure + ASCII header
+## 2026-03-03 (latest) — Fix filesystem MCP + context-mode plugin
+
+### Fixes
+- **filesystem MCP**: installed `@modelcontextprotocol/server-filesystem` globally (`bun add -g`); switched `settings.json` from `bunx` (re-downloads on every start) to direct binary path — eliminates "filesystem · ✘ failed" on startup
+
+### Features
+- **context-mode plugin**: reinstalled as full plugin (MCP + PreToolUse hook + slash commands) via marketplace
+- **mgrep plugin**: disabled (unused, aggressive tool-override behavior)
+
+---
+
+## 2026-03-02 — README refactor + docs/ restructure + ASCII header
 
 ### Features
 - **README refactored** — shrunk from 281-line monolith to ~85-line index; added ASCII banner header replacing placeholder image; replaced flat system flow with 3-column tree diagram showing all 3 layers and their outputs
