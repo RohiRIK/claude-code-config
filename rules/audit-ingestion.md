@@ -12,8 +12,7 @@ Read the most recent report from `~/.claude/auditor/reports/` and summarize find
 
 ## After Fixing Audit Findings
 
-When a finding is resolved, append to context-progress.md:
-`✓ Fixed audit finding: <title> in <file>`
+When a finding is resolved, note it verbally — the `UpdateContext` hook captures session activity at session end.
 
 ## Rules
 

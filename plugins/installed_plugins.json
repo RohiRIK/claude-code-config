@@ -24,21 +24,21 @@
     "security-guidance@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/55b58ec6e564",
-        "version": "55b58ec6e564",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/205b6e0b3036",
+        "version": "205b6e0b3036",
         "installedAt": "2026-01-22T09:23:55.983Z",
-        "lastUpdated": "2026-02-25T07:36:49.906Z",
+        "lastUpdated": "2026-03-04T08:13:13.220Z",
         "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
       }
     ],
-    "mgrep@Mixedbread-Grep": [
+    "context-mode@claude-context-mode": [
       {
         "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/Mixedbread-Grep/mgrep/0.0.0",
-        "version": "0.0.0",
-        "installedAt": "2026-01-22T09:23:56.920Z",
-        "lastUpdated": "2026-01-22T09:23:56.920Z",
-        "gitCommitSha": "b3ce5f7c1f58baee6faf4a26237b2c921b92d507"
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/0.9.22",
+        "version": "0.9.22",
+        "installedAt": "2026-03-03T08:35:47.521Z",
+        "lastUpdated": "2026-03-08T16:14:49.381Z",
+        "gitCommitSha": "0967d92edbb272e35f00efd99184a46bbb0394ce"
       }
     ]
   }

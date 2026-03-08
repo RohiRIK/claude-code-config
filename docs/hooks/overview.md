@@ -11,19 +11,19 @@
 │                        SESSION START                              │
 │                                                                  │
 │  ┌──────────────────┐                                           │
-│  │   SessionStart   │ ───▶ Injects context-summary.md            │
-│  └──────────────────┘         into Claude's prompt              │
+│  │   SessionStart   │ ───▶ Regenerates summary from ltm.db        │
+│  └──────────────────┘         then injects into Claude's prompt │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      DURING SESSION                              │
 │                                                                  │
-│  Claude maintains context files:                                │
-│  • context-goals.md      (current goal)                        │
-│  • context-decisions.md  (architectural decisions)              │
-│  • context-progress.md   (completed tasks)                     │
-│  • context-gotchas.md    (warnings/blockers)                   │
+│  Hooks manage context in ltm.db automatically:                 │
+│  • goal        (current objective — one row per project)       │
+│  • decision    (architectural decisions — permanent)           │
+│  • progress    (session log — trimmed to last 20)              │
+│  • gotcha      (warnings/blockers — permanent)                 │
 │                                                                  │
 │  ┌─────────────────────┐     ┌─────────────────────┐           │
 │  │  SuggestCompact     │     │    SkillGuard       │           │
@@ -41,8 +41,8 @@
 │                      PRE-COMPACT                                │
 │                                                                  │
 │  ┌──────────────────┐                                           │
-│  │    PreCompact    │ ───▶ Assembles 4 context files            │
-│  └──────────────────│         into context-summary.md           │
+│  │    PreCompact    │ ───▶ Reads ltm.db → writes                │
+│  └──────────────────│         context-summary.md (fallback)     │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -88,17 +88,23 @@ Trigger at session events.
 | `EvaluateSession` | Session ends | Extract patterns |
 | `Cleanup` | Session ends | Trim data |
 
-## Context Files
+## Context Storage
 
-Location: `~/.claude/projects/<name>/` (friendly name from `registry.json`)
+**Primary:** SQLite DB at `~/.claude/memory/ltm.db` — two tables:
 
-| File | Purpose | TTL | Managed by |
-|------|---------|-----|-----------|
-| `context-summary.md` | Injected at start | Rebuilt on compact | PreCompact |
-| `context-goals.md` | Current goal | Until changed | Claude |
-| `context-decisions.md` | Decisions log | Permanent | Claude |
-| `context-progress.md` | Completed tasks | Trimmed to 20 | Claude+Cleanup |
-| `context-gotchas.md` | Warnings | Permanent | Claude |
+| Table | Purpose | Managed by |
+|-------|---------|-----------|
+| `context_items` | Per-project goals/decisions/progress/gotchas | Hooks (automatic) |
+| `memories` | Global learned insights with FTS5 + graph relations | `/learn`, `/recall`, `/forget`, `/relate` |
+
+**Generated fallback:** `~/.claude/projects/<name>/context-summary.md` — written by PreCompact and SessionStart, read if DB unavailable.
+
+| context_items type | Purpose | TTL |
+|--------------------|---------|-----|
+| `goal` | Current objective | Replaced on change |
+| `decision` | Architectural choices | Permanent |
+| `progress` | Session log | Trimmed to last 20 |
+| `gotcha` | Warnings / blockers | Permanent |
 
 ## Project Name Resolution
 

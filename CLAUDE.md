@@ -17,8 +17,9 @@ Global config for Claude Code. Applies to ALL projects. Rules enforce style, sec
 | `/commit-push-pr` | Final step — precomputes git context |
 | `/tdd` | New features — write tests first |
 | `/code-review` | After writing code |
-| `/init-context` | New project — creates 4 context files |
-| `/learn` | End of session — extract patterns |
+| `/init-context` | New project — seeds goal into SQLite LTM |
+| `/learn` | Store a pattern or insight in LTM |
+| `/recall` | Search long-term memory before starting work |
 
 ## Agents (invoke via Task tool)
 planner · architect · tdd-guide · code-reviewer · security-reviewer · build-error-resolver · e2e-runner · refactor-cleaner · doc-updater
@@ -33,9 +34,9 @@ planner · architect · tdd-guide · code-reviewer · security-reviewer · build
 - Long-running commands → tmux
 
 ## Context System
-Per-project context at `~/.claude/projects/<name>/` (registry-based, use `/register-project` to see name):
-- `context-goals.md` · `context-decisions.md` · `context-progress.md` · `context-gotchas.md`
-- PreCompact hook assembles → `context-summary.md` → SessionStart injects at next session
+SQLite LTM at `~/.claude/memory/ltm.db`. Per-project context (goals/decisions/progress/gotchas) + global memories.
+Registry at `~/.claude/projects/registry.json` — use `/register-project` to see your project name.
+Hooks manage context automatically — PreCompact → `context-summary.md` → SessionStart injects at next session.
 
 ## Active Hooks
 - **SessionStart**: injects project context (60 lines max)

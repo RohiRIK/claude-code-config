@@ -21,6 +21,7 @@ function isStaleDir(dirPath: string): boolean {
     const latest = files
       .map((f: string) => statSync(join(dirPath, f)).mtimeMs)
       .sort((a: number, b: number) => b - a)[0];
+    if (latest === undefined) return true;
     return Date.now() - latest > STALE_DAYS * 24 * 60 * 60 * 1000;
   } catch (_) {
     return false;

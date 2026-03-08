@@ -25,12 +25,12 @@ function findTranscriptPath(
   if (sessionId) {
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
-        const parsed = JSON.parse(lines[i]) as Record<string, unknown>;
+        const parsed = JSON.parse(lines[i] ?? "") as Record<string, unknown>;
         if (parsed.sessionId === sessionId) { entry = parsed; break; }
       } catch {}
     }
   } else {
-    try { entry = JSON.parse(lines[lines.length - 1]) as Record<string, unknown>; } catch {}
+    try { entry = JSON.parse(lines[lines.length - 1] ?? "") as Record<string, unknown>; } catch {}
   }
 
   if (!entry?.sessionId || !entry?.project) return null;

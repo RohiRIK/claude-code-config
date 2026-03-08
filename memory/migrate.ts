@@ -131,18 +131,20 @@ function parseLearnedFile(filePath: string): Array<{ content: string; category: 
   const sections: Array<{ title: string; start: number }> = [];
   let match: RegExpExecArray | null;
   while ((match = sectionRegex.exec(raw)) !== null) {
-    sections.push({ title: match[1].trim(), start: match.index + match[0].length });
+    sections.push({ title: (match[1] ?? "").trim(), start: match.index + match[0].length });
   }
 
   for (let i = 0; i < sections.length; i++) {
-    const { title, start } = sections[i];
-    const end = i + 1 < sections.length ? sections[i + 1].start : raw.length;
+    const section = sections[i];
+    if (!section) continue;
+    const { title, start } = section;
+    const end = i + 1 < sections.length ? (sections[i + 1]?.start ?? raw.length) : raw.length;
     const body = raw.slice(start, end).trim();
 
     if (!body || body.length < 10) continue;
     if (title.toLowerCase().includes("example")) continue;
 
-    const firstLine = body.split("\n")[0].trim().replace(/^[-*]\s+/, "");
+    const firstLine = (body.split("\n")[0] ?? "").trim().replace(/^[-*]\s+/, "");
     if (firstLine.length < 10) continue;
 
     results.push({

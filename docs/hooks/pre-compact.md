@@ -17,14 +17,20 @@ The PreCompact hook runs automatically before Claude compacts the context window
 ```
 1. Read stdin input (JSON with cwd)
 2. Resolve project name via registry.json (exact → prefix → slug fallback)
-3. Read 4 context files:
-   - context-goals.md
-   - context-decisions.md
-   - context-progress.md
-   - context-gotchas.md
-4. Assemble into context-summary.md
-5. Trim to 60 lines max
+3. If ltm.db exists (primary path):
+   - Call exportContextMarkdown(project) from memory/context.ts
+   - getItems(project, type) for each type → budgetSection() assembly
+4. If ltm.db absent (fallback):
+   - Read 4 .md context files directly
+5. Write context-summary.md (max ~60 lines)
 ```
+
+## DB-First Behavior
+
+`PreCompact` checks `existsSync(DB_PATH)` before importing DB modules. The DB path is `~/.claude/memory/ltm.db`.
+
+- **DB available:** calls `exportContextMarkdown(project)` which queries all 4 `context_items` types and assembles via `budgetSection()` utility (imported from `hooks/lib/hookUtils.ts`)
+- **DB absent:** reads `.md` files directly as fallback (legacy behavior)
 
 ## Input
 

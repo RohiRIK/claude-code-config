@@ -4,6 +4,21 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-04 — Fix context-mode executor hang on bun test
+
+### Fixes
+- **context-mode executor**: `killTree()` now kills the entire process group (`process.kill(-pid, "SIGKILL")`) instead of just the shell — prevents bun test worker processes from surviving the timeout and hanging indefinitely
+- **context-mode executor**: added `detached: !isWin` to `spawn()` so child processes get their own process group ID, making `-pid` kill effective on macOS/Linux
+
+### Refactor
+- **context-mode executor**: removed duplicate `const isWin` — now imports `isWindows as isWin` from `runtime.ts` (single source of truth)
+- **context-mode runtime**: exported `isWindows` constant
+
+### Docs
+- **`rules/workflow.md`**: added "Maintaining context-mode" section with exact rebuild command (`bunx esbuild ...`) and restart step — required after any source edits to `src/`
+
+---
+
 ## 2026-03-03 (latest) — Fix filesystem MCP + context-mode plugin
 
 ### Fixes
