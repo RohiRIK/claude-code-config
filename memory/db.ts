@@ -9,7 +9,7 @@ import { homedir } from "os";
 import { normalizeKey } from "./dedup.js";
 
 const CLAUDE_DIR  = join(homedir(), ".claude");
-const DB_PATH     = join(CLAUDE_DIR, "memory", "ltm.db");
+export const DB_PATH     = join(CLAUDE_DIR, "memory", "ltm.db");
 const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
 const DOCS_DIR    = join(CLAUDE_DIR, "docs");
 
@@ -52,6 +52,8 @@ export interface LearnInput {
   project_scope?: string;
   tags?: string[];
   relate_to?: Array<{ id: number; relationship_type: RelationshipType }>;
+  /** Skip regenerating docs/memory-long-term.md (use during bulk imports) */
+  skipExport?: boolean;
 }
 
 export interface LearnResult {
@@ -76,8 +78,7 @@ function getDb(): Database {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   _db = new Database(DB_PATH, { create: true });
   _db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
-  const schema = readFileSync(SCHEMA_PATH, "utf-8");
-  _db.exec(schema);
+  _db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
   return _db;
 }
 
@@ -93,10 +94,27 @@ function attachTags(db: Database, memoryId: number, tags: string[]): void {
   }
 }
 
+/** Fetch tags for a single memory — used in recall() results. */
 function getTagsForMemory(db: Database, memoryId: number): string[] {
   return db.query<{ name: string }, [number]>(
     `SELECT t.name FROM tags t JOIN memory_tags mt ON t.id=mt.tag_id WHERE mt.memory_id=?`
   ).all(memoryId).map(r => r.name);
+}
+
+/** Batch-fetch tags for many memories — used in exportMarkdown to avoid N+1. */
+function getTagsBatch(db: Database, ids: number[]): Map<number, string[]> {
+  if (ids.length === 0) return new Map();
+  const placeholders = ids.map(() => "?").join(",");
+  const rows = db.query<{ memory_id: number; name: string }, number[]>(
+    `SELECT mt.memory_id, t.name FROM memory_tags mt JOIN tags t ON t.id=mt.tag_id
+     WHERE mt.memory_id IN (${placeholders})`
+  ).all(...ids);
+  const result = new Map<number, string[]>();
+  for (const r of rows) {
+    if (!result.has(r.memory_id)) result.set(r.memory_id, []);
+    result.get(r.memory_id)!.push(r.name);
+  }
+  return result;
 }
 
 function getRelationsForMemory(db: Database, memoryId: number): MemoryWithRelations["relations"] {
@@ -114,7 +132,6 @@ function getRelationsForMemory(db: Database, memoryId: number): MemoryWithRelati
     const mem = db.query<Memory, [number]>(`SELECT * FROM memories WHERE id=?`).get(r.target_memory_id);
     if (mem) results.push({ memory: mem, relationship_type: r.relationship_type as RelationshipType, direction: "outgoing" });
   }
-
   for (const r of incoming) {
     const mem = db.query<Memory, [number]>(`SELECT * FROM memories WHERE id=?`).get(r.source_memory_id);
     if (mem) results.push({ memory: mem, relationship_type: r.relationship_type as RelationshipType, direction: "incoming" });
@@ -130,6 +147,7 @@ function enrichMemory(db: Database, mem: Memory): MemoryWithRelations {
 export function learn(input: LearnInput): LearnResult {
   const db = getDb();
   const dedupKey = normalizeKey(input.content);
+  const skipExport = input.skipExport ?? false;
 
   const existing = db.query<Memory, [string]>(`SELECT * FROM memories WHERE dedup_key=?`).get(dedupKey);
 
@@ -145,7 +163,7 @@ export function learn(input: LearnInput): LearnResult {
         relate({ source_id: existing.id, target_id: rel.id, relationship_type: rel.relationship_type });
       }
     }
-    exportMarkdown();
+    if (!skipExport) exportMarkdown();
     return { action: "reinforced", id: existing.id, confirm_count: existing.confirm_count + 1 };
   }
 
@@ -172,7 +190,7 @@ export function learn(input: LearnInput): LearnResult {
     }
   }
 
-  exportMarkdown();
+  if (!skipExport) exportMarkdown();
   return { action: "created", id: newId, confirm_count: 1 };
 }
 
@@ -193,7 +211,7 @@ export function recall(input: RecallInput = {}): MemoryWithRelations[] {
     const tagIds = input.tags.map(t => {
       const row = db.query<{ id: number }, [string]>(`SELECT id FROM tags WHERE name=?`).get(t.toLowerCase());
       return row?.id;
-    }).filter(Boolean) as number[];
+    }).filter((id): id is number => id !== undefined);
 
     if (tagIds.length > 0) {
       const placeholders = tagIds.map(() => "?").join(",");
@@ -227,9 +245,10 @@ export function recall(input: RecallInput = {}): MemoryWithRelations[] {
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const query = `SELECT * FROM memories ${where} ORDER BY importance DESC, confidence DESC LIMIT ${limit}`;
+  const rows = db.query<Memory, typeof params>(
+    `SELECT * FROM memories ${where} ORDER BY importance DESC, confidence DESC LIMIT ${limit}`
+  ).all(...params);
 
-  const rows = db.query<Memory, typeof params>(query).all(...params);
   return rows.map(m => enrichMemory(db, m));
 }
 
@@ -239,11 +258,12 @@ export function relate(input: {
   relationship_type: RelationshipType;
 }): void {
   const db = getDb();
-  const src = db.query<{ id: number }, [number]>(`SELECT id FROM memories WHERE id=?`).get(input.source_id);
-  const tgt = db.query<{ id: number }, [number]>(`SELECT id FROM memories WHERE id=?`).get(input.target_id);
-  if (!src) throw new Error(`Source memory ${input.source_id} not found`);
-  if (!tgt) throw new Error(`Target memory ${input.target_id} not found`);
-
+  if (!db.query<{ id: number }, [number]>(`SELECT id FROM memories WHERE id=?`).get(input.source_id)) {
+    throw new Error(`Source memory ${input.source_id} not found`);
+  }
+  if (!db.query<{ id: number }, [number]>(`SELECT id FROM memories WHERE id=?`).get(input.target_id)) {
+    throw new Error(`Target memory ${input.target_id} not found`);
+  }
   db.run(
     `INSERT OR IGNORE INTO memory_relations (source_memory_id, target_memory_id, relationship_type)
      VALUES (?, ?, ?)`,
@@ -251,25 +271,28 @@ export function relate(input: {
   );
 }
 
-export function forget(input: { id: number; reason?: string }): void {
+export function forget(input: { id: number; reason?: string; skipExport?: boolean }): void {
   const db = getDb();
-  const mem = db.query<Memory, [number]>(`SELECT * FROM memories WHERE id=?`).get(input.id);
-  if (!mem) throw new Error(`Memory ${input.id} not found`);
+  if (!db.query<Memory, [number]>(`SELECT * FROM memories WHERE id=?`).get(input.id)) {
+    throw new Error(`Memory ${input.id} not found`);
+  }
   db.run(`DELETE FROM memories WHERE id=?`, [input.id]);
-  exportMarkdown();
+  if (!input.skipExport) exportMarkdown();
 }
 
 export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[] } {
   const db = getDb();
-  const globals = db.query<Memory, []>(
-    `SELECT * FROM memories WHERE importance=5 AND project_scope IS NULL ORDER BY confidence DESC`
-  ).all();
-  const scoped = db.query<Memory, [string]>(
-    `SELECT * FROM memories WHERE project_scope=? ORDER BY importance DESC, confidence DESC LIMIT 15`
-  ).all(project);
-  return { globals, scoped };
+  return {
+    globals: db.query<Memory, []>(
+      `SELECT * FROM memories WHERE importance=5 AND project_scope IS NULL ORDER BY confidence DESC`
+    ).all(),
+    scoped: db.query<Memory, [string]>(
+      `SELECT * FROM memories WHERE project_scope=? ORDER BY importance DESC, confidence DESC LIMIT 15`
+    ).all(project),
+  };
 }
 
+/** Write docs/memory-long-term.md — human-readable snapshot. */
 export function exportMarkdown(): void {
   const db = getDb();
   if (!existsSync(DOCS_DIR)) mkdirSync(DOCS_DIR, { recursive: true });
@@ -277,6 +300,9 @@ export function exportMarkdown(): void {
   const rows = db.query<Memory, []>(
     `SELECT * FROM memories ORDER BY importance DESC, category ASC, created_at DESC LIMIT 500`
   ).all();
+
+  // Batch-fetch all tags in one query to avoid N+1
+  const tagsByMemory = getTagsBatch(db, rows.map(r => r.id));
 
   const timestamp = new Date().toISOString().replace("T", " ").replace(/\..+/, "");
   const lines: string[] = [
@@ -297,7 +323,7 @@ export function exportMarkdown(): void {
     lines.push(`## ${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
     lines.push("");
     for (const m of mems) {
-      const tags = getTagsForMemory(db, m.id);
+      const tags = tagsByMemory.get(m.id) ?? [];
       const tagStr = tags.length > 0 ? ` \`[${tags.join(", ")}]\`` : "";
       const scope = m.project_scope ? ` *(${m.project_scope})*` : "";
       const imp = "★".repeat(m.importance) + "☆".repeat(5 - m.importance);
@@ -314,6 +340,7 @@ export function exportMarkdown(): void {
   writeFileSync(join(DOCS_DIR, "memory-long-term.md"), lines.join("\n"));
 }
 
+/** Write docs/memory-graph.json — nodes + links for Force-Graph visualization. */
 export function exportGraphJson(): void {
   const db = getDb();
   if (!existsSync(DOCS_DIR)) mkdirSync(DOCS_DIR, { recursive: true });
@@ -321,19 +348,18 @@ export function exportGraphJson(): void {
   const memories = db.query<Memory, []>(`SELECT * FROM memories`).all();
   const relations = db.query<MemoryRelation, []>(`SELECT * FROM memory_relations`).all();
 
-  const nodes = memories.map(m => ({
-    id: m.id,
-    label: m.content.substring(0, 60),
-    category: m.category,
-    importance: m.importance,
-    project_scope: m.project_scope,
-  }));
-
-  const links = relations.map(r => ({
-    source: r.source_memory_id,
-    target: r.target_memory_id,
-    type: r.relationship_type,
-  }));
-
-  writeFileSync(join(DOCS_DIR, "memory-graph.json"), JSON.stringify({ nodes, links }, null, 2));
+  writeFileSync(join(DOCS_DIR, "memory-graph.json"), JSON.stringify({
+    nodes: memories.map(m => ({
+      id: m.id,
+      label: m.content.substring(0, 60),
+      category: m.category,
+      importance: m.importance,
+      project_scope: m.project_scope,
+    })),
+    links: relations.map(r => ({
+      source: r.source_memory_id,
+      target: r.target_memory_id,
+      type: r.relationship_type,
+    })),
+  }, null, 2));
 }

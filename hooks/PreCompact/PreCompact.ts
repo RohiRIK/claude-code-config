@@ -1,41 +1,24 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { resolveProject } from "../lib/resolveProject.js";
-import { readStdin, parseHookInput, readFileSafe } from "../lib/hookUtils.js";
+import { readStdin, parseHookInput, readFileSafe, budgetSection } from "../lib/hookUtils.js";
 
-const BUDGET_GOALS = 10;
-const BUDGET_PROGRESS = 20;
-const BUDGET_DECISIONS = 15;
-const BUDGET_GOTCHAS = 15;
+const DB_PATH = join(homedir(), ".claude", "memory", "ltm.db");
 
-function budgetSection(lines: string[], label: string, budget: number): string {
-  if (lines.length === 0) return "";
-  const available = Math.max(0, budget - 3); // header(2) + trailing blank
-  if (lines.length <= available) {
-    return [`## ${label}`, "", ...lines, ""].join("\n");
-  }
-  const kept = lines.slice(-available);
-  const omitted = lines.length - available;
-  return [`## ${label}`, "", ...kept, `… (${omitted} more entries not shown)`, ""].join("\n");
-}
-
-function buildSummaryFromDb(name: string, cwd: string): string | null {
+async function buildSummaryFromDb(name: string, cwd: string): Promise<string | null> {
   try {
-    const { getItems, exportContextMarkdown } = require(join(homedir(), ".claude/memory/context.js"));
+    const { getItems, exportContextMarkdown } = await import(join(homedir(), ".claude/memory/context.js"));
     exportContextMarkdown(name);
-    const goals     = getItems(name, "goal").map((i: any) => i.content);
-    const decisions = getItems(name, "decision").map((i: any) => i.content);
-    const progress  = getItems(name, "progress", 20).map((i: any) => i.content);
-    const gotchas   = getItems(name, "gotcha").map((i: any) => i.content);
+    const toLines = (items: Array<{ content: string }>) => items.map(i => i.content);
     const timestamp = new Date().toISOString().replace("T", " ").replace(/\..+/, "");
     return [
       `# Context Summary\n**Project:** ${name} (${cwd})\n**Compaction checkpoint:** ${timestamp}\n`,
-      budgetSection(goals,     "Current Goal",        BUDGET_GOALS),
-      budgetSection(progress,  "Recent Progress",     BUDGET_PROGRESS),
-      budgetSection(decisions, "Key Decisions",       BUDGET_DECISIONS),
-      budgetSection(gotchas,   "Gotchas / Watch Out", BUDGET_GOTCHAS),
+      budgetSection(toLines(getItems(name, "goal")),       "Current Goal",        10),
+      budgetSection(toLines(getItems(name, "progress", 20)), "Recent Progress",   20),
+      budgetSection(toLines(getItems(name, "decision")),   "Key Decisions",       15),
+      budgetSection(toLines(getItems(name, "gotcha")),     "Gotchas / Watch Out", 15),
     ].join("");
   } catch (_) {
     return null;
@@ -44,17 +27,13 @@ function buildSummaryFromDb(name: string, cwd: string): string | null {
 
 function buildSummaryFromFiles(name: string, cwd: string, projectDir: string): string {
   const toLines = (raw: string) => raw.split("\n").filter(Boolean);
-  const goals     = toLines(readFileSafe(join(projectDir, "context-goals.md")));
-  const decisions = toLines(readFileSafe(join(projectDir, "context-decisions.md")));
-  const progress  = toLines(readFileSafe(join(projectDir, "context-progress.md")));
-  const gotchas   = toLines(readFileSafe(join(projectDir, "context-gotchas.md")));
   const timestamp = new Date().toISOString().replace("T", " ").replace(/\..+/, "");
   return [
     `# Context Summary\n**Project:** ${name} (${cwd})\n**Compaction checkpoint:** ${timestamp}\n`,
-    budgetSection(goals,     "Current Goal",        BUDGET_GOALS),
-    budgetSection(progress,  "Recent Progress",     BUDGET_PROGRESS),
-    budgetSection(decisions, "Key Decisions",       BUDGET_DECISIONS),
-    budgetSection(gotchas,   "Gotchas / Watch Out", BUDGET_GOTCHAS),
+    budgetSection(toLines(readFileSafe(join(projectDir, "context-goals.md"))),     "Current Goal",        10),
+    budgetSection(toLines(readFileSafe(join(projectDir, "context-progress.md"))),  "Recent Progress",     20),
+    budgetSection(toLines(readFileSafe(join(projectDir, "context-decisions.md"))), "Key Decisions",       15),
+    budgetSection(toLines(readFileSafe(join(projectDir, "context-gotchas.md"))),   "Gotchas / Watch Out", 15),
   ].join("");
 }
 
@@ -74,12 +53,10 @@ async function main(): Promise<void> {
     if (!existsSync(projectDir)) mkdirSync(projectDir, { recursive: true });
 
     // Try DB first; fall back to .md files if DB doesn't exist yet
-    const dbPath = join(homedir(), ".claude/memory/ltm.db");
-    const finalSummary = existsSync(dbPath)
-      ? (buildSummaryFromDb(name, cwd) ?? buildSummaryFromFiles(name, cwd, projectDir))
+    const finalSummary = existsSync(DB_PATH)
+      ? ((await buildSummaryFromDb(name, cwd)) ?? buildSummaryFromFiles(name, cwd, projectDir))
       : buildSummaryFromFiles(name, cwd, projectDir);
 
-    const { writeFileSync } = await import("fs");
     writeFileSync(join(projectDir, "context-summary.md"), finalSummary);
     console.error(`[PreCompact] Saved context summary for "${name}" (${finalSummary.split("\n").length} lines)`);
   } catch (err) {

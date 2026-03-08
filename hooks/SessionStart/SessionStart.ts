@@ -5,30 +5,27 @@ import { homedir } from "os";
 import { resolveProject, registerPath, PROJECTS_DIR } from "../lib/resolveProject.js";
 import { readStdin, parseHookInput, trimToLines } from "../lib/hookUtils.js";
 
-const CLAUDE_DIR = join(homedir(), ".claude");
-const TMP_DIR = join(CLAUDE_DIR, "tmp");
+const CLAUDE_DIR   = join(homedir(), ".claude");
+const TMP_DIR      = join(CLAUDE_DIR, "tmp");
 const COUNTER_FILE = join(TMP_DIR, "session-tool-count.txt");
+const DB_PATH      = join(CLAUDE_DIR, "memory", "ltm.db");
 const MAX_INJECT_LINES = 60;
-const MAX_LTM_LINES = 30;
-const MAX_AGE_DAYS = 30;
-const MAX_AGE_MS = MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-
-function isStale(filePath: string): boolean {
-  return Date.now() - statSync(filePath).mtimeMs > MAX_AGE_MS;
-}
+const MAX_LTM_LINES    = 30;
+const MAX_AGE_MS       = 30 * 24 * 60 * 60 * 1000;
 
 function defaultName(cwd: string): string {
   const last = cwd.replace(/\/$/, "").split("/").pop() ?? "";
   return last.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function buildLtmSection(project: string): string {
-  const dbPath = join(CLAUDE_DIR, "memory", "ltm.db");
-  if (!existsSync(dbPath)) return "";
-
+async function buildLtmSection(project: string): Promise<string> {
+  if (!existsSync(DB_PATH)) return "";
   try {
-    const { getContextMerge } = require(join(CLAUDE_DIR, "memory/db.js"));
-    const { globals, scoped } = getContextMerge(project);
+    const { getContextMerge } = await import(join(CLAUDE_DIR, "memory/db.js"));
+    const { globals, scoped } = getContextMerge(project) as {
+      globals: Array<{ id: number; content: string }>;
+      scoped:  Array<{ id: number; content: string; importance: number }>;
+    };
 
     if (globals.length === 0 && scoped.length === 0) return "";
 
@@ -36,9 +33,7 @@ function buildLtmSection(project: string): string {
 
     if (globals.length > 0) {
       lines.push("**Global (importance ★★★★★):**");
-      for (const m of globals) {
-        lines.push(`- [${m.id}] ${m.content}`);
-      }
+      for (const m of globals) lines.push(`- [${m.id}] ${m.content}`);
       lines.push("");
     }
 
@@ -51,13 +46,11 @@ function buildLtmSection(project: string): string {
       lines.push("");
     }
 
-    const full = lines.join("\n");
-    // Hard cap at MAX_LTM_LINES
-    const allLines = full.split("\n");
+    const allLines = lines.join("\n").split("\n");
     if (allLines.length > MAX_LTM_LINES) {
       return allLines.slice(0, MAX_LTM_LINES).join("\n") + "\n… (truncated)\n";
     }
-    return full;
+    return lines.join("\n");
   } catch (_) {
     return "";
   }
@@ -95,11 +88,10 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Try to regenerate context-summary.md from DB before reading it
-  const dbPath = join(CLAUDE_DIR, "memory", "ltm.db");
-  if (existsSync(dbPath)) {
+  // Regenerate context-summary.md from DB before reading it
+  if (existsSync(DB_PATH)) {
     try {
-      const { exportContextMarkdown } = require(join(CLAUDE_DIR, "memory/context.js"));
+      const { exportContextMarkdown } = await import(join(CLAUDE_DIR, "memory/context.js"));
       exportContextMarkdown(name);
     } catch (_) {}
   }
@@ -108,9 +100,7 @@ async function main(): Promise<void> {
 
   if (!existsSync(summaryPath)) {
     const contextFiles = ["context-goals.md", "context-decisions.md", "context-progress.md", "context-gotchas.md"];
-    const anyExist = contextFiles.some(f => existsSync(join(projectDir, f)));
-
-    if (!anyExist) {
+    if (!contextFiles.some(f => existsSync(join(projectDir, f)))) {
       process.stdout.write(
         `# Project Registered — No Context Files Yet\n\n` +
         `Project **"${name}"** is registered but has no context files.\n` +
@@ -120,16 +110,13 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (isStale(summaryPath)) {
-    console.error(`[SessionStart] Context for "${name}" is older than ${MAX_AGE_DAYS} days — skipping`);
+  if (Date.now() - statSync(summaryPath).mtimeMs > MAX_AGE_MS) {
+    console.error(`[SessionStart] Context for "${name}" is older than 30 days — skipping`);
     return;
   }
 
-  const raw2 = readFileSync(summaryPath, "utf-8");
-  const injected = trimToLines(raw2, MAX_INJECT_LINES);
-
-  // Build LTM section from memories table
-  const ltmSection = buildLtmSection(name);
+  const injected = trimToLines(readFileSync(summaryPath, "utf-8"), MAX_INJECT_LINES);
+  const ltmSection = await buildLtmSection(name);
 
   const output = ltmSection
     ? `## Restored Project Context\n\n${injected}\n\n${ltmSection}\n---\n*Context restored from previous session. Update context files as work progresses.*\n`

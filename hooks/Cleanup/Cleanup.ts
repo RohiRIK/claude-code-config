@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, rmSync } from "fs";
+import { existsSync, readdirSync, statSync, readFileSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { PROJECTS_DIR } from "../lib/resolveProject.js";
@@ -12,6 +12,7 @@ import { trimToLines } from "../lib/hookUtils.js";
 // Never touches context-decisions or context-gotchas (permanent).
 const STALE_DAYS = 14;
 const MAX_PROGRESS_ITEMS = 20;
+const DB_PATH = join(homedir(), ".claude", "memory", "ltm.db");
 
 function isStaleDir(dirPath: string): boolean {
   try {
@@ -20,8 +21,7 @@ function isStaleDir(dirPath: string): boolean {
     const latest = files
       .map(f => statSync(join(dirPath, f)).mtimeMs)
       .sort((a, b) => b - a)[0];
-    const ageMs = Date.now() - latest;
-    return ageMs > STALE_DAYS * 24 * 60 * 60 * 1000;
+    return Date.now() - latest > STALE_DAYS * 24 * 60 * 60 * 1000;
   } catch (_) {
     return false;
   }
@@ -32,6 +32,7 @@ function trimProgressFile(filePath: string): void {
   const content = readFileSync(filePath, "utf-8");
   const trimmed = trimToLines(content, MAX_PROGRESS_ITEMS);
   if (trimmed === content) return;
+  const { writeFileSync } = require("fs");
   writeFileSync(filePath, trimmed);
   console.error(`[Cleanup] Trimmed context-progress.md to last ${MAX_PROGRESS_ITEMS} items`);
 }
@@ -45,20 +46,19 @@ async function main() {
   } catch (_) {}
 
   try {
-    const input = JSON.parse(inputStr);
+    const input = JSON.parse(inputStr) as Record<string, unknown>;
     if (input.stop_hook_active === true) return;
   } catch (_) {}
 
   if (!existsSync(PROJECTS_DIR)) return;
 
   // DB-based trim for all registered projects
-  const dbPath = join(homedir(), ".claude/memory/ltm.db");
-  if (existsSync(dbPath)) {
+  if (existsSync(DB_PATH)) {
     try {
       const registryPath = join(homedir(), ".claude/projects/registry.json");
       if (existsSync(registryPath)) {
-        const registry: Record<string, string> = JSON.parse(readFileSync(registryPath, "utf-8"));
-        const { trimProgress } = require(join(homedir(), ".claude/memory/context.js"));
+        const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as Record<string, string>;
+        const { trimProgress } = await import(join(homedir(), ".claude/memory/context.js"));
         for (const name of Object.values(registry)) {
           trimProgress(name, MAX_PROGRESS_ITEMS);
         }
@@ -74,12 +74,11 @@ async function main() {
   for (const dir of projectDirs) {
     const dirPath = join(PROJECTS_DIR, dir);
     try {
-      const stat = statSync(dirPath);
-      if (!stat.isDirectory()) continue;
+      if (!statSync(dirPath).isDirectory()) continue;
     } catch (_) { continue; }
 
     // Trim .md fallback file if DB not in use
-    if (!existsSync(dbPath)) {
+    if (!existsSync(DB_PATH)) {
       trimProgressFile(join(dirPath, "context-progress.md"));
     }
 

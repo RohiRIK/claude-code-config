@@ -6,10 +6,11 @@
  * Part B: Learned patterns from skills/learned/*.md
  *
  * Safe to re-run — dedup_key prevents duplicates in memories table.
+ * skipExport=true used throughout to avoid hundreds of redundant file writes.
  * Run: bun ~/.claude/memory/migrate.ts
  */
 
-import { existsSync, readFileSync, readdirSync } from "fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -17,27 +18,8 @@ const CLAUDE_DIR   = join(homedir(), ".claude");
 const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
 const LEARNED_DIR  = join(CLAUDE_DIR, "skills/learned");
 
-// Import local modules
-const { addItem } = await import("./context.js");
-const { learn }   = await import("./db.js");
-
-// ============================================================
-// Part A: Per-project context files
-// ============================================================
-
-type ContextType = "goal" | "decision" | "progress" | "gotcha";
-
-interface FileSpec {
-  file: string;
-  type: ContextType;
-}
-
-const FILES: FileSpec[] = [
-  { file: "context-goals.md",     type: "goal" },
-  { file: "context-decisions.md", type: "decision" },
-  { file: "context-progress.md",  type: "progress" },
-  { file: "context-gotchas.md",   type: "gotcha" },
-];
+const { addItem, exportContextMarkdown } = await import("./context.js");
+const { learn, exportMarkdown }          = await import("./db.js");
 
 function readFileSafe(p: string): string {
   try { return existsSync(p) ? readFileSync(p, "utf-8") : ""; } catch { return ""; }
@@ -49,56 +31,58 @@ function parseLines(raw: string): string[] {
     .filter(l => l.length > 0 && !l.startsWith("#"));
 }
 
-// Read registry if available
+// ============================================================
+// Part A: Per-project context files
+// ============================================================
+
+type ContextType = "goal" | "decision" | "progress" | "gotcha";
+
+const FILES: Array<{ file: string; type: ContextType }> = [
+  { file: "context-goals.md",     type: "goal" },
+  { file: "context-decisions.md", type: "decision" },
+  { file: "context-progress.md",  type: "progress" },
+  { file: "context-gotchas.md",   type: "gotcha" },
+];
+
+// Read registry to map dir names → friendly project names
 const registryPath = join(PROJECTS_DIR, "registry.json");
 const registry: Record<string, string> = existsSync(registryPath)
   ? JSON.parse(readFileSync(registryPath, "utf-8"))
   : {};
 
-// Build reverse map: project dir name → registered name
-const reversedRegistry = Object.fromEntries(
-  Object.entries(registry).map(([path, name]) => {
-    const dirName = path.replace(/\//g, "-").replace(/\./g, "-");
-    return [dirName, name];
-  })
+// Reverse map: slug dir name → registry name
+const reversedRegistry = new Map<string, string>(
+  Object.entries(registry).map(([path, name]) => [
+    path.replace(/\//g, "-").replace(/\./g, "-"),
+    name,
+  ])
 );
 
 let ctxGoals = 0, ctxDecisions = 0, ctxProgress = 0, ctxGotchas = 0;
 let projectCount = 0;
 
 if (existsSync(PROJECTS_DIR)) {
-  const dirs = readdirSync(PROJECTS_DIR).filter(d => {
-    try {
-      const s = Bun.file(join(PROJECTS_DIR, d)).size;
-      return d !== "registry.json";
-    } catch { return false; }
-  });
+  for (const dirName of readdirSync(PROJECTS_DIR)) {
+    if (dirName === "registry.json") continue;
 
-  for (const dirName of dirs) {
     const dirPath = join(PROJECTS_DIR, dirName);
-    // Skip non-directories and the registry file
     try {
-      const stat = Bun.file(dirPath);
+      if (!statSync(dirPath).isDirectory()) continue;
     } catch { continue; }
 
-    // Resolve project name from registry or use dir name
-    const projectName = reversedRegistry[dirName] ?? dirName;
-
+    const projectName = reversedRegistry.get(dirName) ?? dirName;
     let hadAny = false;
 
     for (const { file, type } of FILES) {
-      const filePath = join(dirPath, file);
-      const raw = readFileSafe(filePath);
+      const raw = readFileSafe(join(dirPath, file));
       if (!raw.trim()) continue;
 
-      const lines = parseLines(raw);
-      for (const line of lines) {
-        if (line.startsWith("…") || line.startsWith("✓") && type !== "progress") {
-          // Strip checkmark from non-progress lines or skip truncation notices
-          if (line.startsWith("…")) continue;
-        }
+      for (const line of parseLines(raw)) {
+        // Skip truncation notices
+        if (line.startsWith("…")) continue;
         try {
-          addItem(projectName, type, line, undefined);
+          // skipExport=true: avoid writing context-summary.md on every insert
+          addItem(projectName, type, line, undefined, true);
           hadAny = true;
           if (type === "goal")     ctxGoals++;
           if (type === "decision") ctxDecisions++;
@@ -108,7 +92,11 @@ if (existsSync(PROJECTS_DIR)) {
       }
     }
 
-    if (hadAny) projectCount++;
+    if (hadAny) {
+      // Write context-summary.md once per project after all items are inserted
+      exportContextMarkdown(projectName);
+      projectCount++;
+    }
   }
 }
 
@@ -132,17 +120,16 @@ function inferCategory(content: string, filename: string): MemoryCategory {
   return "pattern";
 }
 
-function parseLearnedFile(filePath: string): { content: string; category: MemoryCategory }[] {
+function parseLearnedFile(filePath: string): Array<{ content: string; category: MemoryCategory }> {
   const raw = readFileSafe(filePath);
   if (!raw.trim()) return [];
 
   const filename = filePath.split("/").pop() ?? "";
-  const results: { content: string; category: MemoryCategory }[] = [];
+  const results: Array<{ content: string; category: MemoryCategory }> = [];
 
-  // Extract sections: Problem, Solution, When to Use
   const sectionRegex = /^##\s+(.+)$/gm;
-  const sections: { title: string; start: number }[] = [];
-  let match;
+  const sections: Array<{ title: string; start: number }> = [];
+  let match: RegExpExecArray | null;
   while ((match = sectionRegex.exec(raw)) !== null) {
     sections.push({ title: match[1].trim(), start: match.index + match[0].length });
   }
@@ -153,9 +140,8 @@ function parseLearnedFile(filePath: string): { content: string; category: Memory
     const body = raw.slice(start, end).trim();
 
     if (!body || body.length < 10) continue;
-    if (title.toLowerCase().includes("example")) continue; // skip code examples
+    if (title.toLowerCase().includes("example")) continue;
 
-    // First line of body as content
     const firstLine = body.split("\n")[0].trim().replace(/^[-*]\s+/, "");
     if (firstLine.length < 10) continue;
 
@@ -165,13 +151,10 @@ function parseLearnedFile(filePath: string): { content: string; category: Memory
     });
   }
 
-  // If no sections parsed, use the first meaningful line
+  // Fallback: use first meaningful line if no sections parsed
   if (results.length === 0) {
-    const lines = parseLines(raw);
-    const first = lines.find(l => l.length > 15 && !l.startsWith("#"));
-    if (first) {
-      results.push({ content: first, category: inferCategory(first, filename) });
-    }
+    const first = parseLines(raw).find(l => l.length > 15);
+    if (first) results.push({ content: first, category: inferCategory(first, filename) });
   }
 
   return results;
@@ -180,20 +163,10 @@ function parseLearnedFile(filePath: string): { content: string; category: Memory
 let learnCreated = 0, learnReinforced = 0;
 
 if (existsSync(LEARNED_DIR)) {
-  const files = readdirSync(LEARNED_DIR).filter(f => f.endsWith(".md"));
-
-  for (const file of files) {
-    const filePath = join(LEARNED_DIR, file);
-    const insights = parseLearnedFile(filePath);
-
-    for (const { content, category } of insights) {
+  for (const file of readdirSync(LEARNED_DIR).filter(f => f.endsWith(".md"))) {
+    for (const { content, category } of parseLearnedFile(join(LEARNED_DIR, file))) {
       try {
-        const result = learn({
-          content,
-          category,
-          importance: 3,
-          source: `migration:${file}`,
-        });
+        const result = learn({ content, category, importance: 3, source: `migration:${file}`, skipExport: true });
         if (result.action === "created") learnCreated++;
         else learnReinforced++;
       } catch (_) {}
@@ -201,6 +174,9 @@ if (existsSync(LEARNED_DIR)) {
   }
 }
 
+// Write docs/memory-long-term.md once at the end
+exportMarkdown();
+
 console.log(`\n[migrate] Part B: Learned patterns`);
 console.log(`  Created: ${learnCreated}, Reinforced/skipped: ${learnReinforced}`);
-console.log(`\n[migrate] Done. Run 'bun -e "import(\\'./memory/db.js\\').then(m => m.exportMarkdown())"' to regenerate docs/memory-long-term.md`);
+console.log(`\n[migrate] Done. docs/memory-long-term.md regenerated.`);

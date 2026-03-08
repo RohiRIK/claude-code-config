@@ -58,3 +58,20 @@ export function trimToLines(content: string, max: number): string {
   if (lines.length <= max) return content;
   return lines.slice(lines.length - max).join("\n");
 }
+
+/**
+ * Build a budget-capped section for context summaries.
+ * @param lines   Content lines (no header)
+ * @param label   Section heading text
+ * @param budget  Max total lines including header + trailing blank
+ */
+export function budgetSection(lines: string[], label: string, budget: number): string {
+  if (lines.length === 0) return "";
+  const available = Math.max(0, budget - 3); // header(2) + trailing blank
+  if (lines.length <= available) {
+    return [`## ${label}`, "", ...lines, ""].join("\n");
+  }
+  const kept = lines.slice(-available);
+  const omitted = lines.length - available;
+  return [`## ${label}`, "", ...kept, `… (${omitted} more entries not shown)`, ""].join("\n");
+}
