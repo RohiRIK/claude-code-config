@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, readdirSync, statSync, readFileSync, rmSync } from "fs";
+import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { PROJECTS_DIR } from "../lib/resolveProject.js";
@@ -19,8 +19,8 @@ function isStaleDir(dirPath: string): boolean {
     const files = readdirSync(dirPath);
     if (files.length === 0) return true;
     const latest = files
-      .map(f => statSync(join(dirPath, f)).mtimeMs)
-      .sort((a, b) => b - a)[0];
+      .map((f: string) => statSync(join(dirPath, f)).mtimeMs)
+      .sort((a: number, b: number) => b - a)[0];
     return Date.now() - latest > STALE_DAYS * 24 * 60 * 60 * 1000;
   } catch (_) {
     return false;
@@ -32,7 +32,6 @@ function trimProgressFile(filePath: string): void {
   const content = readFileSync(filePath, "utf-8");
   const trimmed = trimToLines(content, MAX_PROGRESS_ITEMS);
   if (trimmed === content) return;
-  const { writeFileSync } = require("fs");
   writeFileSync(filePath, trimmed);
   console.error(`[Cleanup] Trimmed context-progress.md to last ${MAX_PROGRESS_ITEMS} items`);
 }
