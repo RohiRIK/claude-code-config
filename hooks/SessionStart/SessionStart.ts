@@ -9,6 +9,7 @@ const CLAUDE_DIR = join(homedir(), ".claude");
 const TMP_DIR = join(CLAUDE_DIR, "tmp");
 const COUNTER_FILE = join(TMP_DIR, "session-tool-count.txt");
 const MAX_INJECT_LINES = 60;
+const MAX_LTM_LINES = 30;
 const MAX_AGE_DAYS = 30;
 const MAX_AGE_MS = MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
@@ -19,6 +20,47 @@ function isStale(filePath: string): boolean {
 function defaultName(cwd: string): string {
   const last = cwd.replace(/\/$/, "").split("/").pop() ?? "";
   return last.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function buildLtmSection(project: string): string {
+  const dbPath = join(CLAUDE_DIR, "memory", "ltm.db");
+  if (!existsSync(dbPath)) return "";
+
+  try {
+    const { getContextMerge } = require(join(CLAUDE_DIR, "memory/db.js"));
+    const { globals, scoped } = getContextMerge(project);
+
+    if (globals.length === 0 && scoped.length === 0) return "";
+
+    const lines: string[] = ["## Long-Term Memory", ""];
+
+    if (globals.length > 0) {
+      lines.push("**Global (importance ★★★★★):**");
+      for (const m of globals) {
+        lines.push(`- [${m.id}] ${m.content}`);
+      }
+      lines.push("");
+    }
+
+    if (scoped.length > 0) {
+      lines.push(`**Project: ${project}**`);
+      for (const m of scoped) {
+        const imp = "★".repeat(m.importance) + "☆".repeat(5 - m.importance);
+        lines.push(`- [${m.id}] ${m.content} ${imp}`);
+      }
+      lines.push("");
+    }
+
+    const full = lines.join("\n");
+    // Hard cap at MAX_LTM_LINES
+    const allLines = full.split("\n");
+    if (allLines.length > MAX_LTM_LINES) {
+      return allLines.slice(0, MAX_LTM_LINES).join("\n") + "\n… (truncated)\n";
+    }
+    return full;
+  } catch (_) {
+    return "";
+  }
 }
 
 async function main(): Promise<void> {
@@ -53,6 +95,15 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Try to regenerate context-summary.md from DB before reading it
+  const dbPath = join(CLAUDE_DIR, "memory", "ltm.db");
+  if (existsSync(dbPath)) {
+    try {
+      const { exportContextMarkdown } = require(join(CLAUDE_DIR, "memory/context.js"));
+      exportContextMarkdown(name);
+    } catch (_) {}
+  }
+
   const summaryPath = join(projectDir, "context-summary.md");
 
   if (!existsSync(summaryPath)) {
@@ -77,7 +128,14 @@ async function main(): Promise<void> {
   const raw2 = readFileSync(summaryPath, "utf-8");
   const injected = trimToLines(raw2, MAX_INJECT_LINES);
 
-  process.stdout.write(`## Restored Project Context\n\n${injected}\n\n---\n*Context restored from previous session. Update context files as work progresses.*\n`);
+  // Build LTM section from memories table
+  const ltmSection = buildLtmSection(name);
+
+  const output = ltmSection
+    ? `## Restored Project Context\n\n${injected}\n\n${ltmSection}\n---\n*Context restored from previous session. Update context files as work progresses.*\n`
+    : `## Restored Project Context\n\n${injected}\n\n---\n*Context restored from previous session. Update context files as work progresses.*\n`;
+
+  process.stdout.write(output);
   console.error(`[SessionStart] Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);
 }
 

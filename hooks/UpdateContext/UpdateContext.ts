@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { resolveProject, PROJECTS_DIR, CLAUDE_DIR } from "../lib/resolveProject.js";
@@ -39,7 +39,6 @@ function findTranscriptPath(
   const primary = join(projectDir, filename);
   if (existsSync(primary)) return primary;
 
-  // Search all project dirs as fallback
   try {
     for (const dir of readdirSync(PROJECTS_DIR)) {
       const candidate = join(PROJECTS_DIR, dir, filename);
@@ -88,27 +87,39 @@ async function main(): Promise<void> {
     const messages = parseJsonLines(readFileSync(tPath, "utf-8"));
     if (messages.length < 3) return;
 
-    const progressFile = join(projectDir, "context-progress.md");
-
-    // Deduplicate by session_id
     const sessionTag = input.session_id ? input.session_id.substring(0, 8) : null;
-    const existing = readFileSafe(progressFile);
-    if (sessionTag && existing.includes(sessionTag)) return;
-
-    const filesModified = collectModifiedFiles(messages);
     const today = new Date().toISOString().split("T")[0];
     const tagPart = sessionTag ? ` [${sessionTag}]` : "";
 
+    const filesModified = collectModifiedFiles(messages);
     const sessionLine = filesModified.size > 0
       ? `✓ [${today}]${tagPart} Modified: ${[...filesModified].slice(0, MAX_DISPLAY_FILES).map(f => f.replace(homedir(), "~")).join(", ")}`
       : `✓ [${today}]${tagPart} Session (read-only, ${messages.length} messages)`;
 
+    // Write to DB if available, fall back to .md file
+    const dbPath = join(homedir(), ".claude/memory/ltm.db");
+    if (existsSync(dbPath)) {
+      try {
+        const { addItem } = require(join(homedir(), ".claude/memory/context.js"));
+        addItem(name, "progress", sessionLine, sessionTag ?? undefined);
+        console.error(`[UpdateContext] context DB updated for ${name}`);
+        return;
+      } catch (dbErr) {
+        console.error("[UpdateContext] DB write failed, falling back to .md:", dbErr);
+      }
+    }
+
+    // Fallback: write to markdown file
+    const progressFile = join(projectDir, "context-progress.md");
+    const existing = readFileSafe(progressFile);
+    if (sessionTag && existing.includes(sessionTag)) return;
+
     appendLine(progressFile, sessionLine);
 
-    // Trim to last N lines
     const content = readFileSafe(progressFile);
     const lines = content.split("\n").filter(Boolean);
     if (lines.length > MAX_PROGRESS_LINES) {
+      const { writeFileSync } = await import("fs");
       writeFileSync(progressFile, lines.slice(-MAX_PROGRESS_LINES).join("\n") + "\n");
     }
 
