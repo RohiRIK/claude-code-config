@@ -75,21 +75,27 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
     const height = svgEl.clientHeight || 600;
     const g = svg.append("g");
 
+    // Cache selection for zoom handler — avoids DOM query on every zoom tick
+    let memoryLabels: d3.Selection<SVGTextElement, RawNode, SVGGElement, unknown> | null = null;
+
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
-      .on("zoom", (event) => { g.attr("transform", event.transform.toString()); });
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform.toString());
+        if (memoryLabels) {
+          memoryLabels.attr("opacity", Math.max(0, (event.transform.k - 0.8) / 0.4));
+        }
+      });
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    svg.append("defs").append("marker")
-      .attr("id", "arrow")
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 18).attr("refY", 0)
-      .attr("markerWidth", 6).attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", "#6b7280");
+    const defs = svg.append("defs");
+    // Glow filter for project nodes
+    const filter = defs.append("filter").attr("id", "glow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+    filter.append("feGaussianBlur").attr("in", "SourceGraphic").attr("stdDeviation", "3").attr("result", "blur");
+    const feMerge = filter.append("feMerge");
+    feMerge.append("feMergeNode").attr("in", "blur");
+    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
     const rawNodes: RawNode[] = data.nodes.map(n => ({
       id: n.id,
@@ -112,23 +118,28 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       return src && tgt ? [{ source: src, target: tgt, type: l.type }] : [];
     });
 
+    const linkForce = d3.forceLink<RawNode, RawLink>(rawLinks).id(d => d.id)
+      .distance(50)
+      .strength(d => {
+        if (d.type === "context_of") return 0.04;    // context items float loosely
+        if (d.type === "project_scope") return 0.25; // project members: moderate pull
+        return 0.6;                                   // memory relations: strong
+      });
+
     const simulation = d3.forceSimulation<RawNode>(rawNodes)
-      .force("link", d3.forceLink<RawNode, RawLink>(rawLinks).id(d => d.id).distance(80))
-      .force("charge", d3.forceManyBody<RawNode>().strength(-200))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide<RawNode>().radius(d => nodeRadius(d.importance, d.is_project, d.is_context) + 4));
+      .force("link", linkForce)
+      .force("charge", d3.forceManyBody<RawNode>().strength(-80))
+      .force("center", d3.forceCenter(width / 2, height / 2).strength(0.08))
+      .force("collision", d3.forceCollide<RawNode>().radius(d => nodeRadius(d.importance, d.is_project, d.is_context) + 2))
+      .alphaDecay(0.025);
 
     const link = g.selectAll<SVGLineElement, RawLink>("line")
       .data(rawLinks)
       .join("line")
-      .attr("stroke", "#374151")
-      .attr("stroke-width", 1.5)
-      .attr("stroke-dasharray", d =>
-        d.type === "project_scope" ? "5,3" : d.type === "context_of" ? "2,2" : null
-      )
-      .attr("marker-end", d =>
-        d.type !== "project_scope" && d.type !== "context_of" ? "url(#arrow)" : null
-      );
+      .attr("stroke", d => d.type === "project_scope" ? "#334155" : "#1e3a5f")
+      .attr("stroke-width", d => d.type === "project_scope" ? 1 : 0.8)
+      .attr("stroke-opacity", 0.7)
+      .attr("stroke-dasharray", d => d.type === "context_of" ? "2,2" : null);
 
     const node = g.selectAll<SVGGElement, RawNode>("g.node")
       .data(rawNodes)
@@ -159,19 +170,55 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       .attr("class", "node-circle")
       .attr("r", d => nodeRadius(d.importance, d.is_project, d.is_context))
       .attr("fill", d => nodeColor(d.category))
-      .attr("stroke", "#1f2937")
-      .attr("stroke-width", 1);
+      .attr("fill-opacity", d => d.is_project ? 1 : 0.85)
+      .attr("stroke", d => d.is_project ? nodeColor(d.category) : "transparent")
+      .attr("stroke-width", d => d.is_project ? 1.5 : 0)
+      .attr("filter", d => d.is_project ? "url(#glow)" : null);
 
+    // Project labels — always visible
     node.filter(d => !!d.is_project)
       .append("text")
-      .attr("dy", 4)
+      .attr("class", "node-label-project")
+      .attr("dy", d => nodeRadius(d.importance, d.is_project, d.is_context) + 9)
       .attr("text-anchor", "middle")
-      .attr("font-size", 9)
-      .attr("fill", "#1f2937")
-      .attr("font-weight", "bold")
-      .text(d => d.label.substring(0, 8));
+      .attr("font-size", 8)
+      .attr("fill", d => nodeColor(d.category))
+      .attr("font-weight", "600")
+      .attr("pointer-events", "none")
+      .text(d => d.label.length > 14 ? d.label.substring(0, 13) + "…" : d.label);
+
+    // Memory labels — only visible when zoomed in (CSS opacity trick via zoom handler)
+    node.filter(d => !d.is_project)
+      .append("text")
+      .attr("class", "node-label-memory")
+      .attr("dy", d => nodeRadius(d.importance, d.is_project, d.is_context) + 7)
+      .attr("text-anchor", "middle")
+      .attr("font-size", 6)
+      .attr("fill", "#6b7280")
+      .attr("pointer-events", "none")
+      .text(d => d.label.length > 16 ? d.label.substring(0, 15) + "…" : d.label);
 
     node.append("title").text(d => `[${d.category}] ${d.label}`);
+
+    // Populate cached selection now that labels exist
+    memoryLabels = g.selectAll<SVGTextElement, RawNode>(".node-label-memory");
+
+    simulation.on("end", () => {
+      if (rawNodes.length === 0) return;
+      const bounds = rawNodes.reduce(
+        (acc, n) => ({
+          minX: Math.min(acc.minX, n.x ?? 0), maxX: Math.max(acc.maxX, n.x ?? 0),
+          minY: Math.min(acc.minY, n.y ?? 0), maxY: Math.max(acc.maxY, n.y ?? 0),
+        }),
+        { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
+      );
+      const x0 = bounds.minX - 40, x1 = bounds.maxX + 40;
+      const y0 = bounds.minY - 40, y1 = bounds.maxY + 40;
+      const scale = Math.min(width / (x1 - x0), height / (y1 - y0), 1);
+      const tx = (width - scale * (x0 + x1)) / 2;
+      const ty = (height - scale * (y0 + y1)) / 2;
+      d3.select(svgEl).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    });
 
     simulation.on("tick", () => {
       link

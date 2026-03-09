@@ -1,38 +1,129 @@
 "use client";
-import type { GraphNode } from "@/lib/types";
+import { useState } from "react";
+import type { GraphNode, Tag } from "@/lib/types";
 
 interface Props {
   nodes: GraphNode[];
   activeProject: string | null;
+  hiddenProjects: Set<string>;
   onSelect: (name: string | null) => void;
+  onToggleHide: (name: string) => void;
+  tags: Tag[];
+  activeTags: Set<string>;
+  onToggleTag: (name: string) => void;
+  onClearAllTags: () => void;
 }
 
-export default function ProjectList({ nodes, activeProject, onSelect }: Props) {
-  const projects = nodes.filter(n => "is_project" in n);
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg className={`w-3 h-3 transition-transform ${open ? "rotate-0" : "-rotate-90"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+export default function ProjectList({
+  nodes, activeProject, hiddenProjects, onSelect, onToggleHide,
+  tags, activeTags, onToggleTag, onClearAllTags,
+}: Props) {
+  const allProjects = nodes.filter(n => "is_project" in n);
+  const [projectsOpen, setProjectsOpen] = useState(true);
+  const [tagsOpen, setTagsOpen] = useState(true);
 
   return (
-    <div className="w-44 min-w-[160px] bg-[#161b22] border-r border-gray-800 flex flex-col overflow-hidden">
-      <div className="text-xs text-gray-500 uppercase tracking-wide px-3 py-2 border-b border-gray-800 font-medium">
-        Projects
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        <button
-          onClick={() => onSelect(null)}
-          className={`w-full text-left text-xs px-3 py-2 hover:bg-gray-800 ${!activeProject ? "text-white font-medium bg-gray-800" : "text-gray-400"}`}
-        >
-          All
-        </button>
-        {projects.map(p => (
+    <div className="w-48 min-w-[176px] bg-[#161b22] border-r border-[#30363d] flex flex-col overflow-hidden">
+
+      {/* ── Projects ── */}
+      <button
+        onClick={() => setProjectsOpen(o => !o)}
+        className="flex items-center justify-between px-3 py-2 border-b border-[#30363d] hover:bg-[#21262d] transition-colors"
+      >
+        <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Projects</span>
+        <span className="text-gray-600"><ChevronIcon open={projectsOpen} /></span>
+      </button>
+      {projectsOpen && (
+        <div className="flex flex-col border-b border-[#30363d]">
           <button
-            key={p.id}
-            onClick={() => onSelect(activeProject === p.label ? null : p.label)}
-            className={`w-full text-left text-xs px-3 py-2 hover:bg-gray-800 truncate ${activeProject === p.label ? "text-sky-400 font-medium bg-gray-800" : "text-gray-400"}`}
-            title={p.label}
+            onClick={() => onSelect(null)}
+            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[#21262d] transition-colors ${!activeProject ? "text-white font-medium bg-[#21262d]" : "text-gray-400"}`}
           >
-            {p.label}
+            All projects
           </button>
-        ))}
+          {allProjects.map(p => {
+            const hidden = hiddenProjects.has(p.label);
+            return (
+              <div
+                key={p.id}
+                className={`group flex items-center gap-1 pr-1 hover:bg-[#21262d] transition-colors ${hidden ? "opacity-40" : ""}`}
+              >
+                <button
+                  onClick={() => !hidden && onSelect(activeProject === p.label ? null : p.label)}
+                  className={`flex-1 text-left text-xs px-3 py-1.5 truncate ${activeProject === p.label && !hidden ? "text-sky-400 font-medium" : "text-gray-400"}`}
+                  title={p.label}
+                >
+                  {p.label}
+                </button>
+                <button
+                  onClick={() => onToggleHide(p.label)}
+                  className="shrink-0 p-1 rounded opacity-30 group-hover:opacity-100 transition-opacity text-gray-600 hover:text-gray-300"
+                  title={hidden ? "Show project" : "Hide project"}
+                >
+                  {hidden ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4-9-7s4-7 9-7c1.03 0 2.02.15 2.95.43M6.1 6.1l11.8 11.8M9.9 9.9A3 3 0 0114.1 14.1" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Tags ── */}
+      <div className="flex items-center border-b border-[#30363d]">
+        <button
+          onClick={() => setTagsOpen(o => !o)}
+          className="flex-1 flex items-center justify-between px-3 py-2 hover:bg-[#21262d] transition-colors"
+        >
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+            Tags{activeTags.size > 0 ? ` · ${activeTags.size}` : ""}
+          </span>
+          <span className="text-gray-600"><ChevronIcon open={tagsOpen} /></span>
+        </button>
+        {activeTags.size > 0 && (
+          <button
+            onClick={onClearAllTags}
+            className="px-2 text-[10px] text-gray-500 hover:text-gray-300 underline shrink-0"
+          >
+            clear
+          </button>
+        )}
       </div>
+      {tagsOpen && (
+        <div className="flex-1 overflow-y-auto">
+          {tags.map(tag => {
+            const active = activeTags.has(tag.name);
+            return (
+              <button
+                key={tag.id}
+                onClick={() => onToggleTag(tag.name)}
+                className={`w-full flex items-center justify-between text-left text-xs px-3 py-1.5 hover:bg-[#21262d] transition-colors ${active ? "text-sky-400" : "text-gray-400"}`}
+              >
+                <span className="truncate">{tag.name}</span>
+                <span className={`ml-2 shrink-0 text-[10px] tabular-nums ${active ? "text-sky-500" : "text-gray-600"}`}>
+                  {tag.memory_count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

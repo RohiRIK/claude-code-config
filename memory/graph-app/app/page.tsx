@@ -2,11 +2,11 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FilterBar from "@/components/FilterBar";
+import NodeLegend from "@/components/NodeLegend";
 import ProjectList from "@/components/ProjectList";
 import Sidebar from "@/components/Sidebar";
 import SpotlightModal from "@/components/SpotlightModal";
 import StatsBar from "@/components/StatsBar";
-import TagFilterBar from "@/components/TagFilterBar";
 import { api } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
 import type { GraphData, GraphLink, GraphNode, SearchResult, Stats, Tag } from "@/lib/types";
@@ -32,7 +32,21 @@ export default function Home() {
   const [importanceMin, setImportanceMin] = useState(1);
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [hiddenProjects, setHiddenProjects] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("ltm_hidden_projects") ?? "[]")); }
+    catch { return new Set(); }
+  });
   const graphRef = useRef<GraphHandle>(null);
+
+  const toggleHideProject = useCallback((name: string) => {
+    setHiddenProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      localStorage.setItem("ltm_hidden_projects", JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     const [g, s] = await Promise.all([api.graph(), api.stats()]);
@@ -82,7 +96,8 @@ export default function Home() {
     const searchIds = searchResults ? new Set(searchResults.map(r => r.id)) : null;
 
     const nodes = data.nodes.filter((n: GraphNode) => {
-      if ("is_project" in n) return true;
+      if ("is_project" in n) return !hiddenProjects.has(n.label);
+      if (n.project_scope && hiddenProjects.has(n.project_scope)) return false;
       if (activeProject && n.project_scope !== activeProject) return false;
       if (!("is_context" in n) && n.importance < importanceMin) return false;
       if (searchIds && !("is_project" in n) && !("is_context" in n) && !searchIds.has(n.id)) return false;
@@ -97,7 +112,7 @@ export default function Home() {
     });
 
     return { nodes, links };
-  }, [data, activeProject, importanceMin, searchResults]);
+  }, [data, activeProject, importanceMin, searchResults, hiddenProjects]);
 
   const handleSpotlightSelect = useCallback((result: SearchResult) => {
     graphRef.current?.zoomToNode(result.id);
@@ -113,38 +128,50 @@ export default function Home() {
         onSearch={setSearchResults}
         onImportanceMin={setImportanceMin}
         importanceMin={importanceMin}
+        onSpotlightOpen={() => setSpotlightOpen(true)}
       />
-      <TagFilterBar tags={tags} activeTags={activeTags} onToggle={toggleTag} onClearAll={() => setActiveTags(new Set())} />
       <div className="flex flex-1 overflow-hidden">
         <ProjectList
           nodes={data?.nodes ?? []}
           activeProject={activeProject}
+          hiddenProjects={hiddenProjects}
           onSelect={setActiveProject}
+          onToggleHide={toggleHideProject}
+          tags={tags}
+          activeTags={activeTags}
+          onToggleTag={toggleTag}
+          onClearAllTags={() => setActiveTags(new Set())}
         />
         <div className="flex-1 relative overflow-hidden">
-          {filteredData ? (
-            <Graph
-              ref={graphRef}
-              data={filteredData}
-              activeProject={activeProject}
-              dimmedIds={dimmedIds}
-              onNodeClick={setSelected}
-            />
-          ) : (
+          {!filteredData ? (
             <div className="flex items-center justify-center h-full text-gray-600 text-sm">
               Loading graph…
             </div>
+          ) : filteredData.nodes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
+              <p className="text-sm">All projects are hidden.</p>
+              <button
+                onClick={() => setHiddenProjects(() => {
+                  localStorage.setItem("ltm_hidden_projects", "[]");
+                  return new Set();
+                })}
+                className="text-xs text-sky-400 hover:underline"
+              >
+                Show all projects
+              </button>
+            </div>
+          ) : (
+            <>
+              <Graph
+                ref={graphRef}
+                data={filteredData}
+                activeProject={activeProject}
+                dimmedIds={dimmedIds}
+                onNodeClick={setSelected}
+              />
+              <NodeLegend />
+            </>
           )}
-          {/* ⌘K hint */}
-          <button
-            onClick={() => setSpotlightOpen(true)}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#161b22] border border-[#30363d] text-gray-500 text-xs hover:text-gray-300 hover:border-gray-500 transition-colors"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-            </svg>
-            <span>⌘K</span>
-          </button>
         </div>
         <Sidebar node={selected} onClose={() => setSelected(null)} />
       </div>
