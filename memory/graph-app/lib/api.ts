@@ -1,4 +1,15 @@
-import type { GraphData, MemoryDetail, ProjectDetail, SearchResult, Stats, Tag } from "./types";
+import type {
+  GraphData,
+  JanitorRunResult,
+  JanitorStatus,
+  MemoryDetail,
+  PendingMemory,
+  ProjectDetail,
+  SearchResult,
+  SettingsModels,
+  Stats,
+  Tag,
+} from "./types";
 
 const BASE = "/api";
 
@@ -8,13 +19,72 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
 export const api = {
+  // Existing routes
   graph: (): Promise<GraphData> => get("/graph"),
   stats: (): Promise<Stats> => get("/stats"),
   tags: (): Promise<Tag[]> => get("/tags"),
   memory: (id: number): Promise<MemoryDetail> => get(`/memory/${id}`),
-  search: (q: string): Promise<SearchResult[]> => get(`/search?q=${encodeURIComponent(q)}`),
-  context: (project: string): Promise<Record<string, string[]>> => get(`/context/${encodeURIComponent(project)}`),
-  project: (name: string): Promise<ProjectDetail> => get(`/project/${encodeURIComponent(name)}`),
-  reload: (): Promise<void> => fetch(`${BASE}/reload`, { method: "POST" }).then(() => undefined),
+  search: (q: string): Promise<SearchResult[]> =>
+    get(`/search?q=${encodeURIComponent(q)}`),
+  context: (project: string): Promise<Record<string, string[]>> =>
+    get(`/context/${encodeURIComponent(project)}`),
+  project: (name: string): Promise<ProjectDetail> =>
+    get(`/project/${encodeURIComponent(name)}`),
+  reload: async (): Promise<void> => {
+    await fetch(`${BASE}/reload`, { method: "POST" });
+  },
+
+  // Phase 2: Settings
+  getSettings: (): Promise<Record<string, string>> => get("/settings"),
+  updateSettings: (settings: Record<string, string>): Promise<{ ok: boolean }> =>
+    put("/settings", settings),
+  verifyProvider: (): Promise<{ ok: boolean; error?: string }> =>
+    post("/settings/verify"),
+  getModels: (): Promise<SettingsModels> => get("/settings/models"),
+
+  // Phase 2: Janitor
+  janitorStatus: (): Promise<JanitorStatus> => get("/janitor/status"),
+  runJanitor: (): Promise<JanitorRunResult> => post("/janitor/run"),
+
+  // Phase 2: Pending memories
+  pending: (): Promise<PendingMemory[]> => get("/pending"),
+  approveMemory: (id: number): Promise<{ ok: boolean }> =>
+    post(`/memory/${id}/approve`),
+  deleteMemory: (id: number): Promise<{ ok: boolean }> =>
+    del(`/memory/${id}`),
+  supersedeMemory: (newId: number, oldId: number): Promise<{ ok: boolean }> =>
+    post(`/memory/${newId}/supersedes/${oldId}`),
+  mergeMemories: (
+    keepId: number,
+    supersededId: number,
+    mergedContent?: string,
+  ): Promise<{ ok: boolean }> =>
+    post("/memory/merge", { keepId, supersededId, mergedContent }),
 };

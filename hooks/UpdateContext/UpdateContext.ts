@@ -104,17 +104,14 @@ async function main(): Promise<void> {
     // Write to DB if available, fall back to .md file
     if (existsSync(DB_PATH)) {
       try {
-        const { addItem, promote } = await import(join(homedir(), ".claude/memory/context.js"));
+        const { addItem } = await import(join(homedir(), ".claude/memory/context.js"));
         const prefixMatch = sessionLine.match(/^\[(decision|gotcha)\]\s*/i);
         if (prefixMatch) {
           const type = prefixMatch[1]!.toLowerCase() as "decision" | "gotcha";
           const strippedContent = sessionLine.slice(prefixMatch[0].length);
           addItem(name, type, strippedContent, sessionTag ?? undefined);
-          const db = (await import(join(homedir(), ".claude/memory/shared-db.js"))).getDb();
-          const inserted = db.query(
-            `SELECT id FROM context_items WHERE type=? AND project_name=? ORDER BY id DESC LIMIT 1`
-          ).get(type, name) as { id: number } | null;
-          if (inserted) promote(inserted.id);
+          // Phase 2: decisions/gotchas are auto-promoted to pending memories
+          // by the janitor's runPromote() — no direct promote() call needed.
         } else {
           addItem(name, "progress", sessionLine, sessionTag ?? undefined);
         }
