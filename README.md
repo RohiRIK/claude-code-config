@@ -52,8 +52,6 @@ Obsidian-style memory graph at **http://localhost:7332** (API on :7331).
 | ⌘K Spotlight search | FTS5-powered; click result → graph zooms to node + opens sidebar |
 | Project drill-down | Click project node → `/project/[name]` with radial MiniGraph |
 
-![Spotlight search](memory/graph-app/e2e/screenshots/10-spotlight.png) ![Project drill-down](memory/graph-app/e2e/screenshots/11-project-page.png)
-
 Start it: `/ltm-server` · Stop it: `/ltm-server stop`
 
 ---
