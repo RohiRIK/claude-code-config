@@ -32,6 +32,9 @@ function hasTable(db: Database, table: string): boolean {
 
 /** Run Phase 2 schema migrations idempotently. */
 function runMigrations(db: Database): void {
+  // Skip migrations if core tables don't exist yet (fresh DB — schema.sql will create them)
+  if (!hasTable(db, "memories")) return;
+
   // memories: add status, embedding, last_used_at
   if (!hasColumn(db, "memories", "status")) {
     db.exec(
@@ -43,7 +46,11 @@ function runMigrations(db: Database): void {
   }
   if (!hasColumn(db, "memories", "last_used_at")) {
     db.exec(
-      "ALTER TABLE memories ADD COLUMN last_used_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      "ALTER TABLE memories ADD COLUMN last_used_at TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'",
+    );
+    // Backfill existing rows with actual current timestamp
+    db.exec(
+      "UPDATE memories SET last_used_at = datetime('now') WHERE last_used_at = '1970-01-01 00:00:00'",
     );
   }
 
@@ -85,8 +92,9 @@ export function getDb(): Database {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   _db = new Database(DB_PATH, { create: true });
   _db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
-  _db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
+  // Migrations first — adds columns to existing tables so schema.sql indexes succeed
   runMigrations(_db);
+  _db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
   return _db;
 }
 

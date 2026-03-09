@@ -79,7 +79,7 @@ async function generateName(prompt: string): Promise<string | null> {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-3-5-haiku-20241022",
         max_tokens: 20,
         system: `Give this conversation a 2-3 word Topic Case title (e.g. "Voice Server Fix", "Dashboard Redesign", "Hook Permissions"). Must be a coherent noun phrase. No verbs, no articles. Output ONLY the title.`,
         messages: [{ role: "user", content: prompt.slice(0, 600) }],
