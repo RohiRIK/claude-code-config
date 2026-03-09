@@ -4,6 +4,57 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-09 — LTM graph 3 UX features + full SQLite LTM
+
+### Features
+- **Tag filter panel** (`TagFilterBar.tsx`) — scrollable chip row above the graph; clicking a tag dims all non-matching nodes to 15% opacity; "clear" resets in a single state write
+- **⌘K Spotlight search** (`SpotlightModal.tsx`) — global keyboard shortcut opens FTS5-powered modal; keyboard nav (↑↓ Enter ESC); selecting a result zooms the D3 graph to that node and opens the Sidebar; ref-based keyboard handler only re-registers on `[open]` change
+- **Project drill-down page** (`/project/[name]`) — clicking a project node navigates to a dedicated Next.js page with: header (name + counts), radial `MiniGraph` (static layout, no physics), context sections, scrollable memory cards
+- **`lib/nodeColors.ts`** — shared `nodeColor()` and `nodeRadius()` extracted from `Graph.tsx`; used by Graph, MiniGraph, SpotlightModal, project page
+- **`server.ts` `/api/project/:name`** — returns full project detail: context by type, memories with tags, context items, relations
+- **E2E suite** — 11/11 Playwright tests passing; 3 new tests for tag filter, spotlight, project drill-down
+
+### Fixes / Refactors
+- **`server.ts`** — `truncate()` + `parseTags()` helpers eliminate 4 copy-pasted inline expressions
+- **SQLite 999-var fix** — `getProjectDetail` relations query uses `IN (SELECT id FROM memories WHERE project_scope = ?)` subquery instead of doubled IN-list (hits SQLite limit at ~500 memories)
+- **`page.tsx`** — `api.tags()` fetched once on mount, not on every WebSocket refresh
+- **`Graph.tsx`** — `useImperativeHandle` deps `[]`; MiniGraph zoom handlers cleared before re-attach
+- **`SpotlightModal.tsx`** — stale `setResults` after unmount prevented with `cancelled` flag
+
+### Branches
+- `main` → merged squash `24891fd`
+- `snapshot/working-config-pre-ltm` → backup of main before SQLite LTM
+
+---
+
+## 2026-03-08 — SQLite LTM system + LTM graph visualizer v2
+
+### Features
+- **Native Bun SQLite LTM** (`memory/ltm.db`) — `schema.sql`, `db.ts`, `context.ts`, `dedup.ts`, `migrate.ts`; replaces JSON flat-file context
+- **LTM graph API server** (`memory/server.ts`) — Bun.serve on :7331 with WebSocket live-reload; routes: `/api/graph`, `/api/stats`, `/api/tags`, `/api/memory/:id`, `/api/search` (FTS5), `/api/context/:project`, `/api/reload`
+- **LTM graph UI** (`memory/graph-app/`) — Next.js 15 on :7332; D3 force graph with project/memory/context nodes; Sidebar, FilterBar, ProjectList, StatsBar; HMR dev mode
+- **4 hooks updated** — Cleanup, EvaluateSession, UpdateContext, resolveProject now write to SQLite
+- **New hooks** — `NotifyLtmServer` (broadcasts WS refresh after hook writes)
+- **New skills** — `LtmServer`, `CodingStandards`, expanded `ContinuousLearning`
+- **New commands** — `/check-context`, `/init-context`, `/update-context`, `/ltm-server`, `/learn`, `/recall`, `/forget`, `/relate`
+
+---
+
+## 2026-03-04 — Fix context-mode executor hang on bun test
+
+### Fixes
+- **context-mode executor**: `killTree()` now kills the entire process group (`process.kill(-pid, "SIGKILL")`) instead of just the shell — prevents bun test worker processes from surviving the timeout and hanging indefinitely
+- **context-mode executor**: added `detached: !isWin` to `spawn()` so child processes get their own process group ID, making `-pid` kill effective on macOS/Linux
+
+### Refactor
+- **context-mode executor**: removed duplicate `const isWin` — now imports `isWindows as isWin` from `runtime.ts` (single source of truth)
+- **context-mode runtime**: exported `isWindows` constant
+
+### Docs
+- **`rules/workflow.md`**: added "Maintaining context-mode" section with exact rebuild command (`bunx esbuild ...`) and restart step — required after any source edits to `src/`
+
+---
+
 ## 2026-03-03 (latest) — Fix filesystem MCP + context-mode plugin
 
 ### Fixes

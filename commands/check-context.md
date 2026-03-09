@@ -1,24 +1,45 @@
 # /check-context — Verify Session Context
 
-Run at the start of any session to confirm Claude has the right context loaded.
+Verify what context is loaded and confirm DB state matches what was injected at session start.
 
 ## Instructions for Claude
 
-1. Resolve the current project:
-   - Read `~/.claude/projects/registry.json`
-   - Match `cwd` via exact → prefix → slug fallback
-   - Determine `projectDir` = `~/.claude/projects/<name>/`
+### Step 1 — Resolve project
 
-2. Read all context files that exist in `projectDir`:
-   - `context-goals.md`
-   - `context-decisions.md`
-   - `context-progress.md`
-   - `context-gotchas.md`
-   - `context-summary.md` (if present)
+```bash
+cat ~/.claude/projects/registry.json
+```
 
-3. Cross-check what you read from files against what was injected at session start.
+Match `cwd` via exact → prefix → slug fallback. Get `<name>` and `projectDir = ~/.claude/projects/<name>/`.
 
-4. Respond with this exact structure:
+If not registered: say so, suggest `/register-project`, then stop.
+
+### Step 2 — Query DB (primary source)
+
+```bash
+bun -e "
+  const { getItems } = await import(\`\${process.env.HOME}/.claude/memory/context.js\`);
+  const goal = getItems('NAME', 'goal');
+  const decisions = getItems('NAME', 'decision');
+  const progress = getItems('NAME', 'progress', 3);
+  const gotchas = getItems('NAME', 'gotcha');
+  console.log(JSON.stringify({ goal, decisions, progress, gotchas }));
+"
+```
+
+If DB unavailable (no `ltm.db`): read `context-summary.md` as fallback and note "DB not available".
+
+### Step 3 — Check LTM memories
+
+```bash
+bun -e "
+  const { getContextMerge } = await import(\`\${process.env.HOME}/.claude/memory/db.js\`);
+  const r = getContextMerge('NAME');
+  console.log('globals:', r.globals.length, 'scoped:', r.scoped.length);
+"
+```
+
+### Step 4 — Output (exact format)
 
 ---
 
@@ -26,9 +47,10 @@ Run at the start of any session to confirm Claude has the right context loaded.
 
 **Path:** `<cwd>`
 **Registry match:** <exact | prefix from `<path>` | slug fallback | not registered>
+**DB:** <available at `~/.claude/memory/ltm.db` | not available — using .md fallback>
 
-### Loaded from files:
-- **Goal:** <first line of context-goals.md, or `none`>
+### Context Items (from DB):
+- **Goal:** <goal content, or `none`>
 - **Last 3 progress items:**
   - <item>
   - <item>
@@ -36,24 +58,27 @@ Run at the start of any session to confirm Claude has the right context loaded.
 - **Decisions on file:** <count>
 - **Gotchas on file:** <count>
 
+### LTM Memories:
+- **Global (importance=5):** <count>
+- **Project-scoped:** <count>
+
 ### Session injection:
 <one of:>
-- Context was injected at session start — matches files ✅
-- Context was injected but differs from files ⚠️ (files may be newer)
+- Context was injected at session start — matches DB ✅
+- Context was injected but DB has newer items ⚠️
 - No injection — fresh session or context-summary.md missing
 
 ### Status:
 <one of:>
-- **Complete** — context loaded and consistent. Ready to work.
-- **Partial** — some files missing. Run `/init-context` to create missing files.
-- **Stale** — files exist but context-summary.md is older than 7 days. Run `/compact` to rebuild.
-- **Empty** — no context files found. Run `/init-context` to set up tracking.
+- **Complete** — DB active, context injected, ready to work.
+- **DB missing** — using .md fallback. Run `bun ~/.claude/memory/migrate.ts` to initialize.
+- **No context** — project registered but no goal set. Run `/init-context`.
+- **Not registered** — run `/register-project` first.
 
 ---
 
 ## Rules
 
-- Read the actual files — do not rely on memory alone
-- Never fabricate content not found in the files
-- If files and injected context differ, flag it clearly
-- If `registry.json` does not exist or project is unregistered, say so and suggest `/register-project`
+- Query DB directly — do not rely on session memory alone
+- If DB and injected context differ, flag it clearly
+- Never fabricate content not found in DB or files

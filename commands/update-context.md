@@ -1,13 +1,20 @@
-# /update-context — Auto-Update Context Files from Session
+# /update-context — Mid-Session Context Update
 
-Automatically extracts what happened in this session and writes it to the project context files. No questions asked.
+Explicitly add a context item to the DB mid-session. Use this for important items that shouldn't wait until session end (when the `UpdateContext` hook fires automatically).
+
+## When to Use
+
+- After a significant decision that must survive a mid-session compaction
+- To correct or override what the `UpdateContext` hook will write automatically
+- To manually add a gotcha or decision the hook won't capture
+
+**Note:** Progress is auto-captured at session end by the `UpdateContext` hook. This command is for **mid-session explicit updates** only.
 
 ## Usage
 
 ```
-/update-context              # auto-extract from session and write all 4 files
-/update-context goal "..."   # override goal only
-/update-context progress "✓ did X"   # append one progress item manually
+/update-context goal "New goal description"
+/update-context progress "✓ did X"
 /update-context decision "chose Y because Z"
 /update-context gotcha "⚠ watch out for W"
 ```
@@ -16,64 +23,43 @@ Automatically extracts what happened in this session and writes it to the projec
 
 ### Step 1 — Resolve project
 
-Read `~/.claude/projects/registry.json`, match `cwd` → get `<name>`.
-`projectDir` = `~/.claude/projects/<name>/`
+```bash
+cat ~/.claude/projects/registry.json
+```
 
-If not registered: say so, suggest `/register-project`, then stop.
+Match `cwd` → get `<name>`. If not registered: say so, suggest `/register-project`, stop.
 
-### Step 2 — If called with no arguments: AUTO mode
+### Step 2 — Write to DB
 
-Look back at the current conversation and extract:
+```bash
+bun -e "
+  const { addItem } = await import(\`\${process.env.HOME}/.claude/memory/context.js\`);
+  addItem('PROJECT_NAME', 'TYPE', 'CONTENT');
+  console.log('done');
+"
+```
 
-**Progress** (what was completed this session):
-- Scan for completed tasks, fixes, features, commands run
-- Write each as: `✓ [YYYY-MM-DD] <what was done, 1 line, max 100 chars>`
-- Today's date = use current date
-- Append all new items to `context-progress.md`
-- Skip items already present in the file
+Map argument to type:
 
-**Decisions** (architectural or significant choices made):
-- Scan for decisions like "we chose X over Y", "we decided to...", "going with..."
-- Write each as: `- <decision and reason, 1 line>`
-- Append new items to `context-decisions.md`
-- Skip duplicates
+| Argument | DB type | Behavior |
+|----------|---------|---------|
+| `goal` / `goals` | `goal` | Replaces existing goal |
+| `progress` / `prog` | `progress` | Appends (dedup by session) |
+| `decision` / `decisions` | `decision` | Appends (permanent) |
+| `gotcha` / `gotchas` / `warning` | `gotcha` | Appends (permanent) |
 
-**Gotchas** (warnings, blockers, things to watch):
-- Scan for "watch out", "gotcha", "bug", "issue", "broken", edge cases discovered
-- Write each as: `⚠ <warning, 1 line>`
-- Append new items to `context-gotchas.md`
-
-**Goal** (only update if goal clearly changed this session):
-- If the goal shifted, REPLACE `context-goals.md` with new goal (max 3 bullet points)
-- If goal is unchanged, leave the file as-is
-
-### Step 3 — If called with arguments: MANUAL mode
-
-Map argument to file and write exactly what was provided — no extraction needed:
-
-| Argument | File | Mode |
-|----------|------|------|
-| `goal` / `goals` | `context-goals.md` | replace |
-| `progress` / `prog` | `context-progress.md` | append |
-| `decision` / `decisions` | `context-decisions.md` | append |
-| `gotcha` / `gotchas` / `warning` | `context-gotchas.md` | append |
-
-### Step 4 — Confirm
-
-Print a summary of what was written:
+### Step 3 — Confirm
 
 ```
 Updated context for **<name>**:
-  context-progress.md  → +N items
-  context-decisions.md → +N items
-  context-gotchas.md   → +N items
-  context-goals.md     → unchanged / replaced
+  TYPE → "<content added>"
+  (exportContextMarkdown called — context-summary.md regenerated)
 ```
 
 ## Rules
 
-- Never delete existing entries in progress/decisions/gotchas — append only
-- goals.md is the ONLY file that gets replaced
-- Keep each line under 100 chars
-- Do NOT ask the user questions — extract and write autonomously
-- If nothing new to write, say "Nothing new to add — context is up to date"
+- Never write directly to `context-*.md` files — always use `addItem()` via the DB
+- `decision` and `gotcha` entries are permanent — they are never auto-trimmed
+- `progress` entries are trimmed to last 20 by the `Cleanup` hook at session end
+- `goal` replaces the existing goal (only one goal row per project)
+- Do NOT ask the user questions — write what was provided immediately

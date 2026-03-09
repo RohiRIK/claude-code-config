@@ -2,105 +2,66 @@
 
 ## Overview
 
-Claude maintains per-project context files so work is never lost across sessions or compactions.
-Files live at: `~/.claude/projects/<name>/` where name comes from the registry (run `/register-project` to see yours).
+Per-project context lives in `~/.claude/memory/ltm.db` (SQLite). Hooks manage it automatically.
+Project names come from `~/.claude/projects/registry.json` — run `/register-project` to see yours.
 
-Example: working in `/Users/roh/projects/myapp` → name is `myapp` (or whatever the registry has)
+**Claude does NOT manually write context files.** Hooks handle all reads and writes.
 
-## The 4 Context Files (YOU maintain these)
+## The 4 Context Types
 
-| File | Contains | When to update |
-|------|----------|---------------|
-| `context-goals.md` | Current goal (1-3 lines max) | When goal is set or changes |
-| `context-decisions.md` | Architectural/key decisions | Append after any significant decision |
-| `context-progress.md` | Completed + in-progress tasks | Append `✓ item` after each task done |
-| `context-gotchas.md` | Warnings, blockers, pitfalls | Append whenever you find a gotcha |
+| Type | Purpose | Managed by |
+|------|---------|-----------|
+| `goal` | Current objective (1-3 lines) | `/init-context` to seed; auto-replaced on change |
+| `decision` | Architectural / key choices | Permanent — never trimmed |
+| `progress` | Session log — what was done | `UpdateContext` hook at session end; trimmed to last 20 |
+| `gotcha` | Warnings, pitfalls, blockers | Permanent — never trimmed |
 
-## CRITICAL: Write Progress After Every Task
+## What Happens at Session Start
 
-After completing ANY task (fix, feature, refactor, decision), write to the context file:
+The `SessionStart` hook:
+1. Resolves project from `registry.json`
+2. Regenerates `context-summary.md` from DB
+3. Injects up to 60 lines of context into your session
+4. If DB has LTM memories: also injects importance-5 globals + top-15 project memories
+
+You'll see `## Restored Project Context` at session start when this fires. Acknowledge it briefly and confirm you're ready to continue.
+
+## LTM Commands (store and search learned insights)
+
+| Command | When to use |
+|---------|------------|
+| `/learn` | After discovering a non-trivial pattern, gotcha, or decision |
+| `/recall [query]` | Before starting work on a topic — surface past decisions |
+| `/forget <id>` | When a memory is wrong or stale |
+| `/relate <src> <tgt> <type>` | Link two related memories |
+
+Use `/recall` before tackling any non-trivial problem to check if there's prior knowledge.
+
+## What PreCompact Does
+
+When compaction fires, `PreCompact` hook:
+1. Reads DB for all 4 context types for this project
+2. Writes `context-summary.md` (max ~60 lines) as a human-readable fallback
+3. This file is injected at the next `SessionStart`
+
+You do not manage `context-summary.md` — the hook overwrites it each compaction.
+
+## Promoting Patterns to Durable LTM
+
+Gotchas and decisions in `context_items` survive until the project is stale (14 days inactive).
+For lessons that must persist across all projects permanently, use `/learn` with `importance=5`:
 
 ```
-~/.claude/projects/<name>/context-progress.md  → ✓ <what was done, 1 line>
+/learn "⚠ Supabase RLS must be enabled before production" --category gotcha --importance 5
 ```
 
-The UpdateContext hook (Stop hook) also writes progress at session end from the transcript — treat that as a fallback, not a replacement. Write manually after significant tasks so context survives mid-session compaction. Examples:
-- `✓ Fixed duplicate append bug in UpdateContext hook`
-- `✓ Added session_id dedup to context-progress entries`
-- `✓ Rewrote README with full workflow diagram`
+These appear in the `memories` table and inject into every session regardless of project.
 
-If you just completed something and haven't written it — write it NOW before continuing.
+## Rules
 
-## Rules (MANDATORY)
-
-### On session start
-- If context was injected (you'll see "Restored Project Context"), acknowledge it briefly
-- Say what was in progress and confirm you're ready to continue
-
-### After completing any significant task
-Update the relevant file immediately using the Write or Edit tool:
-```
-~/.claude/projects/<name>/context-progress.md  → append: ✓ <what was done>
-~/.claude/projects/<name>/context-decisions.md → append: - <decision made and why>
-~/.claude/projects/<name>/context-gotchas.md   → append: ⚠ <warning or blocker>
-~/.claude/projects/<name>/context-goals.md     → rewrite when goal changes
-```
-
-### When context window is getting large (Option A)
-Proactively update all 4 files before continuing with heavy work:
-- Ensure context-goals.md reflects current state
-- Flush any pending progress items to context-progress.md
-- Write any decisions made so far to context-decisions.md
-- Do this BEFORE context compaction hits, not after
-
-### File format rules
-- Bullet points only, no prose
-- Each line max 100 chars
-- `context-goals.md` max 5 lines
-- `context-gotchas.md` and `context-decisions.md` are permanent — never delete entries
-- `context-progress.md` will be auto-trimmed to last 20 items by the Cleanup hook
-
-## What PreCompact does (Option B)
-When compaction fires, the PreCompact hook automatically:
-1. Reads all 4 files
-2. Assembles `context-summary.md` (max 60 lines)
-3. This summary is what gets injected at the next SessionStart
-
-You do not need to manage `context-summary.md` — the hook handles it.
-
-## Example context-progress.md
-```
-✓ Set up Next.js project with TypeScript
-✓ Configured Supabase auth
-✓ Built login/signup pages
-→ Working on: JWT refresh token logic
-```
-
-## Example context-decisions.md
-```
-- Using Supabase for auth (not NextAuth) — simpler for this use case
-- JWT: 15min access / 7 day refresh tokens
-- Store refresh token in httpOnly cookie, not localStorage
-```
-
-## Example context-gotchas.md
-```
-⚠ Must invalidate refresh tokens on password change
-⚠ Supabase RLS must be enabled before going to production
-⚠ Next.js middleware runs on edge — no Node.js APIs
-```
-
-## Promoting Learned Patterns to Durable Gotchas
-
-`skills/Learned/` files are ephemeral — the rolling summary trims old sessions.
-If `/learn` or `EvaluateSession` surfaces a lesson that should persist permanently,
-promote it manually:
-
-1. Append to `~/.claude/projects/<name>/context-gotchas.md`:
-   `⚠ <lesson learned, 1 line>`
-2. Gotchas are NEVER trimmed — they survive every compaction
-
-Examples of what to promote:
-- A bug pattern that bit you twice
-- A library quirk or env constraint
-- A decision reversal and why
+- Never manually write to `context-goals.md`, `context-decisions.md`, `context-progress.md`, or `context-gotchas.md`
+- Never manually edit `context-summary.md` — it is auto-generated
+- Use `/learn` to persist important insights to global LTM
+- Use `/recall` before starting non-trivial tasks
+- Use `/init-context` to seed a new project goal (not to create .md files)
+- If context wasn't injected at session start, run `/check-context` to diagnose

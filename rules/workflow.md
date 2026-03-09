@@ -29,6 +29,23 @@ only summaries — NOT raw output.
 - Commands where raw output IS needed (e.g., `cat package.json`, `git diff HEAD~1`)
 - Interactive/TTY commands
 
+## Maintaining context-mode
+
+The MCP server runs from a **pre-built bundle** (`server.bundle.mjs`), NOT from source.
+After editing any file in `~/.claude/plugins/marketplaces/claude-context-mode/src/`:
+
+```bash
+cd ~/.claude/plugins/marketplaces/claude-context-mode
+bunx esbuild src/server.ts --bundle --platform=node --target=node18 --format=esm \
+  --outfile=server.bundle.mjs \
+  --external:better-sqlite3 --external:turndown --external:turndown-plugin-gfm \
+  --external:@mixmark-io/domino --external:zod --external:@modelcontextprotocol/sdk \
+  --minify
+pkill -f "server.bundle.mjs"   # Claude Code auto-restarts it on next tool use
+```
+
+Then restart Claude Code (or wait for auto-reconnect) to pick up the new bundle.
+
 ## Diagnostics
 - `/context-mode:stats` — token savings breakdown per tool
 - `/context-mode:doctor` — runtime health check, confirms tool registration

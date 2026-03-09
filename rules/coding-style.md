@@ -1,24 +1,34 @@
 # Coding Style
 
-## Immutability (CRITICAL)
-ALWAYS create new objects, NEVER mutate existing ones. Use spread (`{...obj, key: val}`).
+## Universal Rules (Always Apply)
 
-## File Organization
-- Many small files > few large files
-- 200-400 lines typical, 800 max
-- High cohesion, low coupling
-- Organize by feature/domain, not by type
+**Immutability (CRITICAL):** Create new objects, never mutate. Use spread (`{...obj, key: val}`).
 
-## Error Handling
-ALWAYS wrap async operations in try/catch with meaningful error messages.
+**Error Handling:** Wrap async operations in try/catch with actionable error messages.
 
-## Input Validation
-ALWAYS validate user input at system boundaries using zod.
+**Input Validation:** Validate at system boundaries using Zod (TS), Pydantic (Python), or typed params (PS).
+
+**Library Docs (context7):** Always prepend `use context7` before writing code against any external library. Never assume API shapes from training data — library APIs change. context7 output is authoritative.
+
+**File Size:** 200-400 lines typical, 800 max. Organize by feature/domain.
+
+## Language Standards
+
+For detailed coding patterns, load the **CodingStandards** skill:
+
+- **TypeScript** → `CodingStandards/TypeScript.md`
+- **Python** → `CodingStandards/Python.md`
+- **PowerShell** → `CodingStandards/PowerShell.md`
+- **Bash** → `CodingStandards/Bash.md`
 
 ## Code Quality Checklist
+
 Before marking work complete:
 - [ ] Readable, well-named
 - [ ] Functions < 50 lines, files < 800 lines
 - [ ] No deep nesting (> 4 levels)
-- [ ] Proper error handling
-- [ ] No console.log, no hardcoded values, no mutation
+- [ ] Proper error handling, no hardcoded values, no mutation
+- [ ] No `any` types or unchecked casts
+- [ ] `context7` used for any external library APIs
+- [ ] Input validated at system boundaries
+- [ ] Exported functions have explicit return types

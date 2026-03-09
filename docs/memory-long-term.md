@@ -1,139 +1,191 @@
-# Layer 3: Long-Term Memory
+# Long-Term Memory (Layer 3)
 
-Two loops: session context (survives /compact and restarts) and the learning loop (extracts patterns across sessions).
+> SQLite-backed LTM at `~/.claude/memory/ltm.db`. Hooks manage reads/writes automatically.
+> Last updated: 2026-03-09
+
+---
+
+## Overview
+
+Layer 3 has two sub-systems that work together:
+
+```
+  ┌─────────────────────────────────────────────────────┐
+  │               LONG-TERM MEMORY (Layer 3)            │
+  │                                                     │
+  │  ┌──────────────────┐   ┌──────────────────────┐   │
+  │  │  SESSION CONTEXT │   │   LEARNING LOOP      │   │
+  │  │                  │   │                      │   │
+  │  │  per-project     │   │  global memories     │   │
+  │  │  goal / decision │   │  patterns / gotchas  │   │
+  │  │  progress/gotcha │   │  preferences         │   │
+  │  └────────┬─────────┘   └──────────┬───────────┘   │
+  │           │                        │               │
+  │           ▼                        ▼               │
+  │     context_items             memories             │
+  │     (project-scoped)          (global + scoped)    │
+  │           │                        │               │
+  │           └───────────┬────────────┘               │
+  │                       ▼                            │
+  │              ltm.db  (SQLite)                      │
+  │                       │                            │
+  │          ┌────────────┴────────────┐               │
+  │          ▼                         ▼               │
+  │   SessionStart hook          Graph UI :7332        │
+  │   (injects context)          (visualize + explore) │
+  └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## SQLite Schema
+
+| Table | Purpose |
+|-------|---------|
+| `memories` | Global learned insights with importance/confidence/tags |
+| `context_items` | Per-project goals, decisions, progress, gotchas |
+| `memory_relations` | Links between memories (supports, contradicts, etc.) |
+| `tags` + `memory_tags` | Tag taxonomy for memories |
+| `memories_fts` | FTS5 index for full-text search |
+| `projects` | Registry of known project names |
 
 ---
 
 ## Session Context Loop
 
 ```
-╔══════════════════════════════════════════════════════════════════════╗
-║  SESSION CONTEXT LOOP  (per session / compaction)                    ║
-╠══════════════════════════════════════════════════════════════════════╣
-║                                                                      ║
-║   ┌──────────────────────────────────────────────────────────────┐   ║
-║   │  Session open                                                │   ║
-║   │    [SessionStart] reads registry.json                        │   ║
-║   │    → injects context-summary.md into Claude's context        │   ║
-║   │    → "Restored Project Context"                              │   ║
-║   │         ↓                                                    │   ║
-║   │  Work … write context-progress.md after each task            │   ║
-║   │         ↓                                                    │   ║
-║   │  /compact fires                                              │   ║
-║   │    [PreCompact] reads 4 context files                        │   ║
-║   │    → assembles context-summary.md (60 lines max)             │   ║
-║   │         ↓                                                    │   ║
-║   │  Context window cleared ─────────────────────────────────→   │   ║
-║   └──────────────────────────────────────────────────────────────┘   ║
-║                                                                      ║
-╚══════════════════════════════════════════════════════════════════════╝
+  Session starts
+       │
+       ▼
+  SessionStart hook
+  ├─ resolves project from registry.json
+  ├─ regenerates context-summary.md from DB
+  └─ injects up to 60 lines into session
+       │
+       ▼
+  You work…
+       │
+       ▼
+  /update-context (mid-session)   ← explicit adds
+  UpdateContext hook (session end) ← auto-extracted
+       │
+       ▼
+  PreCompact hook
+  ├─ writes context-summary.md fallback
+  └─ DB survives compaction intact
 ```
+
+### The 4 Context Types
+
+| Type | Purpose | Trimmed? |
+|------|---------|---------|
+| `goal` | Current objective (1-3 lines) | Replaced on change |
+| `decision` | Architectural choices | Never — permanent |
+| `progress` | Session log — what was done | Last 20 kept |
+| `gotcha` | Warnings, blockers, pitfalls | Never — permanent |
 
 ---
 
 ## Learning Loop
 
 ```
-╔══════════════════════════════════════════════════════════════════════╗
-║  LEARNING LOOP  (per session end)                                    ║
-╠══════════════════════════════════════════════════════════════════════╣
-║                                                                      ║
-║    Session ends                                                      ║
-║      [EvaluateSession] reads transcript                              ║
-║        → skills/Learned/patterns/YYYY-MM-DD.md                       ║
-║        → skills/Learned/summary.md  (rolling 50-line log)            ║
-║        → [UpdateContext] appends to context-progress.md              ║
-║        → [Cleanup] trims context-progress.md to last 20 items        ║
-║              ↓                                                       ║
-║    /learn  → Learned skill retrieves patterns → apply to work        ║
-║              ↓                                                       ║
-║    rules/learned-summary.md  (always loaded into every session)      ║
-║                                                                      ║
-╚══════════════════════════════════════════════════════════════════════╝
+  Discover insight
+       │
+       ▼
+  /learn "content" --category pattern --importance 4
+       │
+       ▼
+  memories table (ltm.db)
+  ├─ dedup_key prevents duplicates
+  ├─ confirm_count increments on re-discovery
+  └─ importance 5 = injects into every session
+       │
+       ▼
+  /recall [query]        ← FTS5 search before starting work
+  /relate <src> <tgt>    ← link related memories
+  /forget <id>           ← remove stale memory
 ```
 
 ---
 
-## The 4 Context Files
+## LTM Graph Visualizer
 
-Located at `~/.claude/projects/<name>/` (friendly name from registry — run `/register-project` to see yours).
+**Start:** `/ltm-server` · **URL:** http://localhost:7332 · **API:** http://localhost:7331
 
-| File | Contains | Rules |
-|------|----------|-------|
-| `context-goals.md` | Current goal | Max 5 lines; rewrite when goal changes |
-| `context-decisions.md` | Architectural decisions | Permanent — never delete entries |
-| `context-progress.md` | ✓ done / → in progress | Auto-trimmed to last 20 items by Cleanup hook |
-| `context-gotchas.md` | Warnings and blockers | Permanent — never delete entries |
-| `context-summary.md` | Auto-assembled by PreCompact | Do not edit manually |
+![LTM Graph — main view](../memory/graph-app/e2e/screenshots/1-initial-load.png)
 
-**Registry** at `~/.claude/projects/registry.json`: maps absolute paths → friendly names. Supports prefix matching so subdirs inherit parent project context.
+### Features
 
----
+**Tag filter panel** — click tag chips to dim non-matching nodes to 15% opacity.
 
-## Context Commands
+**⌘K Spotlight search** — FTS5-powered modal; click result → graph zooms to node + opens sidebar.
 
-| Command | What it does |
-|---------|-------------|
-| `/init-context` | Create the 4 context files for a new project |
-| `/check-context` | Verify Claude has the right context at session start — reads files and cross-checks vs injected context |
-| `/update-context` | Auto-extract progress/decisions/gotchas from the current session transcript |
-| `/register-project` | Register or rename a project path in `registry.json` |
+![Spotlight search](../memory/graph-app/e2e/screenshots/10-spotlight.png)
 
----
+**Project drill-down** — click any project node → dedicated page with radial MiniGraph, context sections, memory cards.
 
-## Hooks (long-term memory layer)
+![Project drill-down](../memory/graph-app/e2e/screenshots/11-project-page.png)
 
-| Hook | Trigger | What It Does |
-|------|---------|-------------|
-| `SessionStart` | Session open | Reads registry, injects context-summary.md |
-| `PreCompact` | Before compaction | Reads 4 files → assembles context-summary.md |
-| `EvaluateSession` | Session end | Extracts patterns → skills/Learned/ |
-| `UpdateContext` | Session end | Appends progress to context-progress.md |
-| `Cleanup` | Session end | Trims context-progress.md to last 20 items |
+### Architecture
 
----
+| Component | Location | Port |
+|-----------|----------|------|
+| API server | `memory/server.ts` (Bun.serve) | :7331 |
+| Graph UI | `memory/graph-app/` (Next.js 15) | :7332 |
+| WebSocket live-reload | Built into server.ts | :7331 |
 
-## Skills (learning layer)
+### API Routes
 
-Located in `~/.claude/skills/`. Invoked via the Skill tool when relevant.
-
-| Skill | Purpose |
+| Route | Returns |
 |-------|---------|
-| `Learned` | Retrieval system for session patterns. `/learn` extracts lessons; `EvaluateSession` writes daily pattern files |
-| `ContinuousLearning` | Orchestrates the learning system |
-| `StrategicCompact` | Guides when/how to compact |
-| `TddWorkflow` | TDD orchestration |
-| `SecurityReview` | Security audit checklists |
-| `Prompting` | Prompt engineering templates |
-| `Goose` | Parallel agent orchestration |
-| `Art` | Diagrams, visuals, mermaid |
-| `BackendDesign` | API design, DB patterns |
-| `FrontendDesign` | React/Next.js patterns |
-| `docker-patterns` | Docker + Compose patterns |
-| `CreateSkill` | Create new skills |
+| `GET /api/graph` | All nodes + links for D3 |
+| `GET /api/stats` | Counts by category/project |
+| `GET /api/tags` | Tags with memory counts |
+| `GET /api/memory/:id` | Memory detail + relations |
+| `GET /api/search?q=` | FTS5 search results |
+| `GET /api/context/:project` | Context items grouped by type |
+| `GET /api/project/:name` | Full project detail (memories + context + relations) |
+| `POST /api/reload` | Trigger WS broadcast |
 
 ---
 
-## Promoting Learned Patterns to Permanent Gotchas
+## Commands
 
-`skills/Learned/` files are ephemeral — the rolling summary trims old sessions.
-If `/learn` or `EvaluateSession` surfaces a lesson that should persist permanently:
-
-1. Append to `~/.claude/projects/<name>/context-gotchas.md`:
-   `⚠ <lesson learned, 1 line>`
-2. Gotchas are **never trimmed** — they survive every compaction
-
-Examples of what to promote:
-- A bug pattern that bit you twice
-- A library quirk or environment constraint
-- A decision reversal and why
+| Command | When to use |
+|---------|------------|
+| `/init-context` | New project — seed goal into DB |
+| `/update-context goal "…"` | Change current objective |
+| `/update-context decision "…"` | Save architectural choice |
+| `/update-context gotcha "…"` | Save a warning/pitfall |
+| `/update-context progress "…"` | Mid-session explicit progress |
+| `/check-context` | Verify Claude has right context |
+| `/learn "…"` | Store reusable insight in LTM |
+| `/recall [query]` | Search LTM before starting work |
+| `/forget <id>` | Remove stale memory |
+| `/relate <src> <tgt> <type>` | Link two memories |
+| `/ltm-server` | Start/stop/status graph UI |
 
 ---
 
-## Design Decision: Hooks are TypeScript
+## Hooks
 
-Inspired by [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code), all hooks are written in TypeScript and run via `bun`. This gives:
-- Type safety and IDE support
-- Shared utility libs (`hooks/lib/hookUtils.ts`, `hooks/lib/resolveProject.ts`)
-- Testable, maintainable logic without heredoc nightmares
-- Consistent stdin/stdout parsing across all hooks
+| Hook | Trigger | Action |
+|------|---------|--------|
+| `SessionStart` | Session opens | Injects 60 lines of context + LTM memories |
+| `UpdateContext` | Session ends (Stop) | Extracts progress/decisions/gotchas from session |
+| `EvaluateSession` | Session ends | Runs pattern extraction; saves to `memories` |
+| `PreCompact` | Before compaction | Writes `context-summary.md` fallback |
+| `Cleanup` | Session ends | Trims progress to last 20; removes stale items |
+| `NotifyLtmServer` | After any hook write | Broadcasts WS refresh to graph UI |
+
+---
+
+## Promoting to Global LTM
+
+Context items survive 14 days of inactivity per project. For lessons that must persist globally:
+
+```bash
+/learn "⚠ Always enable Supabase RLS before production" --category gotcha --importance 5
+```
+
+`importance=5` memories inject into **every** session regardless of project.

@@ -1,64 +1,33 @@
 ---
 name: ContinuousLearning
-description: Manages memory persistence, session context, and automated learning from past interactions.
-version: 1.0.0
+description: Manages SQLite long-term memory, session context, and learning. USE WHEN storing
+  insights, searching memories, managing per-project context, or understanding hook behavior.
+version: 2.1.0
 ---
 
-# Continuous Learning
+# ContinuousLearning
 
-## Description
-This skill acts as the "Hippocampus" of the system. It handles:
-1.  **Memory Persistence**: Saving and loading session context.
-2.  **Strategic Compaction**: Suggesting when to clear context to maintain performance.
-3.  **Pattern Extraction**: Analyzing completed sessions to learn from mistakes and successes.
-
-## Components
-- **Tools**: TypeScript-based hooks that run at specific lifecycle events (Start, Stop, PreToolUse).
-- **Context**: Definitions of memory strategies.
-
-## Hooks Integration
-This skill provides the executable logic for the following system hooks:
-- `SessionStart` -> `hooks/SessionStart/SessionStart.ts`
-- `SessionEnd` -> `hooks/SessionEnd/SessionEnd.ts` & `hooks/EvaluateSession/EvaluateSession.ts`
-- `PreCompact` -> `hooks/PreCompact/PreCompact.ts`
-- `PreToolUse` -> `hooks/SuggestCompact/SuggestCompact.ts`
-
-## Tools & Manual Usage
-While these tools are designed to run automatically via `hooks.json`, you can invoke them manually for specific tasks:
-
-### 1. Force Session Evaluation
-**Tool:** `hooks/EvaluateSession/EvaluateSession.ts`
-**Usage:** Analyzes the current session logs to extract patterns.
-```bash
-./hooks/EvaluateSession/EvaluateSession.ts
-```
-
-### 2. Manual Compaction Suggestion
-**Tool:** `hooks/SuggestCompact/SuggestCompact.ts`
-**Usage:** Checks current tool usage count and returns status.
-```bash
-./hooks/SuggestCompact/SuggestCompact.ts
-```
-
-### 3. Check Session Status
-**Tool:** `hooks/SessionStart/SessionStart.ts`
-**Usage:** Displays the current session initialization status (logging only).
-```bash
-./hooks/SessionStart/SessionStart.ts
-```
-
-### 4. Archive Current Session
-**Tool:** `hooks/SessionEnd/SessionEnd.ts`
-**Usage:** Forces a write to the daily session log immediately.
-```bash
-./hooks/SessionEnd/SessionEnd.ts
-```
+SQLite-backed memory system at `~/.claude/memory/ltm.db`. Two tables: `memories` (global learned insights) and `context_items` (per-project goals/decisions/progress/gotchas).
 
 ## Workflow Routing
 
-| Workflow | Description | Trigger |
-| :--- | :--- | :--- |
-| **CaptureLesson** | Log a new lesson or improvement. | `Learn this`, `Save lesson`, `Remember this` |
+| Trigger | Action |
+|---------|--------|
+| "Learn this", "Remember this", "Save this pattern" | Run `/learn` |
+| "What do I know about X?", "Any past decisions on Y?" | Run `/recall` |
+| "Forget about X", "That memory is wrong" | Run `/forget` |
+| "X supports Y", "X contradicts Y" | Run `/relate` |
 
-Run a workflow by name:
-`Run the CaptureLesson workflow`
+## Quick Reference
+
+- **`/learn`** — Store an insight in `memories` table. Dedup-safe (reinforces on repeat).
+- **`/recall [query]`** — FTS5 search with tag/category/project filters.
+- **`/forget <id>`** — Delete by ID. CASCADE removes relations. Irreversible.
+- **`/relate <src> <tgt> <type>`** — Link memories. Types: `supports|contradicts|refines|depends_on|related_to|supersedes`.
+- **Hooks manage context automatically** — no manual writes to `context-*.md` files needed.
+
+## Full Documentation
+
+- Memory commands: `SkillSearch('continuouslearning memory reference')` → `MemoryReference.md`
+- Hook integration: `SkillSearch('continuouslearning hook integration')` → `HookIntegration.md`
+- Context item types: `SkillSearch('continuouslearning context items')` → `ContextItems.md`

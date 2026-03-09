@@ -46,6 +46,15 @@
             "command": "bun /Users/rohirikman/.claude/hooks/SuggestCompact/SuggestCompact.ts"
           }
         ]
+      },
+      {
+        "matcher": "Bash|Read|Grep|WebFetch|Task|mcp__plugin_context-mode_context-mode__execute|mcp__plugin_context-mode_context-mode__execute_file|mcp__plugin_context-mode_context-mode__batch_execute",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/0.9.22/hooks/pretooluse.mjs"
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -79,9 +88,36 @@
             "command": "bun /Users/rohirikman/.claude/hooks/SessionStart/SessionStart.ts"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# context-mode version check on session start\nPLUGIN_DIR=\"/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode\"\nINSTALLED=$(ls \"$PLUGIN_DIR\" 2>/dev/null | sort -V | tail -1)\nLATEST=$(npm show context-mode version 2>/dev/null || echo \"unknown\")\nif [ \"$INSTALLED\" != \"$LATEST\" ] && [ \"$LATEST\" != \"unknown\" ]; then\n  echo \"[context-mode] ⚠ Outdated: installed v$INSTALLED, latest v$LATEST — run /context-mode:ctx-upgrade\" >&2\nfi\n# Check PreToolUse hook points to correct version\nHOOK_PATH=\"$PLUGIN_DIR/$INSTALLED/hooks/pretooluse.mjs\"\nif [ ! -f \"$HOOK_PATH\" ]; then\n  echo \"[context-mode] ⚠ Hook script missing at $HOOK_PATH — run /context-mode:ctx-upgrade\" >&2\nfi\nexit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/0.9.17/hooks/sessionstart.mjs"
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "tool == \"Edit\" || tool == \"Write\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun /Users/rohirikman/.claude/hooks/NotifyLtmServer/NotifyLtmServer.ts"
+          }
+        ]
+      },
       {
         "matcher": "tool == \"Bash\"",
         "hooks": [
@@ -171,7 +207,6 @@
     "code-simplifier@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "mgrep@Mixedbread-Grep": false,
     "context-mode@claude-context-mode": true
   },
   "mcpServers": {

@@ -91,4 +91,4 @@ Better than WebFetch for pages > ~5 KB. Converts HTML to markdown, indexes it, r
 - `/context-mode:stats` — token savings breakdown per tool call
 - `/context-mode:doctor` — runtime health check, confirms tool registration
 
-you can refer to the the [docs](https://github.com/mksglu/claude-context-mode) for more information
+you can refer to the the [docs](https://github.com/mksglu/claude-context-mode) for more information.

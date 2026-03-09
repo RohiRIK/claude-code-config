@@ -66,7 +66,7 @@ export function resolveProject(cwd: string): ProjectResolution {
   const sortedPaths = Object.keys(registry).sort((a, b) => b.length - a.length);
   for (const path of sortedPaths) {
     if (cwd.startsWith(path + "/") || cwd.startsWith(path + sep)) {
-      return makeResult(registry[path], path, false);
+      return makeResult(registry[path]!, path, false);
     }
   }
 

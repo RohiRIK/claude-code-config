@@ -28,7 +28,7 @@ async function findTranscript(sessionId: string | undefined): Promise<{ path: st
     // Search backwards
     for (let i = historyLines.length - 1; i >= 0; i--) {
       try {
-        const line = JSON.parse(historyLines[i]);
+        const line = JSON.parse(historyLines[i] ?? "");
         if (line.sessionId === sessionId) {
           historyEntry = line;
           break;
@@ -38,7 +38,7 @@ async function findTranscript(sessionId: string | undefined): Promise<{ path: st
   } else {
     // Just take the last valid one
     try {
-      historyEntry = JSON.parse(historyLines[historyLines.length - 1]);
+      historyEntry = JSON.parse(historyLines[historyLines.length - 1] ?? "");
     } catch (e) {}
   }
 

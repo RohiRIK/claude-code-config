@@ -66,8 +66,6 @@ Route to the appropriate workflow based on the request.
 - Character design specifications
 - Scene composition rules
 
-**Load from:** `~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/Art/PREFERENCES.md`
-
 ---
 
 
