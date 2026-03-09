@@ -1,5 +1,21 @@
 # Changelog
 
+## [2026-03-09] Phase 2: LTM Evolution — Janitor Agent
+
+- **Janitor sub-agent** with 4 pipeline stages: decay, promote, dedup, supersedes
+- **Memory decay**: unused memories lose confidence over time, auto-archive at threshold
+- **Auto-promote**: decisions/gotchas auto-elevate to global memories
+- **Semantic dedup**: embedding vectors + cosine similarity + LLM merge
+- **Supersedes relations**: merged memories mark originals as superseded
+- **Pluggable providers**: Gemini, OpenRouter, Ollama (embedding + LLM)
+- **Settings UI** (`/settings`): provider config, decay tuning, dedup threshold
+- **Pending UI** (`/pending`): review/approve/reject janitor suggestions
+- **Schema migration**: shared-db.ts runs idempotent ALTERs before schema.sql
+- **Shared DB singleton**: prevents dual WAL connections across all modules
+- 20 files changed, +2720/-95 lines
+
+---
+
 ## [2026-03-09] LTM Graph UX Overhaul
 
 ### Graph Layout
