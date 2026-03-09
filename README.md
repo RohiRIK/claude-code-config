@@ -40,20 +40,6 @@
 
 ---
 
-## LTM Graph Visualizer
-
-Obsidian-style memory graph at **http://localhost:7332** (API on :7331).
-
-![LTM Graph — main view](memory/graph-app/e2e/screenshots/1-initial-load.png)
-
-| Feature | How |
-|---------|-----|
-| Tag filter panel | Click tag chips → dims non-matching nodes to 15% opacity |
-| ⌘K Spotlight search | FTS5-powered; click result → graph zooms to node + opens sidebar |
-| Project drill-down | Click project node → `/project/[name]` with radial MiniGraph |
-
-Start it: `/ltm-server` · Stop it: `/ltm-server stop`
-
 ---
 
 ## Quick-Reference Commands
