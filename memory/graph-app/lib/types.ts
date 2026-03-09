@@ -86,3 +86,11 @@ export interface SearchResult {
   importance: number;
   project_scope: string | null;
 }
+
+export interface ProjectDetail {
+  name: string;
+  context: Record<string, string[]>;
+  memories: MemoryNode[];
+  context_items: ContextNode[];
+  relations: GraphLink[];
+}

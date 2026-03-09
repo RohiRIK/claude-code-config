@@ -1,4 +1,4 @@
-import type { GraphData, MemoryDetail, SearchResult, Stats, Tag } from "./types";
+import type { GraphData, MemoryDetail, ProjectDetail, SearchResult, Stats, Tag } from "./types";
 
 const BASE = "/api";
 
@@ -15,5 +15,6 @@ export const api = {
   memory: (id: number): Promise<MemoryDetail> => get(`/memory/${id}`),
   search: (q: string): Promise<SearchResult[]> => get(`/search?q=${encodeURIComponent(q)}`),
   context: (project: string): Promise<Record<string, string[]>> => get(`/context/${encodeURIComponent(project)}`),
+  project: (name: string): Promise<ProjectDetail> => get(`/project/${encodeURIComponent(name)}`),
   reload: (): Promise<void> => fetch(`${BASE}/reload`, { method: "POST" }).then(() => undefined),
 };

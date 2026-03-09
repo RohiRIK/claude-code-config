@@ -1,34 +1,19 @@
 "use client";
 import * as d3 from "d3";
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { nodeColor, nodeRadius } from "@/lib/nodeColors";
 import type { GraphData, GraphNode } from "@/lib/types";
+
+export interface GraphHandle {
+  zoomToNode: (id: number) => void;
+}
 
 interface Props {
   data: GraphData;
   activeProject: string | null;
+  dimmedIds?: Set<number>;
   onNodeClick: (node: GraphNode) => void;
-}
-
-const NODE_COLORS: Record<string, string> = {
-  project: "#38bdf8",
-  goal: "#fbbf24",
-  decision: "#fb923c",
-  gotcha: "#f87171",
-  progress: "#60a5fa",
-  preference: "#4ade80",
-  pattern: "#a78bfa",
-  workflow: "#fb923c",
-  constraint: "#facc15",
-};
-
-function nodeColor(n: RawNode): string {
-  return NODE_COLORS[n.category] ?? "#9ca3af";
-}
-
-function nodeRadius(n: RawNode): number {
-  if (n.is_project) return 20;
-  if (n.is_context) return 6;
-  return 7 + (n.importance - 1) * 3.5;
 }
 
 // Flat node shape for D3 — avoids union extension issues
@@ -56,10 +41,30 @@ interface RawLink {
   type: string;
 }
 
-export default function Graph({ data, activeProject, onNodeClick }: Props) {
+const Graph = forwardRef<GraphHandle, Props>(function Graph(
+  { data, activeProject, dimmedIds, onNodeClick },
+  ref
+) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const simNodesRef = useRef<RawNode[]>([]);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const router = useRouter();
 
-  // Main effect: build simulation. Only reruns when data changes, not on activeProject.
+  useImperativeHandle(ref, () => ({
+    zoomToNode(id: number) {
+      const node = simNodesRef.current.find(n => n.id === id);
+      const svgEl = svgRef.current;
+      if (!node || !zoomRef.current || !svgEl) return;
+      const W = svgEl.clientWidth || 900;
+      const H = svgEl.clientHeight || 600;
+      d3.select(svgEl).transition().duration(600).call(
+        zoomRef.current.transform,
+        d3.zoomIdentity.translate(W / 2 - (node.x ?? 0), H / 2 - (node.y ?? 0)).scale(1.5)
+      );
+    },
+  }), []);
+
+  // Main effect: build simulation. Only reruns when data changes.
   useEffect(() => {
     const svgEl = svgRef.current;
     if (!svgEl) return;
@@ -70,11 +75,11 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
     const height = svgEl.clientHeight || 600;
     const g = svg.append("g");
 
-    svg.call(
-      d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.1, 4])
-        .on("zoom", (event) => { g.attr("transform", event.transform.toString()); })
-    );
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 4])
+      .on("zoom", (event) => { g.attr("transform", event.transform.toString()); });
+    zoomRef.current = zoom;
+    svg.call(zoom);
 
     svg.append("defs").append("marker")
       .attr("id", "arrow")
@@ -97,10 +102,10 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
       is_context: "is_context" in n ? true : undefined,
       _original: n,
     }));
+    simNodesRef.current = rawNodes;
 
     const nodeById = new Map(rawNodes.map(n => [n.id, n]));
 
-    // flatMap skips links where either endpoint is missing — no fallback-then-filter pattern
     const rawLinks: RawLink[] = data.links.flatMap(l => {
       const src = nodeById.get(typeof l.source === "number" ? l.source : (l.source as GraphNode).id);
       const tgt = nodeById.get(typeof l.target === "number" ? l.target : (l.target as GraphNode).id);
@@ -111,7 +116,7 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
       .force("link", d3.forceLink<RawNode, RawLink>(rawLinks).id(d => d.id).distance(80))
       .force("charge", d3.forceManyBody<RawNode>().strength(-200))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide<RawNode>().radius(d => nodeRadius(d) + 4));
+      .force("collision", d3.forceCollide<RawNode>().radius(d => nodeRadius(d.importance, d.is_project, d.is_context) + 4));
 
     const link = g.selectAll<SVGLineElement, RawLink>("line")
       .data(rawLinks)
@@ -130,7 +135,13 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
       .join("g")
       .attr("class", "node")
       .style("cursor", "pointer")
-      .on("click", (_event, d) => onNodeClick(d._original))
+      .on("click", (_event, d) => {
+        if (d.is_project) {
+          router.push(`/project/${encodeURIComponent(d.label)}`);
+        } else {
+          onNodeClick(d._original);
+        }
+      })
       .call(
         d3.drag<SVGGElement, RawNode>()
           .on("start", (event, d) => {
@@ -146,8 +157,8 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
 
     node.append("circle")
       .attr("class", "node-circle")
-      .attr("r", d => nodeRadius(d))
-      .attr("fill", d => nodeColor(d))
+      .attr("r", d => nodeRadius(d.importance, d.is_project, d.is_context))
+      .attr("fill", d => nodeColor(d.category))
       .attr("stroke", "#1f2937")
       .attr("stroke-width", 1);
 
@@ -172,11 +183,10 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
     });
 
     return () => { simulation.stop(); };
-  // onNodeClick is setSelected (stable React dispatch) — intentionally omitted
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  // Separate effect: highlight activeProject without rebuilding simulation
+  // Highlight activeProject without rebuilding simulation
   useEffect(() => {
     const svgEl = svgRef.current;
     if (!svgEl) return;
@@ -185,5 +195,15 @@ export default function Graph({ data, activeProject, onNodeClick }: Props) {
       .attr("stroke-width", d => activeProject && d.project_scope === activeProject ? 2.5 : 1);
   }, [activeProject]);
 
+  // Dim nodes not matching active tag filter
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    d3.select(svgEl).selectAll<SVGGElement, RawNode>("g.node")
+      .attr("opacity", d => dimmedIds?.size && dimmedIds.has(d.id) ? 0.15 : 1);
+  }, [dimmedIds]);
+
   return <svg ref={svgRef} className="w-full h-full bg-[#0d1117]" />;
-}
+});
+
+export default Graph;

@@ -32,6 +32,14 @@ function queryDb<T = unknown>(sql: string, params: any[] = []): T[] {
   return db.query<T, any>(sql).all(...params);
 }
 
+function truncate(s: string, len: number): string {
+  return s.length > len ? s.substring(0, len) + "…" : s;
+}
+
+function parseTags(raw: string | null): string[] {
+  return raw ? raw.split(",").filter(Boolean) : [];
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function queryOne<T = unknown>(sql: string, params: any[] = []): T | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,7 +116,7 @@ function getGraphData() {
 
   const ctxNodes = ctxItems.map(c => ({
     id: -(1000 + c.id),
-    label: c.content.length > 55 ? c.content.substring(0, 55) + "…" : c.content,
+    label: truncate(c.content, 55),
     content: c.content,
     category: c.type,          // "goal" | "decision" | "gotcha" | "progress"
     importance: c.type === "goal" ? 3 : 2,
@@ -139,7 +147,7 @@ function getGraphData() {
       ...ctxNodes,
       ...memories.map(m => ({
         id: m.id,
-        label: m.content.length > 60 ? m.content.substring(0, 60) + "…" : m.content,
+        label: truncate(m.content, 60),
         content: m.content,
         category: m.category,
         importance: m.importance,
@@ -150,7 +158,7 @@ function getGraphData() {
         dedup_key: m.dedup_key,
         last_confirmed_at: m.last_confirmed_at,
         created_at: m.created_at,
-        tags: m.tags ? m.tags.split(",").filter(Boolean) : [],
+        tags: parseTags(m.tags),
       })),
     ],
     links: [...memLinks, ...projectEdges],
@@ -224,6 +232,62 @@ function getMemoryById(id: number) {
   return { ...m, tags, relations };
 }
 
+function getProjectDetail(projectName: string) {
+  const context = getProjectContext(projectName);
+
+  const memories = queryDb<{
+    id: number; content: string; category: string; importance: number;
+    confidence: number; confirm_count: number; source: string | null;
+    dedup_key: string | null; last_confirmed_at: string; created_at: string; tags: string | null;
+  }>(
+    `SELECT m.id, m.content, m.category, m.importance, m.confidence, m.confirm_count,
+            m.source, m.dedup_key, m.last_confirmed_at, m.created_at,
+            GROUP_CONCAT(t.name, ',') as tags
+     FROM memories m
+     LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+     LEFT JOIN tags t ON mt.tag_id = t.id
+     WHERE m.project_scope = ?
+     GROUP BY m.id
+     ORDER BY m.importance DESC, m.id DESC`,
+    [projectName]
+  ).map(m => ({
+    ...m,
+    label: truncate(m.content, 60),
+    project_scope: projectName,
+    tags: parseTags(m.tags),
+  }));
+
+  const ctxRows = queryDb<{ id: number; type: string; content: string; session_id: string | null; permanent: number; created_at: string }>(
+    `SELECT id, type, content, session_id, permanent, created_at FROM context_items WHERE project_name=? ORDER BY type, id DESC`,
+    [projectName]
+  );
+  const context_items = ctxRows.map(c => ({
+    id: -(1000 + c.id),
+    label: truncate(c.content, 55),
+    content: c.content,
+    category: c.type,
+    importance: c.type === "goal" ? 3 : 2,
+    confidence: 1,
+    confirm_count: 0,
+    project_scope: projectName,
+    session_id: c.session_id,
+    permanent: Boolean(c.permanent),
+    created_at: c.created_at,
+    tags: [],
+    is_context: true as const,
+  }));
+
+  const relations = queryDb<{ source: number; target: number; type: string; relation_id: number }>(
+    `SELECT r.id as relation_id, r.source_memory_id as source, r.target_memory_id as target, r.relationship_type as type
+     FROM memory_relations r
+     WHERE r.source_memory_id IN (SELECT id FROM memories WHERE project_scope = ?)
+        OR r.target_memory_id IN (SELECT id FROM memories WHERE project_scope = ?)`,
+    [projectName, projectName]
+  );
+
+  return { name: projectName, context, memories, context_items, relations };
+}
+
 function searchMemories(q: string) {
   // Use FTS5 full-text index for ranked, efficient search
   return queryDb<{ id: number; content: string; category: string; importance: number; project_scope: string | null }>(
@@ -278,6 +342,7 @@ Bun.serve({
       const q = new URL(req.url).searchParams.get("q") ?? "";
       return Response.json(q.length >= 2 ? searchMemories(q) : []);
     },
+    "/api/project/:name": req => Response.json(getProjectDetail(decodeURIComponent(req.params.name))),
     "/api/reload": { POST: () => { broadcast({ type: "refresh" }); return Response.json({ ok: true }); } },
   },
 
