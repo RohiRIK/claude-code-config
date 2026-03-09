@@ -25,6 +25,25 @@ learn({ content, category, importance, project, tags });
 
 ---
 
+## promote() — Promote a context_item to LTM
+
+**When to use:** When a `decision` or `gotcha` context item should be elevated to global long-term memory so it persists across all projects and sessions.
+
+```ts
+import { promote } from "~/.claude/memory/context.js";
+const memId = promote(itemId); // returns new memory id, or null if not promotable
+```
+
+- Only `decision` and `gotcha` types are promotable (returns `null` for `goal`/`progress`)
+- Sets `context_items.memory_id` to the new `memories.id` to track the link
+- `decision` → category `architecture`, importance 3
+- `gotcha` → category `gotcha`, importance 4
+- Dedup-safe: calling `promote()` on the same item twice reinforces the memory rather than duplicating it
+
+**Bulk backfill:** Run `bun ~/.claude/memory/backfill-promote.ts` to promote all existing unpromoted decision/gotcha items.
+
+---
+
 ## /recall — Search Memories
 
 **When to use:** Before starting work on a topic to surface relevant past decisions.

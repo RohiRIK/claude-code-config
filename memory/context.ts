@@ -3,14 +3,14 @@
  * Replaces the 4 per-project Markdown context files.
  * Used by: PreCompact, UpdateContext, Cleanup, SessionStart hooks.
  */
-import { Database } from "bun:sqlite";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { getDb, DB_PATH } from "./shared-db.js";
+import { learn } from "./db.js";
 
+export { DB_PATH };
 const CLAUDE_DIR   = join(homedir(), ".claude");
-export const DB_PATH     = join(CLAUDE_DIR, "memory", "ltm.db");
-const SCHEMA_PATH  = join(CLAUDE_DIR, "memory", "schema.sql");
 const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
 
 export type ContextType = "goal" | "decision" | "progress" | "gotcha";
@@ -22,20 +22,10 @@ export interface ContextItem {
   content: string;
   session_id: string | null;
   permanent: number;
+  memory_id?: number;
   created_at: string;
 }
 
-let _db: Database | null = null;
-
-function getDb(): Database {
-  if (_db) return _db;
-  const dir = join(CLAUDE_DIR, "memory");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  _db = new Database(DB_PATH, { create: true });
-  _db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
-  _db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
-  return _db;
-}
 
 /** Budget-capped section for context-summary.md output. */
 function section(label: string, items: ContextItem[], budget: number): string {
@@ -66,12 +56,14 @@ export function addItem(
   const db = getDb();
 
   if (type === "goal") {
-    db.run(`DELETE FROM context_items WHERE type='goal' AND project_name=?`, [project]);
-    db.run(
-      `INSERT INTO context_items (project_name, type, content, session_id, permanent)
-       VALUES (?, 'goal', ?, ?, 0)`,
-      [project, content, sessionId ?? null]
-    );
+    db.transaction(() => {
+      db.run(`DELETE FROM context_items WHERE type='goal' AND project_name=?`, [project]);
+      db.run(
+        `INSERT INTO context_items (project_name, type, content, session_id, permanent)
+         VALUES (?, 'goal', ?, ?, 0)`,
+        [project, content, sessionId ?? null]
+      );
+    })();
   } else if (type === "decision" || type === "gotcha") {
     db.run(
       `INSERT INTO context_items (project_name, type, content, session_id, permanent)
@@ -154,4 +146,27 @@ export function exportContextMarkdown(project: string): void {
   ].join("");
 
   writeFileSync(join(projectDir, "context-summary.md"), summary);
+}
+
+/**
+ * Promote a decision or gotcha context_item into global LTM memories.
+ * Returns the new memory id, or null if the item is not promotable.
+ */
+export function promote(itemId: number): number | null {
+  const db = getDb();
+  const item = db.query<ContextItem, [number]>(
+    "SELECT * FROM context_items WHERE id = ?"
+  ).get(itemId);
+  if (!item || !["decision", "gotcha"].includes(item.type)) return null;
+  const category = item.type === "decision" ? "architecture" : "gotcha";
+  const importance = item.type === "gotcha" ? 4 : 3;
+  const result = learn({
+    content: item.content,
+    category,
+    importance,
+    project_scope: item.project_name,
+    source: "context_item",
+  });
+  db.prepare("UPDATE context_items SET memory_id = ? WHERE id = ?").run(result.id, itemId);
+  return result.id;
 }

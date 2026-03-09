@@ -48,11 +48,11 @@
         ]
       },
       {
-        "matcher": "Bash|Read|Grep|WebFetch|Task|mcp__plugin_context-mode_context-mode__execute|mcp__plugin_context-mode_context-mode__execute_file|mcp__plugin_context-mode_context-mode__batch_execute",
+        "matcher": "Bash|Read|Grep|WebFetch|Agent|Task|mcp__plugin_context-mode_context-mode__execute|mcp__plugin_context-mode_context-mode__execute_file|mcp__plugin_context-mode_context-mode__batch_execute",
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/0.9.22/hooks/pretooluse.mjs"
+            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/hooks/pretooluse.mjs"
           }
         ]
       }
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/0.9.17/hooks/sessionstart.mjs"
+            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/hooks/sessionstart.mjs"
           }
         ]
       }

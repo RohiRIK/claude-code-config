@@ -16,7 +16,7 @@ import { homedir } from "os";
 
 const CLAUDE_DIR   = join(homedir(), ".claude");
 const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
-const LEARNED_DIR  = join(CLAUDE_DIR, "skills/learned");
+const LEARNED_DIR  = join(CLAUDE_DIR, "skills/Learned");
 
 const { addItem, exportContextMarkdown } = await import("./context.js");
 const { learn, exportMarkdown }          = await import("./db.js");

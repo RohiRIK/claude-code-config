@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { resolveProject, PROJECTS_DIR } from "../lib/resolveProject.js";
@@ -193,6 +193,18 @@ async function main() {
     writeFileSync(patternFile, fileContent);
     // console.error(`[ContinuousLearning] Patterns saved to: ${patternFile}`);
 
+    try {
+      const { learn } = await import(join(CLAUDE_DIR, "memory/db.js"));
+      const { resolveProject } = await import(join(CLAUDE_DIR, "hooks/lib/resolveProject.js"));
+      const { name: projectName } = resolveProject(input.cwd ?? "");
+      for (const msg of errorBlocks.slice(0, 3)) {
+        if (msg.trim().length > 20) {
+          (learn as Function)({ content: msg.trim(), category: "gotcha", importance: 3,
+                  project_scope: projectName, source: "evaluate-session" });
+        }
+      }
+    } catch { /* non-fatal */ }
+
     // Update Summary (deduplicate by sessionId)
     if (!existsSync(SUMMARY_FILE)) {
       writeFileSync(SUMMARY_FILE, "# Learned Patterns Summary\n\nThis file is auto-updated.\n\n---\n\n## Recent Sessions\n\n");
@@ -202,16 +214,13 @@ async function main() {
     const shortId = sessionId ? sessionId.substring(0, 8) : 'unknown';
     if (!summaryContent.includes(shortId)) {
       const newLine = `- **${today}** (${messageCount} msgs): Session ${shortId}... (Errors: ${errorBlocks.length})\n`;
-      appendFileSync(SUMMARY_FILE, newLine);
-
-      // Trim using in-memory content — avoid a second disk read
       const updatedLines = (summaryContent + newLine).split('\n');
-      if (updatedLines.length > MAX_SUMMARY_LINES) {
-        const newSummary = updatedLines.slice(0, SUMMARY_HEADER_LINES)
-          .concat(updatedLines.slice(updatedLines.length - (MAX_SUMMARY_LINES - SUMMARY_HEADER_LINES)))
-          .join('\n');
-        writeFileSync(SUMMARY_FILE, newSummary);
-      }
+      const newSummary = updatedLines.length > MAX_SUMMARY_LINES
+        ? updatedLines.slice(0, SUMMARY_HEADER_LINES)
+            .concat(updatedLines.slice(updatedLines.length - (MAX_SUMMARY_LINES - SUMMARY_HEADER_LINES)))
+            .join('\n')
+        : summaryContent + newLine;
+      writeFileSync(SUMMARY_FILE, newSummary);
     }
 
     // console.error(`[ContinuousLearning] Summary updated: ${SUMMARY_FILE}`);

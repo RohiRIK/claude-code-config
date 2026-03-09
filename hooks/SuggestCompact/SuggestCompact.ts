@@ -12,9 +12,7 @@ const THRESHOLD = parseInt(process.env.COMPACT_THRESHOLD || "50", 10);
 
 async function main() {
   // Pass through input to stdout
-  const inputChunks = [];
   for await (const chunk of Bun.stdin.stream()) {
-    inputChunks.push(chunk);
     process.stdout.write(chunk);
   }
   

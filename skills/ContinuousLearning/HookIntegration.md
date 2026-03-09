@@ -7,7 +7,7 @@ The four hooks that interact with `~/.claude/memory/ltm.db`:
 | Hook | Trigger | LTM Action | Fallback |
 |------|---------|------------|----------|
 | `SessionStart` | Session begin | `exportContextMarkdown(project)` → regenerate summary; inject importance-5 globals + top-15 project memories | Reads `context-summary.md` if DB absent |
-| `UpdateContext` | Stop (session end) | `addItem(project, 'progress', sessionLine, sessionId)` — dedup by `session_id` | Appends to `context-progress.md` |
+| `UpdateContext` | Stop (session end) | `addItem(project, type, content, sessionId)` — type auto-detected from `[decision]`/`[gotcha]` prefix; promotes to LTM via `promote()` if prefix matched; default is `progress` | Appends to `context-progress.md` |
 | `PreCompact` | Before compaction | `getItems(project, type)` for each type → writes `context-summary.md` | Reads 4 `.md` files if DB absent |
 | `Cleanup` | Stop (last) | `trimProgress(project, 20)` — deletes oldest progress rows | Trims `context-progress.md` line count |
 

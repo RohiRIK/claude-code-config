@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS context_items (
   content      TEXT    NOT NULL,
   session_id   TEXT,                          -- for progress dedup
   permanent    INTEGER NOT NULL DEFAULT 0,    -- 1 = never auto-delete (decisions, gotchas)
+  memory_id    INTEGER REFERENCES memories(id) ON DELETE SET NULL,
   created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ctx_project ON context_items(project_name);

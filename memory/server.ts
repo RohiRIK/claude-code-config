@@ -4,7 +4,8 @@
  */
 import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readFileSync, watch } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+
 import { CLAUDE_DIR } from "../hooks/lib/resolveProject.js";
 
 const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
@@ -20,8 +21,8 @@ const SCHEMA = readFileSync(SCHEMA_PATH, "utf-8");
 mkdirSync(join(CLAUDE_DIR, "tmp"), { recursive: true });
 await Bun.write(PID_PATH, String(process.pid));
 
-// Persistent read-only DB — opened once, PRAGMAs run once
-const db = new Database(DB_PATH, { readonly: true });
+// Persistent DB — opened once, PRAGMAs run once
+const db = new Database(DB_PATH);
 db.exec("PRAGMA journal_mode=WAL;");
 db.exec("PRAGMA foreign_keys=ON;");
 db.exec(SCHEMA);
@@ -289,16 +290,19 @@ function getProjectDetail(projectName: string) {
 }
 
 function searchMemories(q: string) {
-  // Use FTS5 full-text index for ranked, efficient search
-  return queryDb<{ id: number; content: string; category: string; importance: number; project_scope: string | null }>(
-    `SELECT m.id, m.content, m.category, m.importance, m.project_scope
-     FROM memories_fts
-     JOIN memories m ON memories_fts.rowid = m.id
-     WHERE memories_fts MATCH ?
-     ORDER BY rank
-     LIMIT 50`,
-    [q]
-  );
+  try {
+    return queryDb<{ id: number; content: string; category: string; importance: number; project_scope: string | null }>(
+      `SELECT m.id, m.content, m.category, m.importance, m.project_scope
+       FROM memories_fts
+       JOIN memories m ON memories_fts.rowid = m.id
+       WHERE memories_fts MATCH ?
+       ORDER BY rank
+       LIMIT 50`,
+      [q]
+    );
+  } catch {
+    return [];
+  }
 }
 
 // WebSocket clients — typed to the minimal interface we actually use
@@ -313,9 +317,11 @@ function broadcast(data: object): void {
 }
 
 // Watch DB for changes and broadcast refresh
+// WAL writes go to ltm.db-wal, not ltm.db — watch the WAL file (or dir as fallback)
 let watchDebounce: ReturnType<typeof setTimeout> | null = null;
 if (existsSync(DB_PATH)) {
-  watch(DB_PATH, () => {
+  const watchTarget = existsSync(DB_PATH + "-wal") ? DB_PATH + "-wal" : dirname(DB_PATH);
+  watch(watchTarget, { recursive: false }, () => {
     if (watchDebounce) clearTimeout(watchDebounce);
     watchDebounce = setTimeout(() => broadcast({ type: "refresh" }), 300);
   });
@@ -323,28 +329,6 @@ if (existsSync(DB_PATH)) {
 
 Bun.serve({
   port: PORT,
-
-  routes: {
-    "/": () => new Response(Bun.file(UI_PATH), {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    }),
-    "/api/graph": () => Response.json(getGraphData()),
-    "/api/context": () => Response.json(getContextData()),
-    "/api/context/:project": req => Response.json(getProjectContext(decodeURIComponent(req.params.project))),
-    "/api/stats": () => Response.json(getStats()),
-    "/api/tags": () => Response.json(getTags()),
-    "/api/memory/:id": req => {
-      const id = parseInt(req.params.id, 10);
-      const m = getMemoryById(id);
-      return m ? Response.json(m) : new Response("Not found", { status: 404 });
-    },
-    "/api/search": req => {
-      const q = new URL(req.url).searchParams.get("q") ?? "";
-      return Response.json(q.length >= 2 ? searchMemories(q) : []);
-    },
-    "/api/project/:name": req => Response.json(getProjectDetail(decodeURIComponent(req.params.name))),
-    "/api/reload": { POST: () => { broadcast({ type: "refresh" }); return Response.json({ ok: true }); } },
-  },
 
   websocket: {
     open(ws) { clients.add(ws); ws.send(JSON.stringify({ type: "connected" })); },
@@ -358,6 +342,36 @@ Bun.serve({
       if (!ok) return new Response("WebSocket upgrade failed", { status: 400 });
       return undefined as unknown as Response;
     }
+
+    const url = new URL(req.url);
+    const p = url.pathname;
+
+    if (p === "/")                     return new Response(Bun.file(UI_PATH), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    if (p === "/api/graph")            return Response.json(getGraphData());
+    if (p === "/api/stats")            return Response.json(getStats());
+    if (p === "/api/tags")             return Response.json(getTags());
+    if (p === "/api/context")          return Response.json(getContextData());
+    if (p === "/api/search") {
+      const q = url.searchParams.get("q") ?? "";
+      return Response.json(q.length >= 2 ? searchMemories(q) : []);
+    }
+    if (p === "/api/reload" && req.method === "POST") {
+      broadcast({ type: "refresh" });
+      return Response.json({ ok: true });
+    }
+
+    const ctxMatch = p.match(/^\/api\/context\/(.+)$/);
+    if (ctxMatch?.[1]) return Response.json(getProjectContext(decodeURIComponent(ctxMatch[1])));
+
+    const memMatch = p.match(/^\/api\/memory\/(\d+)$/);
+    if (memMatch?.[1]) {
+      const m = getMemoryById(parseInt(memMatch[1], 10));
+      return m ? Response.json(m) : new Response("Not found", { status: 404 });
+    }
+
+    const projMatch = p.match(/^\/api\/project\/(.+)$/);
+    if (projMatch?.[1]) return Response.json(getProjectDetail(decodeURIComponent(projMatch[1])));
+
     return new Response("Not found", { status: 404 });
   },
 });

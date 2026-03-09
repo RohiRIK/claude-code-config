@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import { PROJECTS_DIR } from "../lib/resolveProject.js";
+import { PROJECTS_DIR, REGISTRY_PATH, saveRegistry } from "../lib/resolveProject.js";
 import { trimToLines } from "../lib/hookUtils.js";
 
 // Cleanup Hook
@@ -71,7 +71,17 @@ async function main() {
 
   const projectDirs = readdirSync(PROJECTS_DIR);
 
+  // Load registry once before loop; track stale slugs for batch removal
+  let registry: Record<string, string> = {};
+  const staleSlugs = new Set<string>();
+  try {
+    if (existsSync(REGISTRY_PATH)) {
+      registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as Record<string, string>;
+    }
+  } catch (_) {}
+
   for (const dir of projectDirs) {
+    if (dir === "registry.json") continue;
     const dirPath = join(PROJECTS_DIR, dir);
     try {
       if (!statSync(dirPath).isDirectory()) continue;
@@ -85,7 +95,21 @@ async function main() {
     if (isStaleDir(dirPath)) {
       rmSync(dirPath, { recursive: true, force: true });
       console.error(`[Cleanup] Deleted stale project context: ${dir}`);
+      staleSlugs.add(dir);
     }
+  }
+
+  // Write registry once after all deletions
+  if (staleSlugs.size > 0) {
+    try {
+      const filtered = Object.fromEntries(
+        Object.entries(registry).filter(([key]) => {
+          const slug = key.replace(/\//g, "-").replace(/\./g, "-");
+          return !staleSlugs.has(slug);
+        })
+      );
+      saveRegistry(filtered);
+    } catch (_) {}
   }
 
   console.error("[Cleanup] Done");

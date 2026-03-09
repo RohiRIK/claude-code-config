@@ -2,15 +2,15 @@
  * db.ts — Global long-term memory (learned insights, patterns, preferences)
  * Replaces skills/learned/*.md with structured SQLite + FTS5.
  */
-import { Database } from "bun:sqlite";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import type { Database } from "bun:sqlite";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { normalizeKey } from "./dedup.js";
+import { getDb, DB_PATH } from "./shared-db.js";
 
+export { DB_PATH };
 const CLAUDE_DIR  = join(homedir(), ".claude");
-export const DB_PATH     = join(CLAUDE_DIR, "memory", "ltm.db");
-const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
 const DOCS_DIR    = join(CLAUDE_DIR, "docs");
 
 export type MemoryCategory = "preference" | "architecture" | "gotcha" | "pattern" | "workflow" | "constraint";
@@ -70,17 +70,6 @@ export interface RecallInput {
   limit?: number;
 }
 
-let _db: Database | null = null;
-
-function getDb(): Database {
-  if (_db) return _db;
-  const dir = join(CLAUDE_DIR, "memory");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  _db = new Database(DB_PATH, { create: true });
-  _db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
-  _db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
-  return _db;
-}
 
 function upsertTag(db: Database, name: string): number {
   db.run(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [name]);
@@ -164,7 +153,10 @@ export function learn(input: LearnInput): LearnResult {
       }
     }
     if (!skipExport) exportMarkdown();
-    return { action: "reinforced", id: existing.id, confirm_count: existing.confirm_count + 1 };
+    const updated = db.query<{ confirm_count: number }, [number]>(
+      `SELECT confirm_count FROM memories WHERE id=?`
+    ).get(existing.id);
+    return { action: "reinforced", id: existing.id, confirm_count: updated?.confirm_count ?? existing.confirm_count + 1 };
   }
 
   const result = db.run(
@@ -284,10 +276,10 @@ export function getContextMerge(project: string): { globals: Memory[]; scoped: M
   const db = getDb();
   return {
     globals: db.query<Memory, []>(
-      `SELECT * FROM memories WHERE importance=5 AND project_scope IS NULL ORDER BY confidence DESC`
+      `SELECT * FROM memories WHERE importance >= 4 AND project_scope IS NULL ORDER BY confidence DESC`
     ).all(),
     scoped: db.query<Memory, [string]>(
-      `SELECT * FROM memories WHERE project_scope=? ORDER BY importance DESC, confidence DESC LIMIT 15`
+      `SELECT * FROM memories WHERE project_scope=? AND importance >= 3 ORDER BY importance DESC, confidence DESC LIMIT 15`
     ).all(project),
   };
 }

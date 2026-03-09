@@ -34,11 +34,11 @@
     "context-mode@claude-context-mode": [
       {
         "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/0.9.22",
-        "version": "0.9.22",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15",
+        "version": "1.0.15",
         "installedAt": "2026-03-03T08:35:47.521Z",
-        "lastUpdated": "2026-03-09T08:20:01.819Z",
-        "gitCommitSha": "0967d92edbb272e35f00efd99184a46bbb0394ce"
+        "lastUpdated": "2026-03-09T15:41:34.347Z",
+        "gitCommitSha": "60747430ecde88ed85fe47fc303d2a72d4e0d492"
       }
     ]
   }
