@@ -112,19 +112,68 @@ Layer 3 has two sub-systems that work together:
 
 **Start:** `/ltm-server` · **URL:** http://localhost:7332 · **API:** http://localhost:7331
 
-![LTM Graph — main view](../memory/graph-app/e2e/screenshots/1-initial-load.png)
+```
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  LTM Graph — Main View                      [tag] [tag] [tag]  │
+  │  ──────────────────────────────────────────────────────────────│
+  │                                                                 │
+  │   ● claude-config ──── ◆ pattern ──── ◆ gotcha                 │
+  │        │                    │                                   │
+  │        ├──── ◆ decision     └──── ◆ preference                 │
+  │        │                                                        │
+  │   ● graph-app ─────── ◆ pattern ──── ◆ pattern                 │
+  │        │                                                        │
+  │        └──── ◇ context: goal                                   │
+  │              ◇ context: decision                               │
+  │                                                                 │
+  │  ● = project   ◆ = memory   ◇ = context item                  │
+  └─────────────────────────────────────────────────────────────────┘
+```
 
 ### Features
 
 **Tag filter panel** — click tag chips to dim non-matching nodes to 15% opacity.
 
+```
+  [bun ×]  [sqlite]  [hooks]  [testing]     ← active tag dims others
+
+   ● claude-config              opacity: 1.0  (has tag "bun")
+        │
+        ├── ◆ "always use bun"  opacity: 1.0  (has tag "bun")
+        └── ◆ "sqlite schema"   opacity: 0.15 (no tag "bun")
+```
+
 **⌘K Spotlight search** — FTS5-powered modal; click result → graph zooms to node + opens sidebar.
 
-![Spotlight search](../memory/graph-app/e2e/screenshots/10-spotlight.png)
+```
+  ┌──────────────────────────────────────────┐
+  │ 🔍  Jump to memory…                 ESC  │
+  ├──────────────────────────────────────────┤
+  │ ● always use bun not npm          pat·5  │
+  │ ● bun sqlite singleton pattern    pat·4  │
+  │   bun test detached process fix   got·4  │
+  └──────────────────────────────────────────┘
+       ↑↓ navigate   Enter select   ESC close
+```
 
 **Project drill-down** — click any project node → dedicated page with radial MiniGraph, context sections, memory cards.
 
-![Project drill-down](../memory/graph-app/e2e/screenshots/11-project-page.png)
+```
+  ← Back   claude-config   12 memories · 8 context items · 3 relations
+
+  ┌─────────────────────────┐   ┌──────────────────────────────────┐
+  │      MiniGraph          │   │  Goals                           │
+  │                         │   │  › Commit & push sqlite-ltm      │
+  │   ◆──●──◆               │   ├──────────────────────────────────┤
+  │  /   │   \              │   │  Decisions                       │
+  │ ◆    ◆    ◇             │   │  › hooks use resolveProject()    │
+  │  \   │   /              │   │  › server.ts persistent DB       │
+  │   ◆──◇──◆               │   ├──────────────────────────────────┤
+  │                         │   │  Memories                        │
+  │  ● = project center     │   │  ◆ always use bun   imp:5 ★★★★★ │
+  └─────────────────────────┘   │  ◆ sqlite singleton imp:4 ★★★★  │
+                                └──────────────────────────────────┘
+```
 
 ### Architecture
 
