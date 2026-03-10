@@ -65,6 +65,7 @@ export interface Stats {
   projects: number;
   context_items: number;
   tags: number;
+  pending: number;
   by_category: Record<string, number>;
   by_project: Record<string, number>;
 }
@@ -93,4 +94,43 @@ export interface ProjectDetail {
   memories: MemoryNode[];
   context_items: ContextNode[];
   relations: GraphLink[];
+}
+
+// Phase 2: Janitor types
+
+export interface PendingMemory {
+  id: number;
+  content: string;
+  category: string;
+  importance: number;
+  confidence: number;
+  project_scope: string | null;
+  source: string | null;
+  created_at: string;
+}
+
+export interface JanitorStatus {
+  running: boolean;
+  lastRun: string | null;
+  lastResult: JanitorRunResult | null;
+  intervalMinutes: number;
+  nextRun: string | null;
+}
+
+export interface JanitorRunResult {
+  timestamp: string;
+  durationMs: number;
+  embed: { embedded: number };
+  decay: { decayed: number; deprecated: number; scanned: number };
+  promote: { promoted: number; skipped: number; scanned: number };
+  dedup: { pairsCompared: number; candidatesFound: number };
+  errors: string[];
+}
+
+export interface SettingsModels {
+  embeddingProviders: string[];
+  llmProviders: string[];
+  embedModels: Record<string, string[]>;
+  llmModels: Record<string, string[]>;
+  defaults: Record<string, string>;
 }

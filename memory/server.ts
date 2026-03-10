@@ -1,12 +1,43 @@
 /**
  * server.ts — LTM Graph Visualization Server
  * Bun.serve() on port 7331 with WebSocket live-reload and fs.watch DB change detection.
+ * Phase 2: includes janitor routes (settings, pending, approve, dedup, decay).
  */
+import type { SQLQueryBindings } from "bun:sqlite";
 import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readFileSync, watch } from "fs";
 import { dirname, join } from "path";
 
 import { CLAUDE_DIR } from "../hooks/lib/resolveProject.js";
+import { getAllSettings, getSetting, setSetting } from "./shared-db.js";
+import {
+  approveMemory,
+  getEmbeddingProvider,
+  getJanitorStatus,
+  getPendingMemories,
+  mergeMemories,
+  rejectMemory,
+  runJanitor,
+  startAutoRun,
+  supersede,
+} from "./janitor/index.js";
+import { SETTING_DEFAULTS, SETTING_KEYS } from "./janitor/providers/types.js";
+import { anthropicLLM } from "./janitor/providers/anthropic.js";
+import { cohereEmbedding } from "./janitor/providers/cohere.js";
+import { geminiEmbedding } from "./janitor/providers/gemini.js";
+import { ollamaEmbedding } from "./janitor/providers/ollama.js";
+import { openaiEmbedding } from "./janitor/providers/openai.js";
+import { openrouterEmbedding } from "./janitor/providers/openrouter.js";
+
+/** Provider instances indexed by provider id, used by the /api/settings/verify route. */
+const PROVIDER_VERIFY_MAP: Record<string, { verify(): Promise<{ ok: boolean; error?: string }> }> = {
+  gemini: geminiEmbedding,
+  openai: openaiEmbedding,
+  anthropic: anthropicLLM,
+  cohere: cohereEmbedding,
+  openrouter: openrouterEmbedding,
+  ollama: ollamaEmbedding,
+};
 
 const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
 const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
@@ -27,10 +58,10 @@ db.exec("PRAGMA journal_mode=WAL;");
 db.exec("PRAGMA foreign_keys=ON;");
 db.exec(SCHEMA);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function queryDb<T = unknown>(sql: string, params: any[] = []): T[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return db.query<T, any>(sql).all(...params);
+type Params = SQLQueryBindings[];
+
+function queryDb<T = unknown>(sql: string, params: Params = []): T[] {
+  return db.query<T, Params>(sql).all(...params);
 }
 
 function truncate(s: string, len: number): string {
@@ -41,22 +72,24 @@ function parseTags(raw: string | null): string[] {
   return raw ? raw.split(",").filter(Boolean) : [];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function queryOne<T = unknown>(sql: string, params: any[] = []): T | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return db.query<T, any>(sql).get(...params) ?? null;
+function queryOne<T = unknown>(sql: string, params: Params = []): T | null {
+  return db.query<T, Params>(sql).get(...params) ?? null;
 }
 
-// Graph data — includes memory nodes + project nodes (negative IDs) + all edges
-function getGraphData() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const memories = db.query<{
-    id: number; content: string; category: string; importance: number;
-    project_scope: string | null; confidence: number; confirm_count: number;
-    source: string | null; dedup_key: string | null; last_confirmed_at: string;
-    created_at: string; tags: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }, any>(`
+type MemoryRow = {
+  id: number; content: string; category: string; importance: number;
+  project_scope: string | null; confidence: number; confirm_count: number;
+  source: string | null; dedup_key: string | null; last_confirmed_at: string;
+  created_at: string; tags: string | null;
+};
+
+type CtxRow = {
+  id: number; project_name: string; type: string; content: string;
+  session_id: string | null; permanent: number; created_at: string;
+};
+
+function getMemoriesWithTags(): MemoryRow[] {
+  return queryDb<MemoryRow>(`
     SELECT m.id, m.content, m.category, m.importance, m.project_scope,
            m.confidence, m.confirm_count, m.source, m.dedup_key,
            m.last_confirmed_at, m.created_at,
@@ -65,25 +98,20 @@ function getGraphData() {
     LEFT JOIN memory_tags mt ON m.id = mt.memory_id
     LEFT JOIN tags t ON mt.tag_id = t.id
     GROUP BY m.id
-  `).all();
+  `);
+}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const memLinks = db.query<{ source: number; target: number; type: string; relation_id: number; created_at: string }, any>(
-    `SELECT id as relation_id, source_memory_id as source, target_memory_id as target, relationship_type as type, created_at FROM memory_relations`
-  ).all();
-
-  // Project nodes — one per unique project_name, negative IDs (-1 to -N)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const projects = db.query<{ name: string; goal: string | null; item_count: number }, any>(`
+function getProjectNodes() {
+  const projects = queryDb<{ name: string; goal: string | null; item_count: number }>(`
     SELECT c.project_name as name,
            (SELECT content FROM context_items WHERE project_name=c.project_name AND type='goal' LIMIT 1) as goal,
            COUNT(*) as item_count
     FROM context_items c
     GROUP BY c.project_name
     ORDER BY c.project_name
-  `).all();
+  `);
 
-  const projectNodes = projects.map((p, i) => ({
+  return projects.map((p, i) => ({
     id: -(i + 1),
     label: p.name,
     content: p.goal ?? p.name,
@@ -93,15 +121,13 @@ function getGraphData() {
     confidence: 1,
     confirm_count: p.item_count,
     created_at: "",
-    tags: [],
+    tags: [] as string[],
     is_project: true,
   }));
-  const projectIdMap = new Map(projectNodes.map(p => [p.label, p.id]));
+}
 
-  // Context item nodes — IDs: -(1000 + ctx.id), so no collision with project nodes (-1 to -N)
-  // Include goals, decisions, gotchas in full; limit progress to last 5 per project
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ctxItems = db.query<{ id: number; project_name: string; type: string; content: string; session_id: string | null; permanent: number; created_at: string }, any>(`
+function getContextNodes(): Array<ReturnType<typeof toCtxNode>> {
+  const rows = queryDb<CtxRow>(`
     WITH ranked_progress AS (
       SELECT id, project_name, type, content, session_id, permanent, created_at,
              ROW_NUMBER() OVER (PARTITION BY project_name ORDER BY id DESC) AS rn
@@ -113,13 +139,16 @@ function getGraphData() {
     SELECT id, project_name, type, content, session_id, permanent, created_at
     FROM ranked_progress WHERE rn <= 5
     ORDER BY project_name, type, id
-  `).all();
+  `);
+  return rows.map(toCtxNode);
+}
 
-  const ctxNodes = ctxItems.map(c => ({
+function toCtxNode(c: CtxRow) {
+  return {
     id: -(1000 + c.id),
     label: truncate(c.content, 55),
     content: c.content,
-    category: c.type,          // "goal" | "decision" | "gotcha" | "progress"
+    category: c.type,
     importance: c.type === "goal" ? 3 : 2,
     project_scope: c.project_name,
     confidence: 1,
@@ -127,20 +156,37 @@ function getGraphData() {
     session_id: c.session_id,
     permanent: Boolean(c.permanent),
     created_at: c.created_at,
-    tags: [],
+    tags: [] as string[],
     is_context: true,
-  }));
+  };
+}
 
-  // Edges: memory → project (project_scope), context_item → project (context_of)
-  const projectEdges: { source: number; target: number; type: string }[] = [];
+function buildProjectEdges(
+  memories: MemoryRow[],
+  ctxNodes: Array<{ id: number; project_scope: string | null }>,
+  projectIdMap: Map<string, number>,
+): Array<{ source: number; target: number; type: string }> {
+  const edges: Array<{ source: number; target: number; type: string }> = [];
   for (const m of memories) {
     const pid = projectIdMap.get(m.project_scope ?? "");
-    if (pid !== undefined) projectEdges.push({ source: pid, target: m.id, type: "project_scope" });
+    if (pid !== undefined) edges.push({ source: pid, target: m.id, type: "project_scope" });
   }
   for (const c of ctxNodes) {
     const pid = projectIdMap.get(c.project_scope ?? "");
-    if (pid !== undefined) projectEdges.push({ source: pid, target: c.id, type: "context_of" });
+    if (pid !== undefined) edges.push({ source: pid, target: c.id, type: "context_of" });
   }
+  return edges;
+}
+
+function getGraphData() {
+  const memories = getMemoriesWithTags();
+  const memLinks = queryDb<{ source: number; target: number; type: string; relation_id: number; created_at: string }>(
+    `SELECT id as relation_id, source_memory_id as source, target_memory_id as target, relationship_type as type, created_at FROM memory_relations`
+  );
+  const projectNodes = getProjectNodes();
+  const projectIdMap = new Map(projectNodes.map(p => [p.label, p.id]));
+  const ctxNodes = getContextNodes();
+  const projectEdges = buildProjectEdges(memories, ctxNodes, projectIdMap);
 
   return {
     nodes: [
@@ -177,20 +223,15 @@ function getProjectContext(projectName: string) {
   return grouped;
 }
 
-function getContextData() {
-  return queryDb(
-    `SELECT project_name, type, content, created_at FROM context_items ORDER BY project_name, type, id DESC`
-  );
-}
-
 function getStats() {
-  const row = queryOne<{ memories: number; relations: number; projects: number; context_items: number; tags: number }>(`
+  const row = queryOne<{ memories: number; relations: number; projects: number; context_items: number; tags: number; pending: number }>(`
     SELECT
-      (SELECT COUNT(*) FROM memories) as memories,
+      (SELECT COUNT(*) FROM memories WHERE status IN ('active', 'pending')) as memories,
       (SELECT COUNT(*) FROM memory_relations) as relations,
       (SELECT COUNT(DISTINCT project_name) FROM context_items) as projects,
       (SELECT COUNT(*) FROM context_items) as context_items,
-      (SELECT COUNT(*) FROM tags) as tags
+      (SELECT COUNT(*) FROM tags) as tags,
+      (SELECT COUNT(*) FROM memories WHERE status = 'pending') as pending
   `);
   const byCategory = queryDb<{ category: string; cnt: number }>(
     `SELECT category, COUNT(*) as cnt FROM memories GROUP BY category`
@@ -204,6 +245,7 @@ function getStats() {
     projects: row?.projects ?? 0,
     context_items: row?.context_items ?? 0,
     tags: row?.tags ?? 0,
+    pending: row?.pending ?? 0,
     by_category: Object.fromEntries(byCategory.map(r => [r.category, r.cnt])),
     by_project: Object.fromEntries(byProject.map(r => [r.project_scope, r.cnt])),
   };
@@ -216,7 +258,7 @@ function getTags() {
 }
 
 function getMemoryById(id: number) {
-  const m = queryOne<{ id: number; content: string; category: string; importance: number; project_scope: string | null; confidence: number; confirm_count: number; source: string | null; dedup_key: string | null; last_confirmed_at: string; created_at: string }>(
+  const m = queryOne<Omit<MemoryRow, "tags">>(
     `SELECT id, content, category, importance, project_scope, confidence, confirm_count, source, dedup_key, last_confirmed_at, created_at FROM memories WHERE id=?`,
     [id]
   );
@@ -236,11 +278,7 @@ function getMemoryById(id: number) {
 function getProjectDetail(projectName: string) {
   const context = getProjectContext(projectName);
 
-  const memories = queryDb<{
-    id: number; content: string; category: string; importance: number;
-    confidence: number; confirm_count: number; source: string | null;
-    dedup_key: string | null; last_confirmed_at: string; created_at: string; tags: string | null;
-  }>(
+  const memories = queryDb<MemoryRow>(
     `SELECT m.id, m.content, m.category, m.importance, m.confidence, m.confirm_count,
             m.source, m.dedup_key, m.last_confirmed_at, m.created_at,
             GROUP_CONCAT(t.name, ',') as tags
@@ -258,25 +296,11 @@ function getProjectDetail(projectName: string) {
     tags: parseTags(m.tags),
   }));
 
-  const ctxRows = queryDb<{ id: number; type: string; content: string; session_id: string | null; permanent: number; created_at: string }>(
-    `SELECT id, type, content, session_id, permanent, created_at FROM context_items WHERE project_name=? ORDER BY type, id DESC`,
+  const ctxRows = queryDb<CtxRow>(
+    `SELECT id, project_name, type, content, session_id, permanent, created_at FROM context_items WHERE project_name=? ORDER BY type, id DESC`,
     [projectName]
   );
-  const context_items = ctxRows.map(c => ({
-    id: -(1000 + c.id),
-    label: truncate(c.content, 55),
-    content: c.content,
-    category: c.type,
-    importance: c.type === "goal" ? 3 : 2,
-    confidence: 1,
-    confirm_count: 0,
-    project_scope: projectName,
-    session_id: c.session_id,
-    permanent: Boolean(c.permanent),
-    created_at: c.created_at,
-    tags: [],
-    is_context: true as const,
-  }));
+  const context_items = ctxRows.map(toCtxNode);
 
   const relations = queryDb<{ source: number; target: number; type: string; relation_id: number }>(
     `SELECT r.id as relation_id, r.source_memory_id as source, r.target_memory_id as target, r.relationship_type as type
@@ -336,7 +360,7 @@ Bun.serve({
     message() {},
   },
 
-  fetch(req, server) {
+  async fetch(req, server) {
     if (req.headers.get("upgrade") === "websocket") {
       const ok = server.upgrade(req);
       if (!ok) return new Response("WebSocket upgrade failed", { status: 400 });
@@ -350,7 +374,6 @@ Bun.serve({
     if (p === "/api/graph")            return Response.json(getGraphData());
     if (p === "/api/stats")            return Response.json(getStats());
     if (p === "/api/tags")             return Response.json(getTags());
-    if (p === "/api/context")          return Response.json(getContextData());
     if (p === "/api/search") {
       const q = url.searchParams.get("q") ?? "";
       return Response.json(q.length >= 2 ? searchMemories(q) : []);
@@ -372,9 +395,168 @@ Bun.serve({
     const projMatch = p.match(/^\/api\/project\/(.+)$/);
     if (projMatch?.[1]) return Response.json(getProjectDetail(decodeURIComponent(projMatch[1])));
 
+    // ============================================================
+    // Phase 2: Settings routes
+    // ============================================================
+
+    if (p === "/api/settings" && req.method === "GET") {
+      const stored = getAllSettings();
+      // Merge with defaults so the UI always sees every key
+      const merged: Record<string, string> = { ...SETTING_DEFAULTS, ...stored };
+      return Response.json(merged);
+    }
+
+    if (p === "/api/settings" && req.method === "PUT") {
+      try {
+        const body = (await req.json()) as Record<string, string>;
+        for (const [key, value] of Object.entries(body)) {
+          if (typeof key === "string" && typeof value === "string") {
+            setSetting(key, value);
+          }
+        }
+        broadcast({ type: "settings-updated" });
+        return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
+    }
+
+    if (p === "/api/settings/models" && req.method === "GET") {
+      return Response.json({
+        embeddingProviders: ["gemini", "openai", "cohere", "openrouter", "ollama"],
+        llmProviders: ["gemini", "openai", "anthropic", "cohere", "openrouter", "ollama"],
+        embedModels: {
+          gemini: ["text-embedding-004", "text-embedding-005", "gemini-embedding-exp-03-07"],
+          openai: ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
+          cohere: ["embed-v4.0", "embed-multilingual-v3.0", "embed-english-v3.0"],
+          openrouter: ["openai/text-embedding-3-small", "openai/text-embedding-3-large"],
+          ollama: ["nomic-embed-text", "mxbai-embed-large", "all-minilm", "snowflake-arctic-embed"],
+        },
+        llmModels: {
+          gemini: ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-1.5-flash"],
+          openai: ["gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"],
+          anthropic: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"],
+          cohere: ["command-r-plus", "command-r", "command-a-03-2025"],
+          openrouter: ["google/gemini-2.0-flash-001", "openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"],
+          ollama: ["llama3.2", "llama3.1", "mistral", "phi4", "qwen2.5"],
+        },
+        defaults: SETTING_DEFAULTS,
+      });
+    }
+
+    if (p === "/api/settings/verify" && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({})) as { provider?: string; key?: string };
+        // If caller provides key + provider, persist it first (avoids client-side extra PUT round-trip)
+        if (body.provider && body.key) {
+          const keySettingMap: Record<string, string> = {
+            gemini: SETTING_KEYS.GEMINI_API_KEY,
+            openai: SETTING_KEYS.OPENAI_API_KEY,
+            anthropic: SETTING_KEYS.ANTHROPIC_API_KEY,
+            cohere: SETTING_KEYS.COHERE_API_KEY,
+            openrouter: SETTING_KEYS.OPENROUTER_API_KEY,
+          };
+          const settingKey = keySettingMap[body.provider];
+          if (settingKey) setSetting(settingKey, body.key);
+        }
+        const provider = body.provider
+          ? (PROVIDER_VERIFY_MAP[body.provider] ?? null)
+          : getEmbeddingProvider();
+        if (!provider) {
+          return Response.json({ ok: false, error: `Unknown provider: ${body.provider}` });
+        }
+        const result = await provider.verify();
+        return Response.json(result);
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) });
+      }
+    }
+
+    // ============================================================
+    // Phase 2: Janitor routes
+    // ============================================================
+
+    if (p === "/api/janitor/status" && req.method === "GET") {
+      return Response.json(getJanitorStatus());
+    }
+
+    if (p === "/api/janitor/run" && req.method === "POST") {
+      try {
+        const result = await runJanitor();
+        broadcast({ type: "janitor-complete", result });
+        return Response.json(result);
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 500 });
+      }
+    }
+
+    // ============================================================
+    // Phase 2: Pending memories routes
+    // ============================================================
+
+    if (p === "/api/pending" && req.method === "GET") {
+      return Response.json(getPendingMemories());
+    }
+
+    const approveMatch = p.match(/^\/api\/memory\/(\d+)\/approve$/);
+    if (approveMatch?.[1] && req.method === "POST") {
+      const id = parseInt(approveMatch[1], 10);
+      const ok = approveMemory(id);
+      if (ok) {
+        broadcast({ type: "refresh" });
+        return Response.json({ ok: true, id });
+      }
+      return Response.json({ ok: false, error: "Not a pending memory" }, { status: 400 });
+    }
+
+    // DELETE /api/memory/:id — reject pending memory or delete any memory
+    const deleteMemMatch = p.match(/^\/api\/memory\/(\d+)$/);
+    if (deleteMemMatch?.[1] && req.method === "DELETE") {
+      const id = parseInt(deleteMemMatch[1], 10);
+      const mem = queryOne<{ status: string }>("SELECT status FROM memories WHERE id=?", [id]);
+      if (!mem) return new Response("Not found", { status: 404 });
+
+      if (mem.status === "pending") {
+        rejectMemory(id);
+      } else {
+        db.run("DELETE FROM memories WHERE id=?", [id]);
+      }
+      broadcast({ type: "refresh" });
+      return Response.json({ ok: true, id });
+    }
+
+    // POST /api/memory/:id/supersedes/:targetId
+    const supersedesMatch = p.match(/^\/api\/memory\/(\d+)\/supersedes\/(\d+)$/);
+    if (supersedesMatch?.[1] && supersedesMatch?.[2] && req.method === "POST") {
+      try {
+        const newId = parseInt(supersedesMatch[1], 10);
+        const oldId = parseInt(supersedesMatch[2], 10);
+        supersede(newId, oldId);
+        broadcast({ type: "refresh" });
+        return Response.json({ ok: true, newId, oldId });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
+    }
+
+    // POST /api/memory/merge — merge two memories
+    if (p === "/api/memory/merge" && req.method === "POST") {
+      try {
+        const body = (await req.json()) as { keepId: number; supersededId: number; mergedContent?: string };
+        mergeMemories(body.keepId, body.supersededId, body.mergedContent);
+        broadcast({ type: "refresh" });
+        return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
+    }
+
     return new Response("Not found", { status: 404 });
   },
 });
+
+// Start janitor auto-run if configured
+startAutoRun();
 
 console.log(`🧠 LTM Graph running on http://localhost:${PORT}`);
 console.log(`   PID: ${process.pid} — saved to ${PID_PATH}`);

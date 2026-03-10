@@ -4,6 +4,49 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-09 — Phase 2: LTM Evolution — Janitor Agent + Intelligent Memory Management
+
+### Features
+- **Janitor sub-agent** (`memory/janitor/`) — autonomous memory maintenance running inside `server.ts`; four pipeline stages: decay, promote, dedup, supersedes
+- **Memory decay** — unused memories lose confidence over time; auto-archive at configurable threshold (default 0.2)
+- **Auto-promote** — `decision` and `gotcha` context items automatically elevate to global memories; links back via `memory_id`
+- **Semantic dedup** — embedding vectors computed per memory; cosine similarity detection (threshold 0.85); LLM-powered merge proposals
+- **Supersedes relations** — new/merged memories mark old ones as `superseded`; creates `supersedes` edge in knowledge graph
+- **Pluggable providers** — Gemini, OpenRouter, Ollama for both embeddings and LLM; configured via settings UI
+- **Settings UI** (`/settings`) — provider selection, model config, decay rate/window/threshold, dedup threshold, auto-run interval
+- **Pending actions UI** (`/pending`) — review/approve/reject janitor suggestions before they take effect; live badge in StatsBar
+- **Schema migration** — `shared-db.ts` runs idempotent ALTER TABLE migrations; adds `status`, `embedding`, `last_used_at` to memories; `memory_id`, `status` to context_items; creates `settings` table
+- **Shared DB module** (`shared-db.ts`) — singleton DB instance shared by db.ts, context.ts, server.ts, and janitor; prevents dual WAL connections; includes settings CRUD helpers
+
+### Fixes
+- **Migration ordering** — `runMigrations()` now runs before `schema.sql` exec so ALTER-added columns exist before `CREATE INDEX` references them
+- **SQLite non-constant default** — `last_used_at` ALTER uses constant default + backfill UPDATE (SQLite constraint)
+- **`noUncheckedIndexedAccess` compliance** — 32 type errors fixed across janitor files; added `getDefault()` helper, extracted array locals with `!` assertions
+- **`SQLQueryBindings` import** — `server.ts` query helpers now use correct `bun:sqlite` param type
+- **Dead code removed** — unused `getContextData()` + `/api/context` route in `server.ts`
+- **`server.ts` `getGraphData()`** — broken from 116 lines into 5 focused sub-helpers
+- **Duplicate verify logic** in `ollama.ts` consolidated into shared `verifyModel()`
+- **`.then()` chain** in `graph-app/lib/api.ts` `reload()` converted to `async/await`
+
+### Schema Changes
+```
+memories:      + status (TEXT), embedding (BLOB), last_used_at (TEXT)
+context_items: + memory_id (INT FK), status (TEXT)
++ settings table (key TEXT PK, value TEXT, updated_at TEXT)
++ memory_relations: 'supersedes' added to relationship_type
++ idx_memories_status, idx_memories_last_used
+```
+
+### Files (20 changed, +2720/-95)
+- `memory/janitor/` — 8 new files (index, decay, promote, dedup, supersedes, embeddings, providers/*)
+- `memory/shared-db.ts` — new shared DB singleton with migrations
+- `memory/server.ts` — janitor routes, settings CRUD, pending actions, refactored graph query
+- `memory/schema.sql` — Phase 2 columns and tables
+- `memory/graph-app/` — settings page, pending page, SettingsForm, updated StatsBar/api/types
+- `hooks/UpdateContext/` — removed direct promote call (janitor handles it now)
+
+---
+
 ## 2026-03-09 — LTM graph 3 UX features + full SQLite LTM
 
 ### Features

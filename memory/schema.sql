@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS context_items (
   session_id   TEXT,                          -- for progress dedup
   permanent    INTEGER NOT NULL DEFAULT 0,    -- 1 = never auto-delete (decisions, gotchas)
   memory_id    INTEGER REFERENCES memories(id) ON DELETE SET NULL,
+  status       TEXT    NOT NULL DEFAULT 'active' CHECK(status IN ('active','pending_promotion','promoted')),
   created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ctx_project ON context_items(project_name);
@@ -32,13 +33,19 @@ CREATE TABLE IF NOT EXISTS memories (
   dedup_key         TEXT    UNIQUE,
   created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
   last_confirmed_at TEXT    NOT NULL DEFAULT (datetime('now')),
-  confirm_count     INTEGER NOT NULL DEFAULT 1
+  confirm_count     INTEGER NOT NULL DEFAULT 1,
+  -- Phase 2: janitor fields
+  status            TEXT    NOT NULL DEFAULT 'active' CHECK(status IN ('active','pending','deprecated','superseded')),
+  embedding         BLOB,                     -- float32 vector for semantic search
+  last_used_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_memories_category   ON memories(category);
 CREATE INDEX IF NOT EXISTS idx_memories_project    ON memories(project_scope);
 CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_confidence ON memories(confidence DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_status     ON memories(status);
+CREATE INDEX IF NOT EXISTS idx_memories_last_used  ON memories(last_used_at);
 
 -- ============================================================
 -- tags + memory_tags: many-to-many tagging for memories
@@ -92,3 +99,12 @@ CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
   INSERT INTO memories_fts(memories_fts, rowid, content) VALUES ('delete', old.id, old.content);
   INSERT INTO memories_fts(rowid, content) VALUES (new.id, new.content);
 END;
+
+-- ============================================================
+-- settings: key-value store for janitor/provider configuration
+-- ============================================================
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
