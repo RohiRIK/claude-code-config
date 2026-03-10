@@ -181,6 +181,9 @@ function ProviderCard({
   const embedModels = models.embedModels?.[meta.id] ?? [];
   const llmModels = models.llmModels?.[meta.id] ?? [];
 
+  const showEmbed = roleLabels.includes("Embed");
+  const showLlm = roleLabels.includes("LLM");
+
   return (
     <div className={`p-5 bg-[#161b22] rounded-xl border ring-1 ${accent} space-y-4`}>
       {/* Header */}
@@ -241,42 +244,38 @@ function ProviderCard({
       </div>
 
       {/* Embed model */}
-      {meta.embedModelKey && embedModels.length > 0 && (
+      {showEmbed && meta.embedModelKey && (
         <div>
           <label className="block text-xs text-gray-400 mb-1.5">Embedding Model</label>
           <select
             value={draft[meta.embedModelKey] ?? ""}
             onChange={(e) => onChange(meta.embedModelKey!, e.target.value)}
-            disabled={!verified}
+            disabled={!verified || embedModels.length === 0}
             className="w-full bg-[#0d1117] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-white/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {embedModels.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
+            {embedModels.length === 0
+              ? <option value="">Verify API key to load models</option>
+              : embedModels.map((m) => <option key={m} value={m}>{m}</option>)
+            }
           </select>
-          {!verified && (
-            <p className="mt-1 text-[11px] text-gray-600">Verify API key to enable</p>
-          )}
         </div>
       )}
 
       {/* LLM model */}
-      {meta.llmModelKey && llmModels.length > 0 && (
+      {showLlm && meta.llmModelKey && (
         <div>
           <label className="block text-xs text-gray-400 mb-1.5">LLM Model</label>
           <select
             value={draft[meta.llmModelKey] ?? ""}
             onChange={(e) => onChange(meta.llmModelKey!, e.target.value)}
-            disabled={!verified}
+            disabled={!verified || llmModels.length === 0}
             className="w-full bg-[#0d1117] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-white/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {llmModels.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
+            {llmModels.length === 0
+              ? <option value="">Verify API key to load models</option>
+              : llmModels.map((m) => <option key={m} value={m}>{m}</option>)
+            }
           </select>
-          {!verified && (
-            <p className="mt-1 text-[11px] text-gray-600">Verify API key to enable</p>
-          )}
         </div>
       )}
     </div>
@@ -289,6 +288,8 @@ export default function SettingsForm({ settings, models, onSave, saving }: Props
   const [draft, setDraft] = useState<Record<string, string>>({ ...settings });
   const [dirty, setDirty] = useState(false);
   const [keyStates, setKeyStates] = useState<Record<string, KeyState>>({});
+  // Dynamic models fetched from provider API on successful verify
+  const [liveModels, setLiveModels] = useState<Record<string, { embedModels: string[]; llmModels: string[] }>>({});
   const draftRef = useRef<Record<string, string>>(draft);
   const initialized = useRef(false);
 
@@ -336,11 +337,25 @@ export default function SettingsForm({ settings, models, onSave, saving }: Props
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: providerId, key }),
       });
-      const result = (await res.json()) as { ok: boolean; error?: string };
+      const result = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        embedModels?: string[];
+        llmModels?: string[];
+      };
       setKeyStates((prev) => ({
         ...prev,
         [providerId]: result.ok ? "valid" : "invalid",
       }));
+      if (result.ok && (result.embedModels?.length || result.llmModels?.length)) {
+        setLiveModels((prev) => ({
+          ...prev,
+          [providerId]: {
+            embedModels: result.embedModels ?? [],
+            llmModels: result.llmModels ?? [],
+          },
+        }));
+      }
     } catch {
       setKeyStates((prev) => ({ ...prev, [providerId]: "invalid" }));
     }
@@ -404,18 +419,33 @@ export default function SettingsForm({ settings, models, onSave, saving }: Props
       </div>
 
       {/* ── Active Provider Cards ────────────────────────────────────────────── */}
-      {activeProviders.map((meta) => (
-        <ProviderCard
-          key={meta.id}
-          meta={meta}
-          draft={draft}
-          models={models}
-          keyState={keyStates[meta.id] ?? "idle"}
-          roleLabels={getRoleLabels(meta)}
-          onChange={(key, value) => handleKeyChange(meta.id, key, value)}
-          onVerify={() => verifyProvider(meta.id)}
-        />
-      ))}
+      {activeProviders.map((meta) => {
+        // Merge live (verified) models over static fallback
+        const live = liveModels[meta.id];
+        const mergedModels: SettingsModels = {
+          ...models,
+          embedModels: {
+            ...models.embedModels,
+            ...(live?.embedModels.length ? { [meta.id]: live.embedModels } : {}),
+          },
+          llmModels: {
+            ...models.llmModels,
+            ...(live?.llmModels.length ? { [meta.id]: live.llmModels } : {}),
+          },
+        };
+        return (
+          <ProviderCard
+            key={meta.id}
+            meta={meta}
+            draft={draft}
+            models={mergedModels}
+            keyState={keyStates[meta.id] ?? "idle"}
+            roleLabels={getRoleLabels(meta)}
+            onChange={(key, value) => handleKeyChange(meta.id, key, value)}
+            onVerify={() => verifyProvider(meta.id)}
+          />
+        );
+      })}
 
       {/* ── Memory Decay ────────────────────────────────────────────────────── */}
       <div className="p-5 bg-[#161b22] rounded-xl border border-white/10 space-y-4">

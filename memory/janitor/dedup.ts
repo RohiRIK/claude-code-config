@@ -186,6 +186,50 @@ Respond in JSON format: { "verdict": "duplicate"|"related"|"distinct", "reasonin
   }
 }
 
+/** Parse a "dedup:<idA>:<idB>" source string. Returns null if not a dedup source. */
+export function parseDedupSource(source: string): { idA: number; idB: number } | null {
+  if (!source.startsWith("dedup:")) return null;
+  const parts = source.split(":");
+  if (parts.length !== 3) return null;
+  const idA = parseInt(parts[1]!, 10);
+  const idB = parseInt(parts[2]!, 10);
+  if (isNaN(idA) || isNaN(idB)) return null;
+  return { idA, idB };
+}
+
+/**
+ * Persist dedup candidates as pending memories for UI review.
+ * source encodes "dedup:<idA>:<idB>" so the approve route can call mergeMemories.
+ */
+export function saveDedupCandidates(candidates: DedupCandidate[]): number {
+  const db = getDb();
+  let saved = 0;
+
+  for (const c of candidates) {
+    const source = `dedup:${c.memoryA.id}:${c.memoryB.id}`;
+    // Skip if already pending for this pair
+    const exists = db
+      .query<{ id: number }, [string]>(
+        "SELECT id FROM memories WHERE source = ? AND status = 'pending'",
+      )
+      .get(source);
+    if (exists) continue;
+
+    const mergedContent =
+      c.mergedContent ??
+      `[Dedup ${Math.round(c.similarity * 100)}% similar]\nA: ${c.memoryA.content}\nB: ${c.memoryB.content}`;
+
+    db.run(
+      `INSERT INTO memories (content, category, importance, confidence, source, project_scope, dedup_key, status)
+       VALUES (?, ?, 3, ?, ?, NULL, NULL, 'pending')`,
+      [mergedContent, c.memoryA.category, c.similarity, source],
+    );
+    saved++;
+  }
+
+  return saved;
+}
+
 /**
  * Merge two memories: keep the one with higher importance/confidence,
  * supersede the other, and optionally update content.

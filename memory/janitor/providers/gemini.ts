@@ -146,20 +146,7 @@ export const geminiLLM: LLMProvider = {
   async verify(): Promise<{ ok: boolean; error?: string }> {
     try {
       const apiKey = getApiKey();
-      const model = getLlmModel();
-      const res = await fetch(
-        `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              { role: "user", parts: [{ text: "Reply with OK" }] },
-            ],
-            generationConfig: { maxOutputTokens: 5 },
-          }),
-        },
-      );
+      const res = await fetch(`${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=1`);
       if (!res.ok) return httpErrorResult(res);
       return { ok: true };
     } catch (e) {

@@ -27,22 +27,26 @@ export default function StatsBar({ stats }: Props) {
           <span className="text-gray-500 ml-1">{item.label}</span>
         </span>
       ))}
-      {stats.pending > 0 && (
-        <Link
-          href="/pending"
-          className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-900/40 border border-amber-700/50 hover:bg-amber-900/60 transition-colors"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+      <Link
+        href="/pending"
+        className="ml-auto flex items-center gap-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+        title="Pending review"
+      >
+        {stats.pending > 0 ? (
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700/50 text-amber-400 font-medium">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+            </span>
+            {stats.pending} pending
           </span>
-          <span className="font-bold text-amber-400">{stats.pending}</span>
-          <span className="text-amber-500/80">pending</span>
-        </Link>
-      )}
+        ) : (
+          <span className="text-xs">Pending</span>
+        )}
+      </Link>
       <Link
         href="/settings"
-        className={`${stats.pending > 0 ? "" : "ml-auto "}text-gray-500 hover:text-gray-300 transition-colors`}
+        className="text-gray-500 hover:text-gray-300 transition-colors"
         title="Settings"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
