@@ -3,7 +3,8 @@
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
 > Last updated: 2026-03-09
 >
-> Inspired by [danielmiessler/Personal\_AI\_Infrastructure](https://github.com/danielmiessler/Personal_AI_Infrastructure) and [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code).
+> Inspired by [danielmiessler/Personal\_AI\_Infrastructure](https://github.com/danielmiessler/Personal_AI_Infrastructure), [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code),
+> and [Google Always-On Memory Agent](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/agents/always-on-memory-agent).
 
 ![Claude Config Header](assets/claude-config-header.png)
 
@@ -39,6 +40,40 @@
 > "A good plan is really important. Claude typically 1-shots implementation from a well-formed plan." — Boris Cherny
 
 ---
+
+## Long-Term Memory System
+
+SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of this config.
+
+**What it stores:**
+- Per-project context: `goal`, `decision`, `progress`, `gotcha` (4 types, survive compaction)
+- Global memories: reusable patterns, preferences, gotchas — tagged and importance-ranked
+
+**Memory Keeper pipeline** (runs on schedule via janitor):
+1. **Embed** — new memories vectorized for semantic search
+2. **Decay** — importance scores drift down over time if not confirmed
+3. **Promote** — frequently-accessed memories rise in importance
+4. **Dedup** — LLM compares similar memories, merges or supersedes stale ones
+
+**Graph UI** — Next.js on `:7332`:
+- `/` — force-directed graph of all memory nodes (filter by tag, project, type)
+- `/project/[name]` — drill-down with Graph / Table / Board view switcher
+- `/settings` — configure embedding model, dedup thresholds, janitor schedule
+- `/pending` — review memories awaiting confirmation
+
+**Key commands:**
+
+| Command | Purpose |
+|---------|---------|
+| `/learn` | Store a pattern or insight in LTM |
+| `/recall` | Search long-term memory before starting work |
+| `/update-context` | Mid-session — log progress/decisions/gotchas |
+| `/ltm-server` | Start/stop/status the graph UI |
+
+**Hook integration:**
+- `SessionStart` — injects top project memories + importance-5 globals at session open
+- `PreCompact` — saves context-summary.md before compaction fires
+- `EvaluateSession` — extracts patterns and progress at session end
 
 ---
 

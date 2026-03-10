@@ -293,13 +293,22 @@ export default function SettingsForm({ settings, models, onSave, saving }: Props
   const draftRef = useRef<Record<string, string>>(draft);
   const initialized = useRef(false);
 
-  // Seed draft once on first real settings load (avoid overwriting user edits)
+  // Seed draft once on first real settings load, then auto-verify stored keys
   useEffect(() => {
     if (!initialized.current && Object.keys(settings).length > 0) {
       initialized.current = true;
       setDraft(settings);
       draftRef.current = settings;
+      // Auto-verify any provider that already has a stored key
+      for (const meta of PROVIDERS) {
+        if (!meta.apiKeyKey) continue;
+        const storedKey = settings[meta.apiKeyKey] ?? "";
+        if (storedKey.length >= 4) {
+          verifyProvider(meta.id);
+        }
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
 
   const handleChange = (key: string, value: string) => {
@@ -468,9 +477,9 @@ export default function SettingsForm({ settings, models, onSave, saving }: Props
         ))}
       </div>
 
-      {/* ── Janitor ─────────────────────────────────────────────────────────── */}
+      {/* ── Memory Keeper ───────────────────────────────────────────────────── */}
       <div className="p-5 bg-[#161b22] rounded-xl border border-white/10 space-y-4">
-        <h3 className="text-sm font-semibold text-white">Auto-Promote & Janitor</h3>
+        <h3 className="text-sm font-semibold text-white">Auto-Promote & Memory Keeper</h3>
         {[
           { key: "ltm.promote.minImportance", label: "Promote Min Importance", placeholder: "3" },
           { key: "ltm.janitor.intervalMinutes", label: "Auto-run Interval (minutes, 0 = disabled)", placeholder: "0" },

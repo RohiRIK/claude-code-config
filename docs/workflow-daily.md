@@ -18,6 +18,8 @@ The Boris Cherny pattern — creator of Claude Code's recommended task loop.
 ║      │         [PostToolUse] Prettier + tsc on every edit            ║
 ║      │         [PostToolUse] warns on console.log                    ║
 ║      ↓                                                               ║
+║    /update-context → log progress/decisions/gotchas to LTM           ║
+║      ↓                                                               ║
 ║    /simplify → remove complexity, flatten nesting                    ║
 ║      ↓                                                               ║
 ║    /verify ──→ tsc → lint → tests → build → security → diff          ║
@@ -41,6 +43,9 @@ Switch to auto-accept (Shift+Tab×1 or the accept-all toggle). Hooks fire on eve
 - **Prettier** auto-formats JS/TS
 - **tsc check** runs `tsc --noEmit` after every `.ts` edit
 - **console.log guard** warns if debug logging sneaks in
+
+### `/update-context` — Log to LTM
+After implementation, capture what was done. Run `/update-context progress "✓ did X"` or `/update-context decision "chose Y because Z"`. These persist to SQLite LTM and survive compaction. The `EvaluateSession` hook does this automatically at session end — run it mid-session for important milestones.
 
 ### `/simplify` — Remove Complexity
 After implementation, run `/simplify`. It reviews the changed code for unnecessary abstraction, deep nesting, and premature generalization, then fixes what it finds.
@@ -70,7 +75,7 @@ Pre-computes the full git context (log, diff, branch), writes a conventional com
 | `/learn` | End of session — extract reusable patterns |
 | `/init-context` | New project — creates 4 context files |
 | `/check-context` | Start of session — verify context |
-| `/update-context` | End of session — auto-extract progress |
+| `/update-context` | Mid-session — log progress/decisions/gotchas to LTM |
 | `/register-project` | Register or rename project in registry |
 
 ---

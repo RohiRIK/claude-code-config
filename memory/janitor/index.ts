@@ -92,7 +92,7 @@ export async function runJanitor(): Promise<JanitorRunResult> {
 
     // 4. Find duplicates and save as pending for review
     try {
-      dedupResult = await findDuplicates(0.85, false);
+      dedupResult = await findDuplicates(0.85, true);
       if (dedupResult.candidates.length > 0) {
         saveDedupCandidates(dedupResult.candidates);
       }

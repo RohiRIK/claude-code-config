@@ -29,20 +29,17 @@ async function buildLtmSection(project: string): Promise<string> {
 
     if (globals.length === 0 && scoped.length === 0) return "";
 
-    const lines: string[] = ["## Long-Term Memory", ""];
+    const lines: string[] = ["LTM:", ""];
 
     if (globals.length > 0) {
-      lines.push("**Global (importance ★★★★★):**");
+      lines.push("globals:");
       for (const m of globals) lines.push(`- [${m.id}] ${m.content}`);
       lines.push("");
     }
 
     if (scoped.length > 0) {
-      lines.push(`**Project: ${project}**`);
-      for (const m of scoped) {
-        const imp = "★".repeat(m.importance) + "☆".repeat(5 - m.importance);
-        lines.push(`- [${m.id}] ${m.content} ${imp}`);
-      }
+      lines.push("project:");
+      for (const m of scoped) lines.push(`- [${m.id}] ${m.content}`);
       lines.push("");
     }
 
@@ -118,9 +115,7 @@ async function main(): Promise<void> {
   const injected = trimToLines(readFileSync(summaryPath, "utf-8"), MAX_INJECT_LINES);
   const ltmSection = await buildLtmSection(name);
 
-  const output = ltmSection
-    ? `## Restored Project Context\n\n${injected}\n\n${ltmSection}\n---\n*Context restored from previous session. Update context files as work progresses.*\n`
-    : `## Restored Project Context\n\n${injected}\n\n---\n*Context restored from previous session. Update context files as work progresses.*\n`;
+  const output = ltmSection ? `${injected}\n\n${ltmSection}\n` : `${injected}\n`;
 
   process.stdout.write(output);
   console.error(`[SessionStart] Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);
