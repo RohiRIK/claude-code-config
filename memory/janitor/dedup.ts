@@ -9,8 +9,11 @@ import {
   cosineSimilarity,
 } from "./embeddings.js";
 import type { EmbeddingVector } from "./providers/types.js";
+import { anthropicLLM } from "./providers/anthropic.js";
+import { cohereLLM } from "./providers/cohere.js";
 import { geminiLLM } from "./providers/gemini.js";
 import { ollamaLLM } from "./providers/ollama.js";
+import { openaiLLM } from "./providers/openai.js";
 import { openrouterLLM } from "./providers/openrouter.js";
 import {
   SETTING_KEYS,
@@ -25,12 +28,12 @@ function getLLMProvider(): LLMProvider {
     getDefault(SETTING_KEYS.LLM_PROVIDER)) as ProviderType;
 
   switch (provider) {
-    case "gemini":
-      return geminiLLM;
-    case "openrouter":
-      return openrouterLLM;
-    case "ollama":
-      return ollamaLLM;
+    case "gemini":      return geminiLLM;
+    case "openai":      return openaiLLM;
+    case "anthropic":   return anthropicLLM;
+    case "cohere":      return cohereLLM;
+    case "openrouter":  return openrouterLLM;
+    case "ollama":      return ollamaLLM;
     default:
       throw new Error(`Unknown LLM provider: ${provider}`);
   }
@@ -123,12 +126,16 @@ export async function findDuplicates(
           similarity,
         };
 
-        // Use LLM to verify and suggest merge
+        // Use LLM to verify and suggest merge (per-pair errors are non-fatal)
         if (useLLM) {
-          const llmResult = await verifyWithLLM(candidate);
-          candidate.verdict = llmResult.verdict;
-          candidate.reasoning = llmResult.reasoning;
-          candidate.mergedContent = llmResult.mergedContent;
+          try {
+            const llmResult = await verifyWithLLM(candidate);
+            candidate.verdict = llmResult.verdict;
+            candidate.reasoning = llmResult.reasoning;
+            candidate.mergedContent = llmResult.mergedContent;
+          } catch {
+            // LLM unavailable — save candidate without verdict
+          }
         }
 
         result.candidates.push(candidate);
@@ -184,6 +191,54 @@ Respond in JSON format: { "verdict": "duplicate"|"related"|"distinct", "reasonin
   } catch {
     return { verdict: "distinct", reasoning: "Failed to parse LLM response" };
   }
+}
+
+/** Parse a "dedup:<idA>:<idB>" source string. Returns null if not a dedup source. */
+export function parseDedupSource(source: string): { idA: number; idB: number } | null {
+  if (!source.startsWith("dedup:")) return null;
+  const parts = source.split(":");
+  if (parts.length !== 3) return null;
+  const idA = parseInt(parts[1]!, 10);
+  const idB = parseInt(parts[2]!, 10);
+  if (isNaN(idA) || isNaN(idB)) return null;
+  return { idA, idB };
+}
+
+/**
+ * Persist dedup candidates as pending memories for UI review.
+ * source encodes "dedup:<idA>:<idB>" so the approve route can call mergeMemories.
+ */
+export function saveDedupCandidates(candidates: DedupCandidate[]): number {
+  const db = getDb();
+  let saved = 0;
+
+  for (const c of candidates) {
+    const source = `dedup:${c.memoryA.id}:${c.memoryB.id}`;
+    // Skip if already pending for this pair
+    const exists = db
+      .query<{ id: number }, [string]>(
+        "SELECT id FROM memories WHERE source = ? AND status = 'pending'",
+      )
+      .get(source);
+    if (exists) continue;
+
+    const pct = Math.round(c.similarity * 100);
+    const verdict = c.verdict ? ` | ${c.verdict}` : "";
+    const reasoning = c.reasoning ? `\nWhy: ${c.reasoning}` : "";
+    const suggested = c.mergedContent ? `\nSuggested merge: ${c.mergedContent}` : "";
+    const mergedContent = c.mergedContent
+      ? `[${pct}% similar${verdict}]${reasoning}${suggested}\n\nA: ${c.memoryA.content}\nB: ${c.memoryB.content}`
+      : `[${pct}% similar — no LLM verdict]\nA: ${c.memoryA.content}\nB: ${c.memoryB.content}`;
+
+    db.run(
+      `INSERT INTO memories (content, category, importance, confidence, source, project_scope, dedup_key, status)
+       VALUES (?, ?, 3, ?, ?, NULL, NULL, 'pending')`,
+      [mergedContent, c.memoryA.category, c.similarity, source],
+    );
+    saved++;
+  }
+
+  return saved;
 }
 
 /**

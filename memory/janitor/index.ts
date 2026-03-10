@@ -5,7 +5,7 @@
  */
 import { getSetting } from "../shared-db.js";
 import { runDecay, type DecayResult } from "./decay.js";
-import { findDuplicates, type DedupResult } from "./dedup.js";
+import { findDuplicates, saveDedupCandidates, type DedupResult } from "./dedup.js";
 import { embedMissingMemories } from "./embeddings.js";
 import { runPromote, type PromoteResult } from "./promote.js";
 import { SETTING_KEYS, getDefault } from "./providers/types.js";
@@ -90,9 +90,12 @@ export async function runJanitor(): Promise<JanitorRunResult> {
       errors.push(`promote: ${String(e)}`);
     }
 
-    // 4. Find duplicates (vector-only, no LLM)
+    // 4. Find duplicates and save as pending for review
     try {
-      dedupResult = await findDuplicates(0.85, false);
+      dedupResult = await findDuplicates(0.85, true);
+      if (dedupResult.candidates.length > 0) {
+        saveDedupCandidates(dedupResult.candidates);
+      }
     } catch (e) {
       errors.push(`dedup: ${String(e)}`);
     }
@@ -178,7 +181,7 @@ export function stopAutoRun(): void {
 
 // Re-export sub-modules for direct access from server routes
 export { approveMemory, getPendingMemories, rejectMemory } from "./promote.js";
-export { mergeMemories } from "./dedup.js";
+export { mergeMemories, parseDedupSource } from "./dedup.js";
 export { supersede } from "./supersedes.js";
 export { touchMemory } from "./decay.js";
 export { getEmbeddingProvider, semanticSearch } from "./embeddings.js";

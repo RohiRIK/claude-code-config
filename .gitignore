@@ -10,6 +10,9 @@
 .AppleDouble
 .LSOverride
 
+# Auto-generated docs (do not commit — overwritten by exportMarkdown())
+docs/memory-long-term-dump.md
+
 # Runtime / generated data
 history.jsonl
 stats-cache.json

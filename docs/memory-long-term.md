@@ -1,369 +1,320 @@
-# Layer 3: Long-Term Memory (LTM)
+# Long-Term Memory (LTM) — Architecture & Process Guide
 
-SQLite-backed persistent memory with intelligent management.
-Two loops: session context (per-project) and global learned insights.
-Phase 2 adds a janitor agent for autonomous memory maintenance.
-
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        LTM System                                   │
-│                                                                     │
-│  ┌──────────────┐    ┌──────────────┐    ┌───────────────────────┐  │
-│  │  context_items│    │   memories   │    │    janitor agent      │  │
-│  │  (per-project)│    │   (global)   │    │  ┌─────────────────┐ │  │
-│  │              │    │              │    │  │ decay           │ │  │
-│  │  goals       │───▶│  preference  │    │  │ promote         │ │  │
-│  │  decisions   │    │  architecture│    │  │ dedup           │ │  │
-│  │  progress    │    │  gotcha      │    │  │ supersedes      │ │  │
-│  │  gotchas     │    │  pattern     │    │  └─────────────────┘ │  │
-│  │              │    │  workflow    │    │         │             │  │
-│  │              │    │  constraint  │    │    ┌────▼────┐        │  │
-│  │  status:     │    │              │    │    │embeddings│       │  │
-│  │   active     │    │  status:     │    │    │ (vector) │       │  │
-│  │   pending_   │    │   active     │    │    └─────────┘        │  │
-│  │   promotion  │    │   pending    │    │         │             │  │
-│  │   promoted   │    │   deprecated │    │    ┌────▼────┐        │  │
-│  │              │    │   superseded │    │    │providers │       │  │
-│  └──────────────┘    └──────────────┘    │    │ gemini   │       │  │
-│         │                   ▲            │    │ openrouter│      │  │
-│         │    promote()      │            │    │ ollama   │       │  │
-│         └───────────────────┘            │    └─────────┘        │  │
-│                                          └───────────────────────┘  │
-│                                                                     │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐           │
-│  │   settings   │    │     tags     │    │  relations    │           │
-│  │  (key-value) │    │ (many:many)  │    │ (knowledge    │           │
-│  │              │    │              │    │  graph edges) │           │
-│  └──────────────┘    └──────────────┘    └──────────────┘           │
-└─────────────────────────────────────────────────────────────────────┘
-```
+> How the SQLite-backed LTM system works, what each piece does, and why it was designed this way.
+>
+> The auto-generated memory dump lives at `docs/memory-long-term-dump.md` — do not confuse the two.
 
 ---
 
-## Session Context Loop
-
-Per-project context persists across sessions via `context_items`:
+## Overview
 
 ```
-  Session N                          Session N+1
-  ─────────                          ───────────
-  ┌─────────┐   UpdateContext    ┌─────────────┐   SessionStart
-  │  Claude  │──────────────────▶│ context_items│──────────────▶ injected
-  │  session │   (hook writes    │   in SQLite  │   (hook reads   into new
-  │         │    decisions,      │              │    & formats)    session
-  │         │    gotchas, etc.)  │              │
-  └─────────┘                    └─────────────┘
-       │                               │
-       │  PreCompact                   │  EvaluateSession
-       │  (assembles summary           │  (extracts patterns
-       │   before /compact)            │   → memories table)
-       ▼                               ▼
-  context-summary.md              memories table
-```
-
-### Context Item Types
-
-| Type | Purpose | Permanent |
-|------|---------|-----------|
-| `goal` | What the project is trying to achieve | No |
-| `decision` | Architectural/design choices made | Yes |
-| `progress` | What was done this session | No |
-| `gotcha` | Pitfalls and things to watch out for | Yes |
-
----
-
-## Phase 2: Janitor Agent
-
-The janitor runs inside `server.ts` (shares the DB instance) and performs
-four autonomous maintenance tasks:
-
-```
-                    ┌─────────────────────┐
-                    │   Janitor Agent      │
-                    │   (runs in server)   │
-                    └──────┬──────────────┘
-                           │
-           ┌───────────────┼───────────────┐
-           │               │               │
-     ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
-     │   DECAY   │  │  PROMOTE  │  │   DEDUP   │
-     │           │  │           │  │           │
-     │ Unused    │  │ Decisions │  │ Semantic  │
-     │ memories  │  │ & gotchas │  │ similarity│
-     │ lose      │  │ auto-     │  │ detection │
-     │ confidence│  │ elevate   │  │ via embed │
-     │ over time │  │ to global │  │ + LLM     │
-     │           │  │ memories  │  │ merge     │
-     │ Archive   │  │           │  │           │
-     │ at 0.2    │  │ Links     │  │ Cosine    │
-     │ threshold │  │ memory_id │  │ similarity│
-     └───────────┘  └───────────┘  └─────┬─────┘
-                                         │
-                                   ┌─────▼─────┐
-                                   │ SUPERSEDES │
-                                   │            │
-                                   │ New memory │
-                                   │ marks old  │
-                                   │ as replaced│
-                                   │            │
-                                   │ Creates    │
-                                   │ 'supersedes│
-                                   │  relation  │
-                                   └────────────┘
-```
-
-### Janitor Pipeline
-
-1. **Decay** — Scans memories not used within the configured window.
-   Reduces `confidence` by a configurable rate. When confidence drops
-   below threshold (default 0.2), status changes to `deprecated`.
-
-2. **Promote** — Finds `context_items` of type `decision` or `gotcha`
-   that haven't been promoted yet. Creates a corresponding memory and
-   links back via `memory_id`. Status changes to `promoted`.
-
-3. **Dedup** — Computes embedding vectors for all memories. Finds pairs
-   with cosine similarity above threshold (default 0.85). Sends the
-   pair to an LLM to produce a merged version. Result creates a
-   `pending_action` for human review.
-
-4. **Supersedes** — When dedup merges produce a new memory, the old
-   memories are marked `status: superseded` and a `supersedes` relation
-   is created in `memory_relations`.
-
-### Embedding Providers
-
-```
-  ┌─────────────────────────────────────────────────┐
-  │              Embedding Pipeline                   │
-  │                                                   │
-  │  memory.content ──▶ provider.embed() ──▶ BLOB    │
-  │                                          (f32)   │
-  │                                                   │
-  │  Providers:                                       │
-  │  ┌──────────┐  ┌────────────┐  ┌──────────┐     │
-  │  │  Gemini  │  │ OpenRouter │  │  Ollama  │     │
-  │  │          │  │            │  │  (local) │     │
-  │  │ text-    │  │ configur-  │  │          │     │
-  │  │ embedding│  │ able model │  │ nomic/   │     │
-  │  │ -004     │  │            │  │ mxbai    │     │
-  │  └──────────┘  └────────────┘  └──────────┘     │
-  │                                                   │
-  │  Similarity: cosine(a, b) in TypeScript           │
-  │  Storage: Float32Array → SQLite BLOB              │
-  └─────────────────────────────────────────────────┘
+  Claude Code Sessions
+         |
+         v
+  +------+-------+  PreCompact   +-------------------+
+  |    Hooks     | ------------> | context-summary.md |
+  |  (4 hooks)   | <------------ | (human-readable)   |
+  +------+-------+  SessionStart +-------------------+
+         |
+         | read / write
+         v
+  +------+-------+
+  |   ltm.db     |  <-- single WAL SQLite at ~/.claude/memory/ltm.db
+  | (SQLite WAL) |
+  +------+-------+
+         |
+    +----+----+
+    |         |
+    v         v
++-------+  +------------------+
+| Bun   |  |  Janitor Agent   |
+| API   |  |  (4-stage pipe)  |
+| :7331 |  +------------------+
++---+---+
+    |  WebSocket + REST
+    v
++---+-------------------+
+|  Next.js Graph UI     |
+|  :7332                |
+|  / /project /settings |
+|  /pending             |
++-----------------------+
 ```
 
 ---
 
-## Graph Visualizer
+## Database (`memory/ltm.db`)
 
-The LTM graph renders all data as an interactive D3 force graph:
+Managed by `memory/schema.sql` and the shared singleton in `memory/shared-db.ts`.
 
-```
-  Server (Bun)              Graph App (Next.js 15)
-  :7331                     :7332
-  ┌──────────────┐          ┌──────────────────────────┐
-  │ /api/graph   │◀────────▶│  D3 Force Graph          │
-  │ /api/stats   │  proxy   │  ┌────────────────────┐  │
-  │ /api/tags    │          │  │ ● Project nodes    │  │
-  │ /api/search  │          │  │ ○ Memory nodes     │  │
-  │ /api/project │          │  │ · Context nodes    │  │
-  │ /api/settings│          │  └────────────────────┘  │
-  │ /api/janitor │          │                          │
-  │ /api/pending │          │  Pages:                  │
-  │              │  WS      │  / ........... Main graph│
-  │ WebSocket ───┼──────────│  /project/:n . Drill-down│
-  │ (live reload)│          │  /settings ... Provider  │
-  │              │          │  /pending ... Review UI   │
-  └──────────────┘          └──────────────────────────┘
-```
+| Table | Purpose |
+|---|---|
+| `memories` | Global learned facts (patterns, gotchas, preferences) |
+| `context_items` | Per-project goals, decisions, progress, gotchas |
+| `memory_relations` | Typed edges between memories (supersedes, related_to, etc.) |
+| `settings` | Key-value store for all LTM + janitor configuration |
+| `projects` | Registered projects from `registry.json` |
+| `sessions` | Session log with auto-naming |
 
-### Graph Node Types
-
-```
-  ╔═══════════════╗     ━━━━━━━━━━━━━━━━     ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-  ║   PROJECT     ║     ┃   MEMORY     ┃     ┊  CONTEXT     ┊
-  ║   (large,     ║     ┃   (medium,   ┃     ┊  (small,     ┊
-  ║    glow)      ║     ┃    colored   ┃     ┊   dim)       ┊
-  ╚═══════════════╝     ┃    by type)  ┃     ┊              ┊
-                        ━━━━━━━━━━━━━━━━     ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-
-  Memory colors by category:
-    preference   ▓▓ sky-400       architecture ▓▓ violet-400
-    gotcha       ▓▓ amber-400     pattern      ▓▓ emerald-400
-    workflow     ▓▓ rose-400      constraint   ▓▓ orange-400
-```
-
-### Graph Features
-
-| Feature | Description |
-|---------|-------------|
-| Tag filter | Sidebar chips — dims non-matching nodes to 15% |
-| Spotlight search | Cmd+K — FTS5-powered, keyboard nav, zoom-to-node |
-| Project drill-down | Click project node — radial layout sub-graph |
-| Node legend | Collapsible color legend, bottom-left |
-| WebSocket | Live refresh on DB changes |
-| Neural layout | Organic clustering, no rigid ring orbits |
+**Singleton pattern:** `shared-db.ts` exports one `Database` instance with WAL mode. All modules import this instance — never open their own connection. Prevents WAL file conflicts on macOS.
 
 ---
 
-## Settings UI (`/settings`)
+## Core Modules
 
-Configure janitor behavior and embedding providers:
+- **`memory/db.ts`** — CRUD helpers: `learn()`, `getItems()`, `searchMemories()` (FTS5), `getContextMerge()`
+- **`memory/context.ts`** — Per-project context CRUD (goals, decisions, progress, gotchas)
+- **`memory/migrate.ts`** — Idempotent schema migration runner. Safe to re-run on every server start.
+
+---
+
+## Server (`memory/server.ts`)
+
+Bun HTTP + WebSocket server on **port 7331**. The Next.js graph app proxies `/api/*` here.
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/api/stats` | Memory counts, project count, session count |
+| `GET` | `/api/graph` | Full graph data (nodes + links) for D3 |
+| `GET` | `/api/tags` | All tags with memory counts |
+| `GET` | `/api/projects` | Project list with memory/context counts |
+| `GET` | `/api/project/:name` | Project detail + related memories |
+| `GET` | `/api/memory/:id` | Single memory with relations |
+| `GET` | `/api/search?q=` | FTS5 full-text search |
+| `GET/PUT` | `/api/settings` | Read or bulk-update settings |
+| `GET` | `/api/settings/models` | Available models per provider |
+| `POST` | `/api/settings/verify` | Verify API key; persists key inline |
+| `GET` | `/api/pending` | Janitor suggestions awaiting review |
+| `POST` | `/api/pending/:id/approve` | Approve a janitor suggestion |
+| `POST` | `/api/pending/:id/reject` | Reject a janitor suggestion |
+| `POST` | `/api/janitor/run` | Trigger a manual janitor pass |
+| `WS` | `ws://localhost:7331` | Push graph updates to connected clients |
+
+---
+
+## Graph UI (`memory/graph-app/`)
+
+Next.js 15 app on **port 7332**. Dev: `bun dev --port 7332` with `NEXT_PUBLIC_WS_URL=ws://localhost:7331`.
+
+Pages: `/` (D3 force graph + sidebar), `/project/[name]` (drill-down), `/settings`, `/pending`
+
+**D3 layout:** neural-network style. Link strength varies by type: `context_of`=0.04, `project_scope`=0.25, relations=0.6. Charge=-80, alphaDecay=0.025. Zoom-to-fit on simulation end.
+
+---
+
+## Janitor Pipeline (`memory/janitor/`)
 
 ```
-  ┌─────────────────────────────────────────────┐
-  │  Settings                                    │
-  │                                              │
-  │  Embedding Provider    [Gemini      ▾]       │
-  │  Embedding Model       [text-embedding-004]  │
-  │  LLM Provider          [Gemini      ▾]       │
-  │  LLM Model             [gemini-2.0-flash]    │
-  │                                              │
-  │  ── Decay ──────────────────────────────     │
-  │  Decay Rate            [0.05        ]        │
-  │  Decay Window (days)   [30          ]        │
-  │  Archive Threshold     [0.2         ]        │
-  │                                              │
-  │  ── Dedup ──────────────────────────────     │
-  │  Similarity Threshold  [0.85        ]        │
-  │                                              │
-  │  ── Auto-Run ───────────────────────────     │
-  │  Auto-run Interval     [6h          ]        │
-  │                                              │
-  │  [Save Settings]                             │
-  └─────────────────────────────────────────────┘
+  /api/janitor/run  (manual)
+  or interval timer (ltm.janitor.intervalMinutes)
+          |
+          v
+  +-------+-------+
+  |  1. DECAY     |  unused memories lose confidence over time
+  |               |  grace period -> rate * days -> archive at min
+  +-------+-------+
+          |
+          v
+  +-------+-------+
+  |  2. PROMOTE   |  project memories with high importance+confirms
+  |               |  -> promoted to global scope (project_scope=NULL)
+  +-------+-------+
+          |
+          v
+  +-------+-------+
+  |  3. DEDUP     |  embed all active memories via provider
+  |               |  cosine similarity > threshold
+  |               |  -> LLM merges pair into one canonical memory
+  +-------+-------+
+          |
+          v
+  +-------+-------+
+  |  4. SUPERSEDES|  walk memory_relations for type=supersedes
+  |               |  -> archive the superseded originals
+  +---------------+
+          |
+          v
+  suggestions -> /pending UI (approve / reject)
+```
+
+**Stage details:**
+
+1. **Decay** — Memories not confirmed in `ltm.decay.graceDays` (default 30) start losing confidence at `ltm.decay.rate` per day (default 0.02). At `ltm.decay.minConfidence` (default 0.2): archived, not deleted.
+2. **Promote** — Project-scoped memories with importance ≥ `ltm.promote.minImportance` (default 3) and confirmed ≥ 2× are elevated to global.
+3. **Dedup** — Embeds all active memories. Cosine similarity above `ltm.dedup.threshold` (default 0.92) triggers an LLM merge.
+4. **Supersedes** — Walks `memory_relations` for `type=supersedes`, archives the original memories.
+
+---
+
+## Provider System (`memory/janitor/providers/`)
+
+```
+  EmbeddingProvider interface        LLMProvider interface
+  +----------------------+           +-------------------+
+  | embed(texts[])       |           | chat(messages[])  |
+  | verify()             |           | verify()          |
+  +----------+-----------+           +--------+----------+
+             |                                |
+   +---------+--------+             +---------+--------+
+   | gemini / openai  |             | gemini / openai  |
+   | cohere / ollama  |             | anthropic / cohere|
+   | openrouter       |             | openrouter/ollama |
+   +------------------+             +------------------+
+
+  Shared utils (providers/utils.ts):
+  - makeApiKeyGetter(settingKey, envVar, providerName)
+  - makeModelGetter(settingKey)
+  - httpErrorResult(res) -> { ok: false, error: string }
+```
+
+| Provider | Embed | LLM | API Key Setting |
+|---|---|---|---|
+| Gemini | yes | yes | `ltm.gemini.apiKey` |
+| OpenAI | yes | yes | `ltm.openai.apiKey` |
+| Anthropic | no | yes | `ltm.anthropic.apiKey` |
+| Cohere | yes | yes | `ltm.cohere.apiKey` |
+| OpenRouter | yes | yes | `ltm.openrouter.apiKey` |
+| Ollama | yes | yes | *(base URL, no key)* |
+
+---
+
+## API Key Verify Flow
+
+```
+  User pastes API key into /settings
+          |
+          | onPaste -> setTimeout(verify, 50)
+          | (draftRef ensures fresh value despite React state delay)
+          v
+  +-------+-------+
+  | SettingsForm  |  shows "Verifying..." spinner
+  +-------+-------+
+          |
+          | POST /api/settings/verify
+          | body: { provider: "openai", key: "sk-..." }
+          v
+  +-------+-------+
+  | server.ts     |
+  |               |  1. setSetting(apiKeySettingKey, key)  <- persists inline
+  |               |  2. PROVIDER_VERIFY_MAP[provider]      <- O(1) lookup
+  +-------+-------+
+          |
+          | provider.verify()
+          v
+  +-------+-------+
+  | Provider API  |  1-token dummy request
+  +-------+-------+
+          |
+     +----+----+
+     |         |
+  ok: true   ok: false
+     |         |
+     v         v
+  green      red border
+  checkmark  "Invalid key"
+  models     models stay
+  unlocked   disabled
 ```
 
 ---
 
-## Pending Actions UI (`/pending`)
-
-Review janitor suggestions before they take effect:
+## Hooks Integration — Session Context Flow
 
 ```
-  ┌─────────────────────────────────────────────┐
-  │  Pending Actions                    (3 new)  │
-  │                                              │
-  │  ┌─────────────────────────────────────────┐ │
-  │  │ MERGE  #42 + #89                        │ │
-  │  │ "bun preferred over npm" ≈              │ │
-  │  │ "always use bun not npm"                │ │
-  │  │ Similarity: 0.92                        │ │
-  │  │ Proposed: "bun is always preferred..."  │ │
-  │  │                                         │ │
-  │  │ [✓ Approve]  [✗ Reject]                 │ │
-  │  └─────────────────────────────────────────┘ │
-  │                                              │
-  │  ┌─────────────────────────────────────────┐ │
-  │  │ DEPRECATE  #13                          │ │
-  │  │ "Recent Sessions 2026-01-22..."         │ │
-  │  │ Confidence: 0.18 (below threshold)      │ │
-  │  │                                         │ │
-  │  │ [✓ Approve]  [✗ Reject]                 │ │
-  │  └─────────────────────────────────────────┘ │
-  └─────────────────────────────────────────────┘
+  Session opens in Claude Code
+          |
+          v
+  +-------+---------+
+  | SessionStart    |
+  | hook fires      |
+  +-------+---------+
+          |
+          | resolveProject(cwd) -> registry.json -> project name
+          v
+  +-------+---------+
+  | Read ltm.db     |
+  |                 |  getContextMerge(project):
+  |                 |  - globals (importance=5)   -- all projects
+  |                 |  - project-scoped memories
+  |                 |  getItems(project, 'goal')
+  |                 |  getItems(project, 'decision')
+  |                 |  getItems(project, 'progress', 3)  -- last 3
+  |                 |  getItems(project, 'gotcha')
+  +-------+---------+
+          |
+          | stdout -> Claude Code injects as background context
+          v
+  +-------+---------+
+  | Claude sees:    |
+  | ## Restored     |
+  | Project Context |
+  | goal / decisions|
+  | progress / LTM  |
+  +-----------------+
+
+  During session:
+  UpdateContext hook  -> appends progress items after each tool use
+  EvaluateSession     -> extracts patterns at session end -> learn()
+
+  Before /compact:
+  PreCompact hook     -> reads DB -> writes context-summary.md (60 lines max)
+                      -> injected at NEXT SessionStart as fallback
 ```
+
+**Hook reads use `context.ts` helpers, never raw SQL.** Only `server.ts` and janitor use direct SQL.
 
 ---
 
-## Schema (Phase 2 additions)
+## Settings Keys Reference
 
-```sql
--- memories: new columns
-status       TEXT DEFAULT 'active'  -- active|pending|deprecated|superseded
-embedding    BLOB                   -- Float32Array for vector search
-last_used_at TEXT DEFAULT now()     -- for decay calculations
-
--- context_items: new columns
-memory_id    INTEGER REFERENCES memories(id)  -- link to promoted memory
-status       TEXT DEFAULT 'active'            -- active|pending_promotion|promoted
-
--- settings: new table
-CREATE TABLE settings (
-  key        TEXT PRIMARY KEY,
-  value      TEXT NOT NULL,
-  updated_at TEXT DEFAULT now()
-);
-
--- memory_relations: new type
-'supersedes' added to relationship_type CHECK constraint
-```
-
----
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `/learn` | Store a new pattern or insight in LTM |
-| `/recall` | Search long-term memory before starting work |
-| `/forget` | Remove a memory by ID |
-| `/relate` | Create a relation between two memories |
-| `/init-context` | Seed initial context for a new project |
-| `/update-context` | Extract decisions/gotchas from current session |
-| `/check-context` | Verify context matches disk state |
+| Key | Default | Purpose |
+|---|---|---|
+| `ltm.embed.provider` | `gemini` | Active embedding provider |
+| `ltm.llm.provider` | `gemini` | Active LLM provider |
+| `ltm.decay.graceDays` | `30` | Days before decay starts |
+| `ltm.decay.rate` | `0.02` | Confidence lost per idle day |
+| `ltm.decay.minConfidence` | `0.2` | Archive threshold |
+| `ltm.promote.minImportance` | `3` | Minimum importance to promote |
+| `ltm.janitor.intervalMinutes` | `0` | Auto-run interval (0 = off) |
+| `ltm.dedup.threshold` | `0.92` | Cosine similarity threshold |
+| `ltm.gemini.apiKey` | — | Gemini API key |
+| `ltm.gemini.embedModel` | `text-embedding-004` | Gemini embed model |
+| `ltm.gemini.llmModel` | `gemini-1.5-flash` | Gemini LLM model |
+| `ltm.openai.apiKey` | — | OpenAI API key |
+| `ltm.openai.embedModel` | `text-embedding-3-small` | OpenAI embed model |
+| `ltm.openai.llmModel` | `gpt-4o-mini` | OpenAI LLM model |
+| `ltm.anthropic.apiKey` | — | Anthropic API key |
+| `ltm.anthropic.llmModel` | `claude-haiku-4-5-20251001` | Anthropic LLM model |
+| `ltm.cohere.apiKey` | — | Cohere API key |
+| `ltm.cohere.embedModel` | `embed-v4.0` | Cohere embed model |
+| `ltm.cohere.llmModel` | `command-r-plus` | Cohere LLM model |
 
 ---
 
-## Hooks
+## Starting the System
 
-| Hook | Trigger | LTM Action |
-|------|---------|------------|
-| `SessionStart` | Session begins | Injects context summary |
-| `UpdateContext` | `/update-context` | Writes context_items to DB |
-| `PreCompact` | Before `/compact` | Assembles context-summary.md |
-| `EvaluateSession` | Session ends | Extracts patterns → memories |
-| `NotifyLtmServer` | After DB writes | Broadcasts WS refresh |
-| `Cleanup` | Session ends | Trims old progress entries |
+```bash
+# API server (port 7331)
+bun ~/.claude/memory/server.ts &
+
+# Next.js graph UI (port 7332, HMR)
+cd ~/.claude/memory/graph-app
+NEXT_PUBLIC_WS_URL=ws://localhost:7331 bun dev --port 7332
+```
+
+Or use `/ltm-server start` in Claude Code — opens both in tmux automatically.
 
 ---
 
-## File Structure
+## Design Decisions
 
-```
-memory/
-├── ltm.db              # SQLite database (WAL mode)
-├── schema.sql          # Full schema (idempotent)
-├── shared-db.ts        # DB singleton + migrations + settings helpers
-├── server.ts           # Bun API server (:7331) + janitor host
-├── db.ts               # Memory CRUD operations
-├── context.ts          # Context item operations + promote
-├── migrate.ts          # One-shot: JSON → SQLite migration
-├── backfill-promote.ts # One-shot: promote existing context_items
-│
-├── janitor/
-│   ├── index.ts        # Orchestrator (run all tasks, auto-run timer)
-│   ├── decay.ts        # Confidence decay logic
-│   ├── promote.ts      # Auto-promote decisions/gotchas
-│   ├── dedup.ts        # Semantic dedup via embeddings
-│   ├── supersedes.ts   # Mark old memories as superseded
-│   ├── embeddings.ts   # Vector operations + cosine similarity
-│   └── providers/
-│       ├── types.ts    # Provider interfaces + setting keys
-│       ├── gemini.ts   # Google Gemini embedding + LLM
-│       ├── openrouter.ts # OpenRouter embedding + LLM
-│       └── ollama.ts   # Local Ollama embedding + LLM
-│
-├── graph-app/          # Next.js 15 visualization
-│   ├── app/
-│   │   ├── page.tsx        # Main graph view
-│   │   ├── pending/page.tsx    # Pending actions review
-│   │   └── settings/page.tsx   # Provider/decay settings
-│   ├── components/
-│   │   ├── Graph.tsx       # D3 force graph
-│   │   ├── StatsBar.tsx    # Memory/context counts + pending badge
-│   │   ├── SettingsForm.tsx # Settings form component
-│   │   └── ...
-│   └── lib/
-│       ├── api.ts          # API client (fetch + WS)
-│       └── types.ts        # Shared TypeScript types
-│
-└── docs/
-    └── memory-long-term.md # This file
-```
+| Decision | Reason |
+|---|---|
+| SQLite | Zero-dependency, single-file, WAL mode — perfect for local dev tool with <100k rows |
+| Singleton DB connection | macOS WAL creates `-wal`/`-shm` files that corrupt with two writers |
+| Bun for server | Native `bun:sqlite`, built-in WebSocket, fast startup — no extra deps |
+| Inline key persistence on verify | Eliminates client PUT→POST double round-trip; key saved regardless of verify outcome |
+| `draftRef` in SettingsForm | `onPaste` fires before React commits state; ref is always current, closure is not |
+| FTS5 for search | Replaces LIKE scans — full-text index on memory content |
+| Static imports in server.ts | Replaces per-request dynamic imports for providers; `PROVIDER_VERIFY_MAP` gives O(1) lookup |

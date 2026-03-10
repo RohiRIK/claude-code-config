@@ -16,6 +16,7 @@ import {
   getJanitorStatus,
   getPendingMemories,
   mergeMemories,
+  parseDedupSource,
   rejectMemory,
   runJanitor,
   startAutoRun,
@@ -38,6 +39,103 @@ const PROVIDER_VERIFY_MAP: Record<string, { verify(): Promise<{ ok: boolean; err
   openrouter: openrouterEmbedding,
   ollama: ollamaEmbedding,
 };
+
+/** Fetch real model lists from each provider's API after successful key verification. */
+async function fetchProviderModels(
+  provider: string,
+  key: string,
+): Promise<{ embedModels: string[]; llmModels: string[] }> {
+  const empty = { embedModels: [] as string[], llmModels: [] as string[] };
+
+  try {
+    if (provider === "gemini") {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=100`,
+      );
+      if (!res.ok) return empty;
+      const data = (await res.json()) as {
+        models: Array<{ name: string; supportedGenerationMethods: string[] }>;
+      };
+      const embedModels = data.models
+        .filter((m) => m.supportedGenerationMethods.includes("embedContent") || m.supportedGenerationMethods.includes("batchEmbedContents"))
+        .map((m) => m.name.replace("models/", ""));
+      const llmModels = data.models
+        .filter((m) => m.supportedGenerationMethods.includes("generateContent"))
+        .map((m) => m.name.replace("models/", ""))
+        .filter((n) => !n.includes("embedding") && !n.includes("aqa"));
+      return { embedModels, llmModels };
+    }
+
+    if (provider === "openai") {
+      const res = await fetch("https://api.openai.com/v1/models", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) return empty;
+      const data = (await res.json()) as { data: Array<{ id: string }> };
+      const ids = data.data.map((m) => m.id).sort();
+      const embedModels = ids.filter((id) => id.startsWith("text-embedding"));
+      const llmModels = ids.filter(
+        (id) => id.startsWith("gpt-") || id.startsWith("o1") || id.startsWith("o3") || id.startsWith("o4"),
+      );
+      return { embedModels, llmModels };
+    }
+
+    if (provider === "anthropic") {
+      // Anthropic has no public model list API — return well-known models
+      return {
+        embedModels: [],
+        llmModels: [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-4-6",
+          "claude-opus-4-6",
+          "claude-3-5-haiku-20241022",
+          "claude-3-5-sonnet-20241022",
+        ],
+      };
+    }
+
+    if (provider === "cohere") {
+      const res = await fetch("https://api.cohere.com/v2/models?page_size=50", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) return empty;
+      const data = (await res.json()) as {
+        models: Array<{ name: string; endpoints: string[] }>;
+      };
+      const embedModels = data.models
+        .filter((m) => m.endpoints.includes("embed"))
+        .map((m) => m.name);
+      const llmModels = data.models
+        .filter((m) => m.endpoints.includes("chat"))
+        .map((m) => m.name);
+      return { embedModels, llmModels };
+    }
+
+    if (provider === "openrouter") {
+      const res = await fetch("https://openrouter.ai/api/v1/models", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) return empty;
+      const data = (await res.json()) as { data: Array<{ id: string }> };
+      const ids = data.data.map((m) => m.id).sort();
+      const embedModels = ids.filter((id) => id.includes("embedding"));
+      const llmModels = ids.filter((id) => !id.includes("embedding"));
+      return { embedModels, llmModels };
+    }
+
+    if (provider === "ollama") {
+      const baseUrl = getSetting("ltm.ollama.baseUrl") || "http://localhost:11434";
+      const res = await fetch(`${baseUrl}/api/tags`).catch(() => null);
+      if (!res?.ok) return empty;
+      const data = (await res.json()) as { models: Array<{ name: string }> };
+      const names = data.models.map((m) => m.name).sort();
+      return { embedModels: names, llmModels: names };
+    }
+  } catch {
+    // fall through to empty
+  }
+  return empty;
+}
 
 const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
 const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
@@ -97,6 +195,7 @@ function getMemoriesWithTags(): MemoryRow[] {
     FROM memories m
     LEFT JOIN memory_tags mt ON m.id = mt.memory_id
     LEFT JOIN tags t ON mt.tag_id = t.id
+    WHERE m.status = 'active'
     GROUP BY m.id
   `);
 }
@@ -466,6 +565,10 @@ Bun.serve({
           return Response.json({ ok: false, error: `Unknown provider: ${body.provider}` });
         }
         const result = await provider.verify();
+        if (result.ok && body.provider && body.key) {
+          const models = await fetchProviderModels(body.provider, body.key);
+          return Response.json({ ...result, ...models });
+        }
         return Response.json(result);
       } catch (e) {
         return Response.json({ ok: false, error: String(e) });
@@ -481,13 +584,15 @@ Bun.serve({
     }
 
     if (p === "/api/janitor/run" && req.method === "POST") {
-      try {
-        const result = await runJanitor();
-        broadcast({ type: "janitor-complete", result });
-        return Response.json(result);
-      } catch (e) {
-        return Response.json({ ok: false, error: String(e) }, { status: 500 });
+      const status = getJanitorStatus();
+      if (status.running) {
+        return Response.json({ ok: false, error: "Janitor already running" }, { status: 409 });
       }
+      // Fire-and-forget — LLM dedup can take >10s, respond immediately
+      runJanitor().then(result => {
+        broadcast({ type: "janitor-complete", result });
+      }).catch(() => {});
+      return Response.json({ ok: true, started: true });
     }
 
     // ============================================================
@@ -501,6 +606,19 @@ Bun.serve({
     const approveMatch = p.match(/^\/api\/memory\/(\d+)\/approve$/);
     if (approveMatch?.[1] && req.method === "POST") {
       const id = parseInt(approveMatch[1], 10);
+      const mem = queryOne<{ source: string | null }>(
+        "SELECT source FROM memories WHERE id = ? AND status = 'pending'", [id]
+      );
+      if (!mem) {
+        return Response.json({ ok: false, error: "Not a pending memory" }, { status: 400 });
+      }
+      const dedupPair = mem.source ? parseDedupSource(mem.source) : null;
+      if (dedupPair) {
+        mergeMemories(dedupPair.idA, dedupPair.idB);
+        db.run("DELETE FROM memories WHERE id = ?", [id]);
+        broadcast({ type: "refresh" });
+        return Response.json({ ok: true, id, merged: true });
+      }
       const ok = approveMemory(id);
       if (ok) {
         broadcast({ type: "refresh" });

@@ -31,12 +31,12 @@ export interface ContextItem {
 function section(label: string, items: ContextItem[], budget: number): string {
   if (items.length === 0) return "";
   const lines = items.map(i => i.content);
-  const available = Math.max(0, budget - 3); // header(2) + trailing blank
+  const available = Math.max(0, budget - 2); // header(1) + trailing blank
   if (lines.length <= available) {
-    return [`## ${label}`, "", ...lines, ""].join("\n");
+    return [`${label}`, ...lines, ""].join("\n");
   }
   const kept = lines.slice(-available);
-  return [`## ${label}`, "", ...kept, `… (${lines.length - available} more entries not shown)`, ""].join("\n");
+  return [`${label}`, ...kept, `… (${lines.length - available} more not shown)`, ""].join("\n");
 }
 
 /**
@@ -136,13 +136,13 @@ export function exportContextMarkdown(project: string): void {
   const projectDir = join(PROJECTS_DIR, project);
   if (!existsSync(projectDir)) mkdirSync(projectDir, { recursive: true });
 
-  const timestamp = new Date().toISOString().replace("T", " ").replace(/\..+/, "");
+  const date = new Date().toISOString().slice(0, 10);
   const summary = [
-    `# Context Summary\n**Project:** ${project}\n**Compaction checkpoint:** ${timestamp}\n`,
-    section("Current Goal",        getItems(project, "goal"),       10),
-    section("Recent Progress",     getItems(project, "progress", 20), 20),
-    section("Key Decisions",       getItems(project, "decision"),   15),
-    section("Gotchas / Watch Out", getItems(project, "gotcha"),     15),
+    `# ${project} | ${date}\n`,
+    section("GOAL:",     getItems(project, "goal"),         10),
+    section("PROGRESS:", getItems(project, "progress", 20), 20),
+    section("DEC:",      getItems(project, "decision"),     15),
+    section("WATCH:",    getItems(project, "gotcha"),       15),
   ].join("");
 
   writeFileSync(join(projectDir, "context-summary.md"), summary);
