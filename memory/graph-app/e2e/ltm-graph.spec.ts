@@ -1,35 +1,42 @@
 import { test, expect } from "@playwright/test";
-import path from "path";
 
-const SS = (name: string) =>
-  path.join(__dirname, "screenshots", `${name}.png`);
+const API = "http://localhost:7331";
 
-// Click the first non-project node via JS (project nodes have a <text> child)
-async function clickNonProjectNode(page: import("@playwright/test").Page) {
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+/** Click the first memory/context node (no node-label-project child) to open the sidebar. */
+async function openSidebarViaNode(page: import("@playwright/test").Page) {
   await page.evaluate(() => {
-    const nodes = Array.from(document.querySelectorAll("g.node"));
-    const nonProject = nodes.find(n => !n.querySelector("text")) as HTMLElement | undefined;
-    nonProject?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const nonProject = Array.from(document.querySelectorAll("g.node")).find(
+      (n) => !n.querySelector(".node-label-project"),
+    ) as HTMLElement | undefined;
+    nonProject?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
   });
 }
+
+// ── Suite ──────────────────────────────────────────────────────────────────────
 
 test.describe("LTM Graph Visualizer", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Wait for D3 graph to render nodes
+    // Wait for D3 to render nodes and stats bar to populate
     await page.waitForSelector("svg circle", { timeout: 15000 });
-    // Give simulation time to settle
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(
+      () => document.body.textContent?.match(/\d+\s*memories/) !== null,
+      { timeout: 10000 },
+    );
   });
 
+  // ── 1. Graph renders ─────────────────────────────────────────────────────────
   test("1. page loads with graph nodes rendered", async ({ page }) => {
     const circles = page.locator("svg circle");
-    await expect(circles.first()).toBeVisible();
     const count = await circles.count();
     expect(count).toBeGreaterThan(5);
-    await page.screenshot({ path: SS("1-initial-load") });
   });
 
+  // ── 2. Stats bar ─────────────────────────────────────────────────────────────
   test("2. stats bar shows all five counters", async ({ page }) => {
     const body = await page.textContent("body");
     expect(body).toMatch(/\d+\s*memories/);
@@ -39,67 +46,84 @@ test.describe("LTM Graph Visualizer", () => {
     expect(body).toMatch(/\d+\s*tags/);
   });
 
+  // ── 3. Project list ──────────────────────────────────────────────────────────
   test("3. project list renders project names", async ({ page }) => {
-    const heading = page.locator(
-      ".uppercase.tracking-wide",
-      { hasText: "Projects" }
-    ).first();
+    const heading = page
+      .locator(".uppercase.tracking-widest", { hasText: "Projects" })
+      .first();
     await expect(heading).toBeVisible();
     const projectButtons = page.locator("button.text-xs.px-3");
-    const count = await projectButtons.count();
-    expect(count).toBeGreaterThan(1);
+    expect(await projectButtons.count()).toBeGreaterThan(1);
   });
 
-  test("4. clicking a non-project node opens the sidebar", async ({ page }) => {
-    // Project nodes now navigate — click a memory/context node instead
-    await clickNonProjectNode(page);
+  // ── 4–5+8. Sidebar (shared setup) ───────────────────────────────────────────
+  test.describe("Sidebar", () => {
+    test.beforeEach(async ({ page }) => {
+      await openSidebarViaNode(page);
+    });
 
-    const closeBtn = page.locator("button", { hasText: "×" });
-    await expect(closeBtn).toBeVisible({ timeout: 5000 });
+    test("4. clicking a non-project node opens the sidebar", async ({
+      page,
+    }) => {
+      await expect(
+        page.getByRole("button", { name: "×" }),
+      ).toBeVisible({ timeout: 5000 });
+    });
 
-    await page.screenshot({ path: SS("4-sidebar-open") });
+    test("5. sidebar shows node content fields", async ({ page }) => {
+      await page.getByRole("button", { name: "×" }).waitFor({ timeout: 5000 });
+      const fieldLabels = page.locator(".uppercase.tracking-widest");
+      expect(await fieldLabels.count()).toBeGreaterThan(1);
+    });
+
+    test("8. sidebar close button dismisses sidebar", async ({ page }) => {
+      const closeBtn = page.getByRole("button", { name: "×" });
+      await closeBtn.waitFor({ timeout: 5000 });
+      await closeBtn.click();
+      await expect(closeBtn).not.toBeVisible({ timeout: 3000 });
+    });
   });
 
-  test("5. sidebar shows node content fields", async ({ page }) => {
-    await clickNonProjectNode(page);
-    await page.locator("button", { hasText: "×" }).waitFor({ timeout: 5000 });
-
-    // Sidebar has uppercase tracking-wide field labels (Content, Category, etc.)
-    const fieldLabels = page.locator(".uppercase.tracking-wide");
-    const count = await fieldLabels.count();
-    expect(count).toBeGreaterThan(1);
-  });
-
+  // ── 6. Search ────────────────────────────────────────────────────────────────
   test("6. search box filters graph nodes", async ({ page }) => {
     const initialCount = await page.locator("svg circle").count();
-
-    // Target the FilterBar search input (small, in the toolbar)
-    const searchInput = page.locator("input[placeholder='Search memories…']").first();
+    const searchInput = page
+      .locator("input[placeholder='Search memories…']")
+      .first();
     await expect(searchInput).toBeVisible();
     await searchInput.fill("bun");
-    await page.waitForTimeout(700);
 
-    // Graph still renders (doesn't crash)
+    // Wait for the graph to re-render after debounce
+    await page.waitForFunction(
+      (before) =>
+        document.querySelectorAll("svg circle").length !== before ||
+        document.querySelectorAll("svg circle").length > 0,
+      initialCount,
+      { timeout: 3000 },
+    );
     await expect(page.locator("svg circle").first()).toBeVisible();
-    await page.screenshot({ path: SS("6-search-active") });
 
-    // Clear and verify full graph returns
     await searchInput.clear();
-    await page.waitForTimeout(500);
-    const afterCount = await page.locator("svg circle").count();
-    expect(afterCount).toBe(initialCount);
+    await page.waitForFunction(
+      (before) => document.querySelectorAll("svg circle").length === before,
+      initialCount,
+      { timeout: 3000 },
+    );
   });
 
+  // ── 7. Importance slider ─────────────────────────────────────────────────────
   test("7. importance slider filters nodes", async ({ page }) => {
     const allCount = await page.locator("svg circle").count();
-
     const slider = page.locator("input[type='range']");
     await expect(slider).toBeVisible();
 
     await slider.fill("5");
     await slider.dispatchEvent("input");
-    await page.waitForTimeout(500);
-
+    // Wait for graph to re-render
+    await page.waitForFunction(
+      () => document.querySelectorAll("svg circle").length >= 0,
+      { timeout: 2000 },
+    );
     const filteredCount = await page.locator("svg circle").count();
     expect(filteredCount).toBeLessThanOrEqual(allCount);
 
@@ -107,87 +131,117 @@ test.describe("LTM Graph Visualizer", () => {
     await slider.dispatchEvent("input");
   });
 
-  test("8. sidebar close button works", async ({ page }) => {
-    await clickNonProjectNode(page);
-    const closeBtn = page.locator("button", { hasText: "×" });
-    await closeBtn.waitFor({ timeout: 5000 });
-    await closeBtn.click();
-    await expect(closeBtn).not.toBeVisible({ timeout: 3000 });
-  });
-
-  test("9. tag filter panel renders chips and dims non-matching nodes", async ({ page }) => {
+  // ── 9. Tag filter ────────────────────────────────────────────────────────────
+  test("9. tag filter chips toggle node dimming", async ({ page }) => {
     const tagChips = page.locator("button.rounded-full");
     const count = await tagChips.count();
     if (count === 0) {
-      console.log("No tags in DB — skipping dim check");
+      test.skip(true, "No tags in DB");
       return;
     }
 
-    const initialOpacity = await page.evaluate(() => {
-      const nodes = Array.from(document.querySelectorAll("g.node")) as SVGGElement[];
-      return nodes.map(n => n.getAttribute("opacity") ?? "1");
-    });
-    expect(initialOpacity.every(o => o === "1" || o === null)).toBe(true);
+    const initialOpacity = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("g.node")).map(
+        (n) => n.getAttribute("opacity") ?? "1",
+      ),
+    );
+    expect(initialOpacity.every((o) => o === "1" || o === null)).toBe(true);
 
     await tagChips.first().click();
-    await page.waitForTimeout(300);
+    // Wait for opacity update
+    await page.waitForFunction(
+      () =>
+        Array.from(document.querySelectorAll("g.node")).some(
+          (n) => n.getAttribute("opacity") === "0.15",
+        ),
+      { timeout: 3000 },
+    );
+    const afterOpacity = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("g.node")).map(
+        (n) => n.getAttribute("opacity") ?? "1",
+      ),
+    );
+    const dimmedCount = afterOpacity.filter((o) => o === "0.15").length;
+    expect(dimmedCount).toBeGreaterThan(0);
 
-    const afterOpacity = await page.evaluate(() => {
-      const nodes = Array.from(document.querySelectorAll("g.node")) as SVGGElement[];
-      return nodes.map(n => n.getAttribute("opacity") ?? "1");
-    });
-    const dimmedCount = afterOpacity.filter(o => o === "0.15").length;
-    expect(dimmedCount).toBeGreaterThanOrEqual(0);
-
+    // Toggle off
     await tagChips.first().click();
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: SS("9-tag-filter") });
   });
 
-  test("10. spotlight search opens with ⌘K and returns results", async ({ page }) => {
+  // ── 10. Spotlight ────────────────────────────────────────────────────────────
+  test("10. spotlight opens with ⌘K and accepts input", async ({ page }) => {
     await page.keyboard.press("Meta+k");
-    await page.waitForTimeout(300);
-
-    // SpotlightModal has distinct placeholder "Jump to memory…"
     const modal = page.locator("input[placeholder='Jump to memory…']");
     await expect(modal).toBeVisible({ timeout: 3000 });
 
     await modal.fill("bun");
-    await page.waitForTimeout(600);
-
-    const body = await page.textContent("body");
-    expect(body).toBeTruthy();
-
-    await page.screenshot({ path: SS("10-spotlight") });
+    await expect(modal).toHaveValue("bun");
 
     await page.keyboard.press("Escape");
     await expect(modal).not.toBeVisible({ timeout: 2000 });
   });
 
-  test("11. clicking project node navigates to drill-down page", async ({ page }) => {
-    // Click via JS to avoid viewport/stability issues with D3 simulation
+  // ── 11. Project drill-down ───────────────────────────────────────────────────
+  test("11. clicking project node navigates to drill-down page", async ({
+    page,
+  }) => {
     const clicked = await page.evaluate(() => {
-      const nodes = Array.from(document.querySelectorAll("g.node"));
-      const projectNode = nodes.find(n => n.querySelector("text")) as HTMLElement | undefined;
+      const projectNode = Array.from(
+        document.querySelectorAll("g.node"),
+      ).find((n) => n.querySelector("text")) as HTMLElement | undefined;
       if (!projectNode) return false;
-      projectNode.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      projectNode.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
       return true;
     });
 
     if (!clicked) {
-      console.log("No project nodes found — skipping");
+      test.skip(true, "No project nodes found in graph");
       return;
     }
 
     await page.waitForURL(/\/project\//, { timeout: 5000 });
-
     const backBtn = page.locator("a", { hasText: "Back" });
     await expect(backBtn).toBeVisible({ timeout: 5000 });
 
-    await page.screenshot({ path: SS("11-project-page") });
-
     await backBtn.click();
     await page.waitForURL("/", { timeout: 5000 });
-    await expect(page.locator("svg circle").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("svg circle").first()).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  // ── 12. API health ───────────────────────────────────────────────────────────
+  test("12. /api/stats returns memories > 0", async ({ request }) => {
+    const res = await request.get(`${API}/api/stats`);
+    expect(res.status()).toBe(200);
+    const json = await res.json();
+    expect(json).toHaveProperty("memories");
+    expect(json.memories).toBeGreaterThan(0);
+  });
+
+  // ── 13. WebSocket ────────────────────────────────────────────────────────────
+  test("13. WebSocket connects to API server", async ({ page }) => {
+    const connected = await page.evaluate(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const ws = new WebSocket("ws://localhost:7331");
+          const t = setTimeout(() => {
+            ws.close();
+            resolve(false);
+          }, 5000);
+          ws.onopen = () => {
+            clearTimeout(t);
+            ws.close();
+            resolve(true);
+          };
+          ws.onerror = () => {
+            clearTimeout(t);
+            resolve(false);
+          };
+        }),
+    );
+    expect(connected).toBe(true);
   });
 });

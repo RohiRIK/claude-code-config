@@ -2,10 +2,8 @@
  * gemini.ts — Google Gemini provider for embeddings and LLM chat.
  * Uses the Gemini REST API directly (no SDK dependency).
  */
-import { getSetting } from "../../shared-db.js";
 import {
   SETTING_KEYS,
-  getDefault,
   type ChatInput,
   type ChatResult,
   type EmbedInput,
@@ -14,31 +12,13 @@ import {
   type EmbeddingVector,
   type LLMProvider,
 } from "./types.js";
+import { httpErrorResult, makeApiKeyGetter, makeModelGetter } from "./utils.js";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-function getApiKey(): string {
-  const key =
-    getSetting(SETTING_KEYS.GEMINI_API_KEY) ||
-    process.env.GEMINI_API_KEY ||
-    "";
-  if (!key) throw new Error("Gemini API key not configured. Set it in Settings or GEMINI_API_KEY env var.");
-  return key;
-}
-
-function getEmbedModel(): string {
-  return (
-    getSetting(SETTING_KEYS.GEMINI_EMBED_MODEL) ||
-    getDefault(SETTING_KEYS.GEMINI_EMBED_MODEL)
-  );
-}
-
-function getLlmModel(): string {
-  return (
-    getSetting(SETTING_KEYS.GEMINI_LLM_MODEL) ||
-    getDefault(SETTING_KEYS.GEMINI_LLM_MODEL)
-  );
-}
+const getApiKey = makeApiKeyGetter(SETTING_KEYS.GEMINI_API_KEY, "GEMINI_API_KEY", "Gemini");
+const getEmbedModel = makeModelGetter(SETTING_KEYS.GEMINI_EMBED_MODEL);
+const getLlmModel = makeModelGetter(SETTING_KEYS.GEMINI_LLM_MODEL);
 
 export const geminiEmbedding: EmbeddingProvider = {
   name: "gemini",
@@ -103,10 +83,7 @@ export const geminiEmbedding: EmbeddingProvider = {
           }),
         },
       );
-      if (!res.ok) {
-        const body = await res.text();
-        return { ok: false, error: `${res.status}: ${body}` };
-      }
+      if (!res.ok) return httpErrorResult(res);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: String(e) };
@@ -193,10 +170,7 @@ export const geminiLLM: LLMProvider = {
           }),
         },
       );
-      if (!res.ok) {
-        const body = await res.text();
-        return { ok: false, error: `${res.status}: ${body}` };
-      }
+      if (!res.ok) return httpErrorResult(res);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: String(e) };

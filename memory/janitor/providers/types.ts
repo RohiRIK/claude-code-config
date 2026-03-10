@@ -69,37 +69,39 @@ export interface LLMProvider {
 
 /** Settings keys used by the janitor for provider configuration. */
 export const SETTING_KEYS = {
-  /** Embedding provider: "gemini" | "openrouter" | "ollama" */
+  /** Embedding provider */
   EMBED_PROVIDER: "ltm.embed.provider",
-  /** LLM provider for smart decisions: "gemini" | "openrouter" | "ollama" */
+  /** LLM provider for smart decisions */
   LLM_PROVIDER: "ltm.llm.provider",
-  /** Gemini API key */
+  // Gemini
   GEMINI_API_KEY: "ltm.gemini.apiKey",
-  /** Gemini embedding model */
   GEMINI_EMBED_MODEL: "ltm.gemini.embedModel",
-  /** Gemini LLM model */
   GEMINI_LLM_MODEL: "ltm.gemini.llmModel",
-  /** OpenRouter API key */
+  // OpenRouter
   OPENROUTER_API_KEY: "ltm.openrouter.apiKey",
-  /** OpenRouter embedding model */
   OPENROUTER_EMBED_MODEL: "ltm.openrouter.embedModel",
-  /** OpenRouter LLM model */
   OPENROUTER_LLM_MODEL: "ltm.openrouter.llmModel",
-  /** Ollama base URL (default http://localhost:11434) */
+  // Ollama
   OLLAMA_BASE_URL: "ltm.ollama.baseUrl",
-  /** Ollama embedding model */
   OLLAMA_EMBED_MODEL: "ltm.ollama.embedModel",
-  /** Ollama LLM model */
   OLLAMA_LLM_MODEL: "ltm.ollama.llmModel",
-  /** Decay: days before confidence starts decaying */
+  // OpenAI
+  OPENAI_API_KEY: "ltm.openai.apiKey",
+  OPENAI_EMBED_MODEL: "ltm.openai.embedModel",
+  OPENAI_LLM_MODEL: "ltm.openai.llmModel",
+  // Anthropic (LLM only)
+  ANTHROPIC_API_KEY: "ltm.anthropic.apiKey",
+  ANTHROPIC_LLM_MODEL: "ltm.anthropic.llmModel",
+  // Cohere
+  COHERE_API_KEY: "ltm.cohere.apiKey",
+  COHERE_EMBED_MODEL: "ltm.cohere.embedModel",
+  COHERE_LLM_MODEL: "ltm.cohere.llmModel",
+  // Decay
   DECAY_GRACE_DAYS: "ltm.decay.graceDays",
-  /** Decay: rate per day after grace period (0.0 to 1.0) */
   DECAY_RATE: "ltm.decay.rate",
-  /** Decay: minimum confidence before deprecation */
   DECAY_MIN_CONFIDENCE: "ltm.decay.minConfidence",
-  /** Auto-promote: minimum importance threshold for context_items */
+  // Promote & Janitor
   PROMOTE_MIN_IMPORTANCE: "ltm.promote.minImportance",
-  /** Janitor: auto-run interval in minutes (0 = disabled) */
   JANITOR_INTERVAL_MINUTES: "ltm.janitor.intervalMinutes",
 } as const;
 
@@ -116,6 +118,14 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   [SETTING_KEYS.OLLAMA_BASE_URL]: "http://localhost:11434",
   [SETTING_KEYS.OLLAMA_EMBED_MODEL]: "nomic-embed-text",
   [SETTING_KEYS.OLLAMA_LLM_MODEL]: "llama3.2",
+  [SETTING_KEYS.OPENAI_API_KEY]: "",
+  [SETTING_KEYS.OPENAI_EMBED_MODEL]: "text-embedding-3-small",
+  [SETTING_KEYS.OPENAI_LLM_MODEL]: "gpt-4o-mini",
+  [SETTING_KEYS.ANTHROPIC_API_KEY]: "",
+  [SETTING_KEYS.ANTHROPIC_LLM_MODEL]: "claude-haiku-4-5-20251001",
+  [SETTING_KEYS.COHERE_API_KEY]: "",
+  [SETTING_KEYS.COHERE_EMBED_MODEL]: "embed-v4.0",
+  [SETTING_KEYS.COHERE_LLM_MODEL]: "command-r-plus",
   [SETTING_KEYS.DECAY_GRACE_DAYS]: "30",
   [SETTING_KEYS.DECAY_RATE]: "0.02",
   [SETTING_KEYS.DECAY_MIN_CONFIDENCE]: "0.2",
@@ -124,7 +134,7 @@ export const SETTING_DEFAULTS: Record<string, string> = {
 };
 
 /** Provider type identifiers. */
-export type ProviderType = "gemini" | "openrouter" | "ollama";
+export type ProviderType = "gemini" | "openrouter" | "ollama" | "openai" | "anthropic" | "cohere";
 
 /** Get a default setting value, guaranteed non-undefined. */
 export function getDefault(key: string): string {

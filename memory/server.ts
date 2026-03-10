@@ -22,6 +22,22 @@ import {
   supersede,
 } from "./janitor/index.js";
 import { SETTING_DEFAULTS, SETTING_KEYS } from "./janitor/providers/types.js";
+import { anthropicLLM } from "./janitor/providers/anthropic.js";
+import { cohereEmbedding } from "./janitor/providers/cohere.js";
+import { geminiEmbedding } from "./janitor/providers/gemini.js";
+import { ollamaEmbedding } from "./janitor/providers/ollama.js";
+import { openaiEmbedding } from "./janitor/providers/openai.js";
+import { openrouterEmbedding } from "./janitor/providers/openrouter.js";
+
+/** Provider instances indexed by provider id, used by the /api/settings/verify route. */
+const PROVIDER_VERIFY_MAP: Record<string, { verify(): Promise<{ ok: boolean; error?: string }> }> = {
+  gemini: geminiEmbedding,
+  openai: openaiEmbedding,
+  anthropic: anthropicLLM,
+  cohere: cohereEmbedding,
+  openrouter: openrouterEmbedding,
+  ollama: ollamaEmbedding,
+};
 
 const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
 const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
@@ -405,22 +421,55 @@ Bun.serve({
       }
     }
 
+    if (p === "/api/settings/models" && req.method === "GET") {
+      return Response.json({
+        embeddingProviders: ["gemini", "openai", "cohere", "openrouter", "ollama"],
+        llmProviders: ["gemini", "openai", "anthropic", "cohere", "openrouter", "ollama"],
+        embedModels: {
+          gemini: ["text-embedding-004", "text-embedding-005", "gemini-embedding-exp-03-07"],
+          openai: ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
+          cohere: ["embed-v4.0", "embed-multilingual-v3.0", "embed-english-v3.0"],
+          openrouter: ["openai/text-embedding-3-small", "openai/text-embedding-3-large"],
+          ollama: ["nomic-embed-text", "mxbai-embed-large", "all-minilm", "snowflake-arctic-embed"],
+        },
+        llmModels: {
+          gemini: ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-1.5-flash"],
+          openai: ["gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"],
+          anthropic: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"],
+          cohere: ["command-r-plus", "command-r", "command-a-03-2025"],
+          openrouter: ["google/gemini-2.0-flash-001", "openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"],
+          ollama: ["llama3.2", "llama3.1", "mistral", "phi4", "qwen2.5"],
+        },
+        defaults: SETTING_DEFAULTS,
+      });
+    }
+
     if (p === "/api/settings/verify" && req.method === "POST") {
       try {
-        const provider = getEmbeddingProvider();
+        const body = await req.json().catch(() => ({})) as { provider?: string; key?: string };
+        // If caller provides key + provider, persist it first (avoids client-side extra PUT round-trip)
+        if (body.provider && body.key) {
+          const keySettingMap: Record<string, string> = {
+            gemini: SETTING_KEYS.GEMINI_API_KEY,
+            openai: SETTING_KEYS.OPENAI_API_KEY,
+            anthropic: SETTING_KEYS.ANTHROPIC_API_KEY,
+            cohere: SETTING_KEYS.COHERE_API_KEY,
+            openrouter: SETTING_KEYS.OPENROUTER_API_KEY,
+          };
+          const settingKey = keySettingMap[body.provider];
+          if (settingKey) setSetting(settingKey, body.key);
+        }
+        const provider = body.provider
+          ? (PROVIDER_VERIFY_MAP[body.provider] ?? null)
+          : getEmbeddingProvider();
+        if (!provider) {
+          return Response.json({ ok: false, error: `Unknown provider: ${body.provider}` });
+        }
         const result = await provider.verify();
         return Response.json(result);
       } catch (e) {
         return Response.json({ ok: false, error: String(e) });
       }
-    }
-
-    if (p === "/api/settings/models" && req.method === "GET") {
-      return Response.json({
-        embeddingProviders: ["gemini", "openrouter", "ollama"],
-        llmProviders: ["gemini", "openrouter", "ollama"],
-        defaults: SETTING_DEFAULTS,
-      });
     }
 
     // ============================================================

@@ -130,5 +130,7 @@ export interface JanitorRunResult {
 export interface SettingsModels {
   embeddingProviders: string[];
   llmProviders: string[];
+  embedModels: Record<string, string[]>;
+  llmModels: Record<string, string[]>;
   defaults: Record<string, string>;
 }

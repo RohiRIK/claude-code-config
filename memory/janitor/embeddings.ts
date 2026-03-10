@@ -4,8 +4,10 @@
  * Provider-agnostic: delegates to whichever EmbeddingProvider is configured.
  */
 import { getDb, getSetting } from "../shared-db.js";
+import { cohereEmbedding } from "./providers/cohere.js";
 import { geminiEmbedding } from "./providers/gemini.js";
 import { ollamaEmbedding } from "./providers/ollama.js";
+import { openaiEmbedding } from "./providers/openai.js";
 import { openrouterEmbedding } from "./providers/openrouter.js";
 import {
   SETTING_KEYS,
@@ -27,6 +29,10 @@ export function getEmbeddingProvider(): EmbeddingProvider {
       return openrouterEmbedding;
     case "ollama":
       return ollamaEmbedding;
+    case "openai":
+      return openaiEmbedding;
+    case "cohere":
+      return cohereEmbedding;
     default:
       throw new Error(`Unknown embedding provider: ${provider}`);
   }

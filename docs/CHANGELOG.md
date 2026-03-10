@@ -1,5 +1,36 @@
 # Changelog
 
+## [2026-03-10] Phase 2.1: Multi-Provider Expansion + Settings UI Redesign
+
+### New Providers
+- **OpenAI** — `openaiEmbedding` (text-embedding-3-*) + `openaiLLM` (GPT-4o family)
+- **Anthropic** — `anthropicLLM` (Claude family; no embedding API)
+- **Cohere** — `cohereEmbedding` (embed-v4.0) + `cohereLLM` (command-r-plus)
+- All three use shared `janitor/providers/utils.ts` factory helpers (`makeApiKeyGetter`, `makeModelGetter`, `httpErrorResult`)
+- `ProviderType` union now covers 6 providers: Gemini · OpenAI · Anthropic · Cohere · OpenRouter · Ollama
+
+### Server (`memory/server.ts`)
+- Static top-level imports for all 6 providers (replaces per-request dynamic imports)
+- `PROVIDER_VERIFY_MAP` constant — O(1) lookup for verify route
+- `/api/settings/verify` accepts `{ provider, key }` body — persists key via `setSetting()` inline (eliminates client PUT round-trip)
+- `/api/settings/models` returns `embedModels` and `llmModels` keyed per provider
+
+### Settings UI (`SettingsForm.tsx`) — full SaaS-form redesign
+- **Smart conditional rendering**: only shows provider cards for currently-selected Embed or LLM provider
+- **Inline API key verification**: paste → spinner → ✓ green / ✗ red, disabled model selects until verified
+- **Model dropdowns**: replaced text inputs with `<select>` menus populated from `/api/settings/models`
+- **`ProviderMeta` typed interface** with `ProviderColor` literal union; `accentMap`/`badgeMap` at module level
+- **Stale-closure fix**: `draftRef` mirrors draft state — `verifyProvider` reads from ref so paste-triggered verify sees the just-typed key
+- **Seed-once `useEffect`**: `initialized` ref guards against overwriting user edits on parent re-renders
+- Removed dead `verifyTimers` ref and redundant `PUT /api/settings` before verify
+
+### E2E Tests (13 passing)
+- Rewrote full spec against D3 SVG selectors (`svg circle`, `g.node`, `.node-label-project`)
+- `waitForFunction` instead of `waitForTimeout` for all async assertions
+- `openSidebarViaNode` shared helper dispatches synthetic click via `evaluate()`
+
+---
+
 ## [2026-03-09] Phase 2: LTM Evolution — Janitor Agent
 
 - **Janitor sub-agent** with 4 pipeline stages: decay, promote, dedup, supersedes
