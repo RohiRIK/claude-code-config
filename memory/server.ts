@@ -195,6 +195,7 @@ function getMemoriesWithTags(): MemoryRow[] {
     FROM memories m
     LEFT JOIN memory_tags mt ON m.id = mt.memory_id
     LEFT JOIN tags t ON mt.tag_id = t.id
+    WHERE m.status = 'active'
     GROUP BY m.id
   `);
 }
