@@ -583,13 +583,15 @@ Bun.serve({
     }
 
     if (p === "/api/janitor/run" && req.method === "POST") {
-      try {
-        const result = await runJanitor();
-        broadcast({ type: "janitor-complete", result });
-        return Response.json(result);
-      } catch (e) {
-        return Response.json({ ok: false, error: String(e) }, { status: 500 });
+      const status = getJanitorStatus();
+      if (status.running) {
+        return Response.json({ ok: false, error: "Janitor already running" }, { status: 409 });
       }
+      // Fire-and-forget — LLM dedup can take >10s, respond immediately
+      runJanitor().then(result => {
+        broadcast({ type: "janitor-complete", result });
+      }).catch(() => {});
+      return Response.json({ ok: true, started: true });
     }
 
     // ============================================================
