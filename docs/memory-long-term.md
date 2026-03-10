@@ -2,7 +2,7 @@
 
 > How the SQLite-backed LTM system works, what each piece does, and why it was designed this way.
 >
-> The auto-generated memory dump lives at `docs/memory-long-term.generated.md` — do not confuse the two.
+> The auto-generated memory dump lives at `docs/memory-long-term-dump.md` — do not confuse the two.
 
 ---
 

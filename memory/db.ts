@@ -284,7 +284,7 @@ export function getContextMerge(project: string): { globals: Memory[]; scoped: M
   };
 }
 
-/** Write docs/memory-long-term.generated.md — auto-generated snapshot (never overwrites the architecture doc). */
+/** Write docs/memory-long-term-dump.md — auto-generated snapshot (never overwrites the architecture doc). */
 export function exportMarkdown(): void {
   const db = getDb();
   if (!existsSync(DOCS_DIR)) mkdirSync(DOCS_DIR, { recursive: true });
@@ -330,7 +330,7 @@ export function exportMarkdown(): void {
     lines.push("");
   }
 
-  writeFileSync(join(DOCS_DIR, "memory-long-term.generated.md"), lines.join("\n"));
+  writeFileSync(join(DOCS_DIR, "memory-long-term-dump.md"), lines.join("\n"));
 }
 
 /** Write docs/memory-graph.json — nodes + links for Force-Graph visualization. */

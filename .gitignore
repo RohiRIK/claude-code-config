@@ -11,7 +11,7 @@
 .LSOverride
 
 # Auto-generated docs (do not commit — overwritten by exportMarkdown())
-docs/memory-long-term.generated.md
+docs/memory-long-term-dump.md
 
 # Runtime / generated data
 history.jsonl
