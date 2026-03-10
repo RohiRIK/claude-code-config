@@ -71,18 +71,8 @@ export const geminiEmbedding: EmbeddingProvider = {
   async verify(): Promise<{ ok: boolean; error?: string }> {
     try {
       const apiKey = getApiKey();
-      const model = getEmbedModel();
-      const res = await fetch(
-        `${GEMINI_API_BASE}/models/${model}:embedContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: `models/${model}`,
-            content: { parts: [{ text: "test" }] },
-          }),
-        },
-      );
+      // Verify the key by listing models — works regardless of which embed model is configured
+      const res = await fetch(`${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=1`);
       if (!res.ok) return httpErrorResult(res);
       return { ok: true };
     } catch (e) {
