@@ -46,6 +46,20 @@ When compaction fires, `PreCompact` hook:
 
 You do not manage `context-summary.md` — the hook overwrites it each compaction.
 
+## Short-Term vs Long-Term Memory
+
+| Question | Answer | Store as |
+|----------|--------|----------|
+| Specific to the current project? | Yes | context_item (hooks auto-manage) |
+| Useful in ALL future projects? | Yes | `/learn` (global memories table) |
+| Temporary note / work log? | Yes | context_item `progress` |
+| Permanent rule, gotcha, or decision? | Yes | `/learn --importance 5` |
+
+**Short-term** = `context_items`. Auto-managed by hooks. Expires after 14 days inactivity.
+**Long-term** = `memories`. Persist forever. Inject into every session via SessionStart.
+
+**When to promote:** If a project-level gotcha has burned you twice, promote it to global LTM with `/learn --importance 5`.
+
 ## Promoting Patterns to Durable LTM
 
 Gotchas and decisions in `context_items` survive until the project is stale (14 days inactive).

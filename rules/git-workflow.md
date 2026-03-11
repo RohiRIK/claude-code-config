@@ -43,3 +43,8 @@ When creating PRs:
 4. **Commit & Push**
    - Detailed commit messages
    - Follow conventional commits format
+
+## Memory Integration
+
+Before PR: `/recall [project] pr conventions` — surface project-specific commit style and PR patterns.
+After learning a project's conventions: `/learn --category preference`.

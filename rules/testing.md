@@ -28,3 +28,9 @@ MANDATORY workflow:
 
 - **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
 - **e2e-runner** - Playwright E2E testing specialist
+
+## Memory Integration
+
+Before: `/recall [framework] test patterns` — check for existing test patterns for this stack.
+After discovering a non-obvious testing pattern (mock setup, async edge case): `/learn --category pattern`.
+After fixing a tricky test failure: `/learn --category gotcha`.

@@ -14,12 +14,19 @@
 
 ## Language Standards
 
-For detailed coding patterns, load the **CodingStandards** skill:
+Before writing code, load the relevant CodingStandards file via the Skill tool:
 
-- **TypeScript** → `CodingStandards/TypeScript.md`
-- **Python** → `CodingStandards/Python.md`
-- **PowerShell** → `CodingStandards/PowerShell.md`
-- **Bash** → `CodingStandards/Bash.md`
+| Language | Skill argument |
+|----------|---------------|
+| TypeScript / JavaScript | `CodingStandards` → TypeScript.md |
+| Python | `CodingStandards` → Python.md |
+| Bash | `CodingStandards` → Bash.md |
+| PowerShell | `CodingStandards` → PowerShell.md |
+
+## Memory Integration
+
+Before starting: `/recall [language] patterns` — surface past gotchas and conventions for this stack.
+After discovering a non-obvious pattern: `/learn --category pattern` and tag the language.
 
 ## Code Quality Checklist
 

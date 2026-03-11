@@ -49,3 +49,8 @@ For complex problems, use split role sub-agents:
 - Security expert
 - Consistency reviewer
 - Redundancy checker
+
+## Memory Integration
+
+Before a complex multi-agent task: `/recall [domain] agent patterns` — check for orchestration patterns that worked.
+After a novel agent orchestration succeeds: `/learn --category workflow`.
