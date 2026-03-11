@@ -775,7 +775,6 @@ Bun.serve({
       >(
         "SELECT id, content, category, confidence, project_scope FROM memories WHERE status = 'active' AND confidence < 0.3 ORDER BY confidence ASC"
       ).all();
-      >("SELECT id, content, category, confidence, project_scope FROM memories WHERE status = 'active' AND confidence < 0.3 ORDER BY confidence ASC LIMIT 50").all();
       const distribution = db.query<{ bucket: number; count: number }, []>(
         "SELECT ROUND(confidence, 1) as bucket, COUNT(*) as count FROM memories WHERE status = 'active' GROUP BY bucket ORDER BY bucket"
       ).all();
