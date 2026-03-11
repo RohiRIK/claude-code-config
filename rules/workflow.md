@@ -49,3 +49,8 @@ Then restart Claude Code (or wait for auto-reconnect) to pick up the new bundle.
 ## Diagnostics
 - `/context-mode:stats` — token savings breakdown per tool
 - `/context-mode:doctor` — runtime health check, confirms tool registration
+
+## Writing Prompts or Instructions
+
+When writing system prompts, rule files, instruction sets, or Claude skill content:
+Load the **Prompting** skill (`Skill tool: "Prompting"`) to apply prompt engineering best practices before drafting.

@@ -58,9 +58,8 @@ export function blobToVector(blob: Buffer): EmbeddingVector {
  */
 export function cosineSimilarity(a: EmbeddingVector, b: EmbeddingVector): number {
   if (a.length !== b.length) {
-    throw new Error(
-      `Vector dimension mismatch: ${a.length} vs ${b.length}`,
-    );
+    // Incompatible embeddings (model changed) — treat as unrelated
+    return 0;
   }
 
   let dotProduct = 0;

@@ -134,3 +134,37 @@ export interface SettingsModels {
   llmModels: Record<string, string[]>;
   defaults: Record<string, string>;
 }
+
+// Phase 3 types
+
+export interface SemanticResult {
+  id: number;
+  content: string;
+  category: string;
+  similarity: number;
+}
+
+export interface HealthAtRisk {
+  id: number;
+  content: string;
+  category: string;
+  confidence: number;
+  project_scope: string | null;
+}
+
+export interface HealthDistribution {
+  bucket: number;
+  count: number;
+}
+
+export interface HealthStatusCount {
+  status: string;
+  count: number;
+}
+
+export interface HealthData {
+  atRisk: HealthAtRisk[];
+  distribution: HealthDistribution[];
+  stats: HealthStatusCount[];
+  avgConf: number;
+}

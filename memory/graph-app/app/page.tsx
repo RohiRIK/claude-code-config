@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FilterBar from "@/components/FilterBar";
 import NodeLegend from "@/components/NodeLegend";
 import ProjectList from "@/components/ProjectList";
+import SemanticSearch from "@/components/SemanticSearch";
 import Sidebar from "@/components/Sidebar";
 import SpotlightModal from "@/components/SpotlightModal";
 import StatsBar from "@/components/StatsBar";
@@ -32,6 +33,7 @@ export default function Home() {
   const [importanceMin, setImportanceMin] = useState(1);
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [semanticMode, setSemanticMode] = useState(false);
   const [hiddenProjects, setHiddenProjects] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try { return new Set(JSON.parse(localStorage.getItem("ltm_hidden_projects") ?? "[]")); }
@@ -124,12 +126,35 @@ export default function Home() {
   return (
     <div className="flex flex-col h-full">
       <StatsBar stats={stats} />
-      <FilterBar
-        onSearch={setSearchResults}
-        onImportanceMin={setImportanceMin}
-        importanceMin={importanceMin}
-        onSpotlightOpen={() => setSpotlightOpen(true)}
-      />
+      <div className="flex items-center bg-[#161b22] border-b border-gray-800">
+        <div className="flex-1">
+          <FilterBar
+            onSearch={setSearchResults}
+            onImportanceMin={setImportanceMin}
+            importanceMin={importanceMin}
+            onSpotlightOpen={() => setSpotlightOpen(true)}
+          />
+        </div>
+        <button
+          onClick={() => setSemanticMode((v) => !v)}
+          className={`px-3 py-1 text-xs rounded border transition-colors ${
+            semanticMode
+              ? "bg-sky-600 border-sky-500 text-white"
+              : "bg-transparent border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+          }`}
+        >
+          Semantic
+        </button>
+      </div>
+      {semanticMode && (
+        <SemanticSearch
+          onSelect={(id) => {
+            graphRef.current?.zoomToNode(id);
+            const node = data?.nodes.find((n) => n.id === id);
+            if (node) setSelected(node);
+          }}
+        />
+      )}
       <div className="flex flex-1 overflow-hidden">
         <ProjectList
           nodes={data?.nodes ?? []}

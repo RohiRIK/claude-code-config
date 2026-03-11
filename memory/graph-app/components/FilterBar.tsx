@@ -25,7 +25,7 @@ export default function FilterBar({ onSearch, onImportanceMin, importanceMin, on
   }, [query, onSearch]);
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-[#161b22] border-b border-gray-800 text-xs flex-shrink-0">
+    <div className="flex items-center gap-3 px-3 py-2 bg-[#161b22] text-xs flex-shrink-0">
       <input
         type="text"
         value={query}

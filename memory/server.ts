@@ -24,6 +24,7 @@ import {
   startAutoRun,
   supersede,
 } from "./janitor/index.js";
+import { semanticSearch } from "./janitor/embeddings.js";
 import { SETTING_DEFAULTS, SETTING_KEYS } from "./janitor/providers/types.js";
 import { anthropicLLM } from "./janitor/providers/anthropic.js";
 import { cohereEmbedding } from "./janitor/providers/cohere.js";
@@ -730,6 +731,7 @@ Bun.serve({
       >(
         "SELECT id, content, category, source, confidence FROM memories WHERE status = 'pending' AND source LIKE 'dedup:%'"
       ).all();
+      >("SELECT id, content, category, source, confidence FROM memories WHERE status = 'pending' AND source LIKE 'dedup:%'").all();
 
       let merged = 0;
       let skipped = 0;
@@ -773,6 +775,7 @@ Bun.serve({
       >(
         "SELECT id, content, category, confidence, project_scope FROM memories WHERE status = 'active' AND confidence < 0.3 ORDER BY confidence ASC"
       ).all();
+      >("SELECT id, content, category, confidence, project_scope FROM memories WHERE status = 'active' AND confidence < 0.3 ORDER BY confidence ASC LIMIT 50").all();
       const distribution = db.query<{ bucket: number; count: number }, []>(
         "SELECT ROUND(confidence, 1) as bucket, COUNT(*) as count FROM memories WHERE status = 'active' GROUP BY bucket ORDER BY bucket"
       ).all();
