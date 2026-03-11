@@ -150,7 +150,8 @@ const PORT = Number(process.env.PORT) || 7331;
 // Cache schema at startup — it never changes at runtime
 const SCHEMA = readFileSync(SCHEMA_PATH, "utf-8");
 
-// Ensure tmp dir and write PID
+// Ensure required dirs exist (persistent disk may start empty)
+mkdirSync(join(CLAUDE_DIR, "memory"), { recursive: true });
 mkdirSync(join(CLAUDE_DIR, "tmp"), { recursive: true });
 await Bun.write(PID_PATH, String(process.pid));
 
