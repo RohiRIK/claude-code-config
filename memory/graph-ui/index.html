@@ -22,6 +22,18 @@
     #stats { margin-left: auto; font-size: 10px; color: var(--text-muted); white-space: nowrap; }
     #ws-dot { width: 7px; height: 7px; border-radius: 50%; background: #f87171; flex-shrink: 0; }
     #ws-dot.on { background: #4ade80; }
+    #add-btn { background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    #add-modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+    #add-modal.open { display: flex; }
+    #add-form { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; width: 340px; max-width: 90vw; }
+    #add-form h2 { font-size: 14px; margin-bottom: 10px; }
+    #add-form label { font-size: 11px; color: var(--text-muted); display: block; margin-top: 8px; }
+    #add-form textarea, #add-form select, #add-form input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; color: var(--text); font-size: 12px; font-family: inherit; margin-top: 3px; }
+    #add-form textarea { height: 70px; resize: vertical; }
+    #add-form .form-row { display: flex; gap: 8px; }
+    #add-form .form-row > * { flex: 1; }
+    #add-form button[type=submit] { margin-top: 12px; background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 6px 16px; font-size: 12px; font-weight: 700; cursor: pointer; width: 100%; }
+    #add-form .cancel { margin-top: 6px; background: none; color: var(--text-muted); border: none; font-size: 11px; cursor: pointer; width: 100%; text-align: center; display: block; }
     main { display: flex; flex: 1; overflow: hidden; }
 
     /* Left projects panel */
@@ -87,8 +99,30 @@
     <label>&#9733; min: <span id="imp-val">1</span></label>
     <input type="range" id="imp-slider" min="1" max="5" value="1" />
   </div>
+  <button id="add-btn" onclick="document.getElementById('add-modal').classList.add('open')">+ Add</button>
   <div id="stats"></div>
 </header>
+<div id="add-modal">
+  <form id="add-form" onsubmit="return submitMemory(event)">
+    <h2>Add Memory</h2>
+    <label>Content</label>
+    <textarea id="m-content" placeholder="What did you learn?" required></textarea>
+    <div class="form-row">
+      <div><label>Category</label>
+        <select id="m-cat"><option>pattern</option><option>preference</option><option>architecture</option><option>gotcha</option><option>workflow</option><option>constraint</option></select>
+      </div>
+      <div><label>Importance (1-5)</label>
+        <select id="m-imp"><option>3</option><option>1</option><option>2</option><option>4</option><option>5</option></select>
+      </div>
+    </div>
+    <label>Project scope (optional)</label>
+    <input type="text" id="m-proj" placeholder="Leave empty for global" />
+    <label>Tags (comma separated)</label>
+    <input type="text" id="m-tags" placeholder="e.g. bun, sqlite" />
+    <button type="submit">Save</button>
+    <button type="button" class="cancel" onclick="document.getElementById('add-modal').classList.remove('open')">Cancel</button>
+  </form>
+</div>
 <main>
   <!-- Projects panel -->
   <div id="projects-panel">
@@ -158,7 +192,8 @@ function stars(n){ return "&#9733;".repeat(n)+"&#9734;".repeat(5-n); }
 /* ---- WS ---- */
 let ws;
 function connectWS(){
-  ws=new WebSocket("ws://localhost:7331/ws");
+  const proto=location.protocol==="https:"?"wss:":"ws:";
+  ws=new WebSocket(`${proto}//${location.host}/ws`);
   ws.onopen=()=>document.getElementById("ws-dot").classList.add("on");
   ws.onclose=()=>{ document.getElementById("ws-dot").classList.remove("on"); setTimeout(connectWS,2000); };
   ws.onmessage=(e)=>{ const m=JSON.parse(e.data); if(m.type==="refresh") loadData(); };
@@ -419,6 +454,23 @@ function deselect(){
 
 document.getElementById("search").addEventListener("input",e=>{ query=e.target.value.trim().toLowerCase(); renderGraph(); });
 document.getElementById("imp-slider").addEventListener("input",e=>{ minImp=Number(e.target.value); document.getElementById("imp-val").textContent=minImp; renderGraph(); });
+
+async function submitMemory(e){
+  e.preventDefault();
+  const tags=document.getElementById("m-tags").value.split(",").map(t=>t.trim()).filter(Boolean);
+  const proj=document.getElementById("m-proj").value.trim()||null;
+  const res=await fetch("/api/memory/learn",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    content:document.getElementById("m-content").value,
+    category:document.getElementById("m-cat").value,
+    importance:Number(document.getElementById("m-imp").value),
+    project_scope:proj,
+    tags,
+  })});
+  const j=await res.json();
+  if(j.ok){ document.getElementById("add-modal").classList.remove("open"); document.getElementById("add-form").reset(); loadData(); }
+  else alert("Error: "+(j.error||"unknown"));
+  return false;
+}
 
 connectWS();
 loadData();
