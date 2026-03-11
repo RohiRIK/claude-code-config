@@ -1,0 +1,8 @@
+.git
+node_modules
+memory/graph-app/node_modules
+memory/graph-app/.next
+memory/mobile-app/node_modules
+*.db
+*.db-wal
+*.db-shm

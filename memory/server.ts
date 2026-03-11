@@ -140,11 +140,12 @@ async function fetchProviderModels(
   return empty;
 }
 
+const SRC_DIR = import.meta.dir; // directory of this file (memory/)
 const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
-const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
-const UI_PATH = join(CLAUDE_DIR, "memory", "graph-ui", "index.html");
+const SCHEMA_PATH = join(SRC_DIR, "schema.sql");
+const UI_PATH = join(SRC_DIR, "graph-ui", "index.html");
 const PID_PATH = join(CLAUDE_DIR, "tmp", "ltm-server.pid");
-const PORT = 7331;
+const PORT = Number(process.env.PORT) || 7331;
 
 // Cache schema at startup — it never changes at runtime
 const SCHEMA = readFileSync(SCHEMA_PATH, "utf-8");

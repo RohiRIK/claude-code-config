@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ltm-memory-server
+    runtime: docker
+    dockerfilePath: memory/Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: starter
+    envVars:
+      - key: PORT
+        value: "7331"
+    disk:
+      name: claude-data
+      mountPath: /home/bun/.claude
+      sizeGB: 1
