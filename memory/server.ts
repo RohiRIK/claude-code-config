@@ -10,6 +10,7 @@ import { dirname, join } from "path";
 
 import { CLAUDE_DIR } from "../hooks/lib/resolveProject.js";
 import { getAllSettings, getSetting, setSetting } from "./shared-db.js";
+import { learn } from "./db.js";
 import {
   approveMemory,
   getEmbeddingProvider,
@@ -664,6 +665,37 @@ Bun.serve({
         mergeMemories(body.keepId, body.supersededId, body.mergedContent);
         broadcast({ type: "refresh" });
         return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
+    }
+
+    // ============================================================
+    // Mobile: learn (add memory) endpoint
+    // ============================================================
+
+    if (p === "/api/memory/learn" && req.method === "POST") {
+      try {
+        const body = (await req.json()) as {
+          content: string;
+          category?: string;
+          importance?: number;
+          project_scope?: string | null;
+          tags?: string[];
+        };
+        if (!body.content?.trim()) {
+          return Response.json({ ok: false, error: "content is required" }, { status: 400 });
+        }
+        const result = learn({
+          content: body.content.trim(),
+          category: (body.category as "pattern") ?? "pattern",
+          importance: body.importance ?? 3,
+          project_scope: body.project_scope ?? undefined,
+          tags: body.tags ?? [],
+          source: "mobile-app",
+        });
+        broadcast({ type: "refresh" });
+        return Response.json({ ok: true, ...result });
       } catch (e) {
         return Response.json({ ok: false, error: String(e) }, { status: 400 });
       }
