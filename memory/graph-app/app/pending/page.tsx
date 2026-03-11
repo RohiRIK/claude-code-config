@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { categoryBadgeColors } from "@/lib/categoryColors";
 import type { PendingMemory } from "@/lib/types";
 import Link from "next/link";
 
@@ -51,13 +52,17 @@ export default function PendingPage() {
     }
   };
 
-  const categoryColors: Record<string, string> = {
-    architecture: "bg-blue-900/40 text-blue-400 border-blue-800/50",
-    gotcha: "bg-red-900/40 text-red-400 border-red-800/50",
-    pattern: "bg-purple-900/40 text-purple-400 border-purple-800/50",
-    preference: "bg-green-900/40 text-green-400 border-green-800/50",
-    workflow: "bg-cyan-900/40 text-cyan-400 border-cyan-800/50",
-    constraint: "bg-orange-900/40 text-orange-400 border-orange-800/50",
+  const dedupCandidates = pending.filter((m) => m.source?.startsWith("dedup:"));
+
+  const handleMergeAll = async () => {
+    if (!confirm(`Merge ${dedupCandidates.length} duplicate pair${dedupCandidates.length === 1 ? "" : "s"}?`)) return;
+    setActionInProgress(-2);
+    try {
+      await api.mergeAll(0.95);
+      await loadPending();
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
   return (
@@ -71,6 +76,15 @@ export default function PendingPage() {
             </p>
           </div>
           <div className="flex gap-3">
+            {dedupCandidates.length > 0 && (
+              <button
+                onClick={handleMergeAll}
+                disabled={actionInProgress !== null}
+                className="px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded transition-colors"
+              >
+                Merge All Duplicates (&ge;95%)
+              </button>
+            )}
             {pending.length > 1 && (
               <button
                 onClick={handleApproveAll}
@@ -109,7 +123,7 @@ export default function PendingPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <span
-                        className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded border ${categoryColors[mem.category] || "bg-gray-800 text-gray-400 border-gray-700"}`}
+                        className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded border ${categoryBadgeColors[mem.category] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}
                       >
                         {mem.category}
                       </span>

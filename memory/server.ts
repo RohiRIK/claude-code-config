@@ -22,6 +22,7 @@ import {
   startAutoRun,
   supersede,
 } from "./janitor/index.js";
+import { semanticSearch } from "./janitor/embeddings.js";
 import { SETTING_DEFAULTS, SETTING_KEYS } from "./janitor/providers/types.js";
 import { anthropicLLM } from "./janitor/providers/anthropic.js";
 import { cohereEmbedding } from "./janitor/providers/cohere.js";
@@ -667,6 +668,93 @@ Bun.serve({
       } catch (e) {
         return Response.json({ ok: false, error: String(e) }, { status: 400 });
       }
+    }
+
+    // ============================================================
+    // Phase 3: Semantic search
+    // ============================================================
+
+    if (p === "/api/search/semantic" && req.method === "POST") {
+      try {
+        const { query, limit = 10, minSimilarity = 0.5 } = (await req.json()) as {
+          query: string; limit?: number; minSimilarity?: number;
+        };
+        const results = await semanticSearch(query, limit, minSimilarity);
+        return Response.json(results);
+      } catch (e) {
+        return Response.json({ error: String(e) }, { status: 500 });
+      }
+    }
+
+    // ============================================================
+    // Phase 3: Dedup merge-all
+    // ============================================================
+
+    if (p === "/api/dedup/merge-all" && req.method === "POST") {
+      const { minSimilarity = 0.95 } = await req.json().catch(() => ({})) as { minSimilarity?: number };
+      const candidates = db.query<
+        { id: number; content: string; category: string; source: string; confidence: number },
+        []
+      >("SELECT id, content, category, source, confidence FROM memories WHERE status = 'pending' AND source LIKE 'dedup:%'").all();
+
+      let merged = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+      const sentinelIdsToDelete: number[] = [];
+
+      // mergeMemories calls outside the transaction (they manage their own writes)
+      for (const candidate of candidates) {
+        try {
+          const dedupPair = parseDedupSource(candidate.source);
+          if (!dedupPair) { skipped++; continue; }
+          // similarity is stored directly in the confidence column
+          if (candidate.confidence < minSimilarity) { skipped++; continue; }
+          mergeMemories(dedupPair.idA, dedupPair.idB);
+          sentinelIdsToDelete.push(candidate.id);
+          merged++;
+        } catch (e) {
+          errors.push(String(e));
+          skipped++;
+        }
+      }
+
+      // Batch-delete all processed sentinel rows in one transaction
+      if (sentinelIdsToDelete.length > 0) {
+        const placeholders = sentinelIdsToDelete.map(() => "?").join(",");
+        db.run(`DELETE FROM memories WHERE id IN (${placeholders})`, sentinelIdsToDelete);
+      }
+
+      broadcast({ type: "refresh" });
+      return Response.json({ merged, skipped, errors });
+    }
+
+    // ============================================================
+    // Phase 3: Memory health dashboard
+    // ============================================================
+
+    if (p === "/api/health" && req.method === "GET") {
+      const atRisk = db.query<
+        { id: number; content: string; category: string; confidence: number; project_scope: string | null },
+        []
+      >("SELECT id, content, category, confidence, project_scope FROM memories WHERE status = 'active' AND confidence < 0.3 ORDER BY confidence ASC LIMIT 50").all();
+      const distribution = db.query<{ bucket: number; count: number }, []>(
+        "SELECT ROUND(confidence, 1) as bucket, COUNT(*) as count FROM memories WHERE status = 'active' GROUP BY bucket ORDER BY bucket"
+      ).all();
+      const stats = db.query<{ status: string; count: number }, []>(
+        "SELECT status, COUNT(*) as count FROM memories GROUP BY status"
+      ).all();
+      const avgConf = db.query<{ avg: number }, []>(
+        "SELECT AVG(confidence) as avg FROM memories WHERE status = 'active'"
+      ).get() as { avg: number };
+      return Response.json({ atRisk, distribution, stats, avgConf: avgConf?.avg ?? 0 });
+    }
+
+    const boostMatch = p.match(/^\/api\/memory\/(\d+)\/boost$/);
+    if (boostMatch?.[1] && req.method === "POST") {
+      const id = Number(boostMatch[1]);
+      db.run("UPDATE memories SET confidence = 0.6, last_confirmed_at = datetime('now') WHERE id = ?", [id]);
+      broadcast({ type: "refresh" });
+      return Response.json({ ok: true });
     }
 
     return new Response("Not found", { status: 404 });

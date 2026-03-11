@@ -1,11 +1,13 @@
 import type {
   GraphData,
+  HealthData,
   JanitorRunResult,
   JanitorStatus,
   MemoryDetail,
   PendingMemory,
   ProjectDetail,
   SearchResult,
+  SemanticResult,
   SettingsModels,
   Stats,
   Tag,
@@ -87,4 +89,16 @@ export const api = {
     mergedContent?: string,
   ): Promise<{ ok: boolean }> =>
     post("/memory/merge", { keepId, supersededId, mergedContent }),
+
+  // Phase 3: Semantic search
+  semanticSearch: (query: string, limit = 10): Promise<SemanticResult[]> =>
+    post("/search/semantic", { query, limit }),
+
+  // Phase 3: Dedup merge-all
+  mergeAll: (minSimilarity?: number): Promise<{ merged: number; skipped: number }> =>
+    post("/dedup/merge-all", { minSimilarity }),
+
+  // Phase 3: Health dashboard
+  health: (): Promise<HealthData> => get("/health"),
+  boostMemory: (id: number): Promise<{ ok: boolean }> => post(`/memory/${id}/boost`),
 };
