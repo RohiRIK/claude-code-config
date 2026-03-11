@@ -732,7 +732,6 @@ Bun.serve({
       >(
         "SELECT id, content, category, source, confidence FROM memories WHERE status = 'pending' AND source LIKE 'dedup:%'"
       ).all();
-      >("SELECT id, content, category, source, confidence FROM memories WHERE status = 'pending' AND source LIKE 'dedup:%'").all();
 
       let merged = 0;
       let skipped = 0;
