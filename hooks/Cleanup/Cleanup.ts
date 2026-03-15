@@ -4,6 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { PROJECTS_DIR, REGISTRY_PATH, saveRegistry } from "../lib/resolveProject.js";
 import { trimToLines } from "../lib/hookUtils.js";
+import { logHook } from "../lib/hookLogger.js";
 
 // Cleanup Hook
 // Runs at session end (Stop hook, last).
@@ -110,6 +111,19 @@ async function main() {
       );
       saveRegistry(filtered);
     } catch (_) {}
+  }
+
+  // Run memory decay scoring
+  if (existsSync(DB_PATH)) {
+    try {
+      const { decayMemories } = await import(join(homedir(), ".claude/memory/db.js"));
+      const { setSetting } = await import(join(homedir(), ".claude/memory/shared-db.js"));
+      const result = decayMemories();
+      setSetting("decay_last_run", new Date().toISOString());
+      logHook("Cleanup", "info", `Decay run complete: deprecated=${result.deprecated} scored=${result.scored}`);
+    } catch (decayErr) {
+      logHook("Cleanup", "warn", "Decay run failed", String(decayErr));
+    }
   }
 
   console.error("[Cleanup] Done");

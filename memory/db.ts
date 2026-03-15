@@ -27,7 +27,9 @@ export interface Memory {
   dedup_key: string | null;
   created_at: string;
   last_confirmed_at: string;
+  last_used_at: string;
   confirm_count: number;
+  status: "active" | "pending" | "deprecated" | "superseded";
 }
 
 export interface MemoryRelation {
@@ -133,6 +135,81 @@ function enrichMemory(db: Database, mem: Memory): MemoryWithRelations {
   return { ...mem, tags: getTagsForMemory(db, mem.id), relations: getRelationsForMemory(db, mem.id) };
 }
 
+// --- Decay / relevance scoring ---
+
+/** Half-life in days by importance level. Infinity = never decays. */
+const HALF_LIVES: Record<number, number> = {
+  5: Infinity,
+  4: 180,
+  3: 90,
+  2: 30,
+  1: 14,
+};
+
+/** Memories below this score are soft-deprecated (not deleted). */
+const DEPRECATION_THRESHOLD = 0.25;
+
+/**
+ * Compute effective relevance score.
+ * score = importance × confidence × decay
+ * decay = 0.5 ^ (days_since / half_life)  (1.0 for importance=5)
+ */
+export function computeDecayScore(memory: Memory): number {
+  const halfLife = HALF_LIVES[memory.importance] ?? 90;
+  if (halfLife === Infinity) {
+    return memory.importance * memory.confidence;
+  }
+  const latestTs = [memory.last_used_at, memory.last_confirmed_at, memory.created_at]
+    .map(t => new Date(t).getTime())
+    .reduce((a, b) => Math.max(a, b), 0);
+  const daysSince = (Date.now() - latestTs) / 86_400_000;
+  const decay = Math.pow(0.5, daysSince / halfLife);
+  return memory.importance * memory.confidence * decay;
+}
+
+/** Update last_used_at for a batch of memory IDs. */
+export function updateLastUsed(ids: number[]): void {
+  if (ids.length === 0) return;
+  const db = getDb();
+  const placeholders = ids.map(() => "?").join(",");
+  db.run(
+    `UPDATE memories SET last_used_at = datetime('now') WHERE id IN (${placeholders})`,
+    ids
+  );
+}
+
+export interface DecayResult {
+  deprecated: number;
+  scored: number;
+}
+
+/**
+ * Compute decay scores for all active memories. Deprecate those below threshold.
+ * Protection: importance=5 OR confirm_count>=5 are never deprecated.
+ */
+export function decayMemories(): DecayResult {
+  const db = getDb();
+
+  const rows = db.query<Memory, []>(
+    `SELECT * FROM memories WHERE status = 'active'`
+  ).all();
+
+  const toDeprecate = rows
+    .filter(mem => mem.importance !== 5 && mem.confirm_count < 5)
+    .filter(mem => computeDecayScore(mem) < DEPRECATION_THRESHOLD)
+    .map(mem => mem.id);
+
+  if (toDeprecate.length > 0) {
+    const placeholders = toDeprecate.map(() => "?").join(",");
+    db.run(
+      `UPDATE memories SET status = 'deprecated' WHERE id IN (${placeholders})`,
+      toDeprecate
+    );
+  }
+
+  return { deprecated: toDeprecate.length, scored: rows.length };
+}
+
 export function learn(input: LearnInput): LearnResult {
   const db = getDb();
   const dedupKey = normalizeKey(input.content);
@@ -236,12 +313,18 @@ export function recall(input: RecallInput = {}): MemoryWithRelations[] {
     params.push(input.project);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  conditions.push("status = 'active'");
+  const where = `WHERE ${conditions.join(" AND ")}`;
   const rows = db.query<Memory, typeof params>(
-    `SELECT * FROM memories ${where} ORDER BY importance DESC, confidence DESC LIMIT ${limit}`
+    `SELECT * FROM memories ${where} LIMIT ${limit}`
   ).all(...params);
 
-  return rows.map(m => enrichMemory(db, m));
+  const sorted = rows
+    .map(m => ({ m, score: computeDecayScore(m) }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ m }) => m);
+  updateLastUsed(sorted.map(m => m.id));
+  return sorted.map(m => enrichMemory(db, m));
 }
 
 export function relate(input: {
@@ -274,14 +357,23 @@ export function forget(input: { id: number; reason?: string; skipExport?: boolea
 
 export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[] } {
   const db = getDb();
-  return {
-    globals: db.query<Memory, []>(
-      `SELECT * FROM memories WHERE importance >= 4 AND project_scope IS NULL ORDER BY confidence DESC`
-    ).all(),
-    scoped: db.query<Memory, [string]>(
-      `SELECT * FROM memories WHERE project_scope=? AND importance >= 3 ORDER BY importance DESC, confidence DESC LIMIT 15`
-    ).all(project),
-  };
+  const sortByDecay = (arr: Memory[]) =>
+    arr.map(m => ({ m, score: computeDecayScore(m) }))
+       .sort((a, b) => b.score - a.score)
+       .map(({ m }) => m);
+
+  const globals = sortByDecay(db.query<Memory, []>(
+    `SELECT * FROM memories WHERE importance >= 4 AND project_scope IS NULL AND status = 'active'`
+  ).all());
+
+  const scoped = sortByDecay(db.query<Memory, [string]>(
+    `SELECT * FROM memories WHERE project_scope=? AND importance >= 3 AND status = 'active' LIMIT 15`
+  ).all(project));
+
+  const allIds = [...globals, ...scoped].map(m => m.id);
+  updateLastUsed(allIds);
+
+  return { globals, scoped };
 }
 
 /** Write docs/memory-long-term-dump.md — auto-generated snapshot (never overwrites the architecture doc). */
