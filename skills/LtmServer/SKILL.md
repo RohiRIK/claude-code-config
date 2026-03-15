@@ -1,24 +1,25 @@
 ---
 name: LtmServer
-description: Start, stop, and check status of the LTM graph visualization server at
-  http://localhost:7331. USE WHEN starting or stopping the graph UI, checking server
-  status, or opening the memory graph browser.
-version: 1.0.0
+description: "Start, stop, or check the LTM graph visualization server."
+disable-model-invocation: true
+user-invocable: false
+version: 1.1.0
 ---
 
 # LTM Graph Server
 
-Obsidian-style force graph at **http://localhost:7331** visualizing `ltm.db`.
+Obsidian-style force graph at **http://localhost:7332** visualizing `ltm.db`.
 
 ## Quick Reference
 
 | Detail | Value |
 |--------|-------|
-| Port | 7331 |
+| UI (Next.js) | `:7332` — open this in browser |
+| API + WebSocket | `:7331` — Next.js proxies `/api/*` here |
 | PID file | `~/.claude/tmp/ltm-server.pid` |
 | Log file | `~/.claude/tmp/ltm-server.log` |
 | Server | `~/.claude/memory/server.ts` |
-| UI | `~/.claude/memory/graph-ui/index.html` |
+| UI source | `~/.claude/memory/graph-app/` |
 
 ## Routing
 
@@ -35,7 +36,7 @@ PID_FILE="$HOME/.claude/tmp/ltm-server.pid"
 if [ -f "$PID_FILE" ]; then
   PID=$(cat "$PID_FILE")
   if kill -0 "$PID" 2>/dev/null; then
-    echo "Running — PID $PID — http://localhost:7331"
+    echo "Running — PID $PID — http://localhost:7332 (Next.js) + http://localhost:7331 (API)"
   else
     echo "Not running (stale PID file)"
   fi

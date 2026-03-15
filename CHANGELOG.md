@@ -4,6 +4,25 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-15 — LtmServer Skill: Port Fix + Robust Start/Stop
+
+### skills/LtmServer/SKILL.md
+- Fixed stale quick-reference: UI port is `:7332` (Next.js), not `:7331`
+- Updated UI source path to `memory/graph-app/` (removed old `graph-ui/index.html`)
+- Added `user-invocable: false` — hides `/LtmServer` from autocomplete, keeping only `/ltm-server`
+- Bumped to v1.1.0
+
+### skills/LtmServer/Workflows/Start.md
+- Added **Step 0** — kills stale PID, clears ports `:7331`/`:7332`, kills `ltm-ui` tmux session
+- Next.js dev server now starts in tmux (`ltm-ui` session) automatically
+- Browser opens `:7332` (not `:7331`)
+- Prod mode open URL corrected to `:7332`
+
+### skills/LtmServer/Workflows/Stop.md
+- Full teardown: kills by PID + `lsof` port kill for `:7331`/`:7332` + tmux session kill
+
+---
+
 ## 2026-03-11 — Rules Section Improvements: Memory Integration + CodingStandards Wiring
 
 ### Rules Files Modified (8 files)
