@@ -4,6 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { resolveProject, registerPath, PROJECTS_DIR } from "../lib/resolveProject.js";
 import { readStdin, parseHookInput, trimToLines } from "../lib/hookUtils.js";
+import { logHook } from "../lib/hookLogger.js";
 
 const CLAUDE_DIR   = join(homedir(), ".claude");
 const TMP_DIR      = join(CLAUDE_DIR, "tmp");
@@ -62,6 +63,7 @@ async function main(): Promise<void> {
   writeFileSync(COUNTER_FILE, "0");
 
   if (!parsed) {
+    logHook("SessionStart", "warn", "No cwd in input, skipping context injection");
     console.error("[SessionStart] No cwd in input, skipping context injection");
     return;
   }
@@ -108,6 +110,7 @@ async function main(): Promise<void> {
   }
 
   if (Date.now() - statSync(summaryPath).mtimeMs > MAX_AGE_MS) {
+    logHook("SessionStart", "warn", `Context for "${name}" is older than 30 days — skipping`);
     console.error(`[SessionStart] Context for "${name}" is older than 30 days — skipping`);
     return;
   }
@@ -118,7 +121,7 @@ async function main(): Promise<void> {
   const output = ltmSection ? `${injected}\n\n${ltmSection}\n` : `${injected}\n`;
 
   process.stdout.write(output);
-  console.error(`[SessionStart] Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);
+  logHook("SessionStart", "info", `Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);
 }
 
 main();

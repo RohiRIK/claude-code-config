@@ -4,6 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { resolveProject } from "../lib/resolveProject.js";
 import { readStdin, parseHookInput, readFileSafe, budgetSection } from "../lib/hookUtils.js";
+import { logHook } from "../lib/hookLogger.js";
 
 const DB_PATH = join(homedir(), ".claude", "memory", "ltm.db");
 
@@ -43,6 +44,7 @@ async function main(): Promise<void> {
     const parsed = parseHookInput(raw);
 
     if (!parsed) {
+      logHook("PreCompact", "warn", "No cwd found in input, skipping");
       console.error("[PreCompact] No cwd found in input, skipping");
       return;
     }
@@ -58,8 +60,9 @@ async function main(): Promise<void> {
       : buildSummaryFromFiles(name, cwd, projectDir);
 
     writeFileSync(join(projectDir, "context-summary.md"), finalSummary);
-    console.error(`[PreCompact] Saved context summary for "${name}" (${finalSummary.split("\n").length} lines)`);
+    logHook("PreCompact", "info", `Saved context summary for "${name}" (${finalSummary.split("\n").length} lines)`);
   } catch (err) {
+    logHook("PreCompact", "error", "Failed to save context summary", String(err));
     console.error("[PreCompact] Failed to save context summary:", err);
   }
 }

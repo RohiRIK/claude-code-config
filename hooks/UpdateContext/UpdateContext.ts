@@ -4,6 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { resolveProject, PROJECTS_DIR, CLAUDE_DIR } from "../lib/resolveProject.js";
 import { readStdinPassthrough, parseHookInput, readFileSafe, appendLine, trimToLines } from "../lib/hookUtils.js";
+import { logHook } from "../lib/hookLogger.js";
 
 const TOOL_NAMES = new Set(["Write", "Edit", "MultiEdit"]);
 const MAX_PROGRESS_LINES = 20;
@@ -115,9 +116,10 @@ async function main(): Promise<void> {
         } else {
           addItem(name, "progress", sessionLine, sessionTag ?? undefined);
         }
-        console.error(`[UpdateContext] context DB updated for ${name}`);
+        logHook("UpdateContext", "info", `context DB updated for ${name}`);
         return;
       } catch (dbErr) {
+        logHook("UpdateContext", "warn", "DB write failed, falling back to .md", String(dbErr));
         console.error("[UpdateContext] DB write failed, falling back to .md:", dbErr);
       }
     }
@@ -136,8 +138,9 @@ async function main(): Promise<void> {
       writeFileSync(progressFile, trimToLines(content, MAX_PROGRESS_LINES));
     }
 
-    console.error(`[UpdateContext] context-progress.md updated for ${name}`);
+    logHook("UpdateContext", "info", `context-progress.md updated for ${name}`);
   } catch (err) {
+    logHook("UpdateContext", "error", "Unhandled error", String(err));
     console.error("[UpdateContext] Error:", err);
   }
 }

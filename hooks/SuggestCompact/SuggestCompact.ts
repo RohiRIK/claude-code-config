@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { logHook } from "../lib/hookLogger.js";
 
 // Strategic Compact Suggester
 // Suggests compaction after threshold
@@ -30,12 +31,15 @@ async function main() {
     writeFileSync(COUNTER_FILE, count.toString());
 
     if (count === THRESHOLD) {
+      logHook("SuggestCompact", "info", `${THRESHOLD} tool calls reached — suggested /compact`);
       console.error(`[StrategicCompact] ${THRESHOLD} tool calls reached - consider /compact if transitioning phases`);
     } else if (count > THRESHOLD && count % 25 === 0) {
+      logHook("SuggestCompact", "info", `${count} tool calls — recurring /compact checkpoint`);
       console.error(`[StrategicCompact] ${count} tool calls - good checkpoint for /compact if context is stale`);
     }
 
   } catch (error) {
+    logHook("SuggestCompact", "error", "Unhandled error", String(error));
     console.error("[StrategicCompact] Error:", error);
   }
 }

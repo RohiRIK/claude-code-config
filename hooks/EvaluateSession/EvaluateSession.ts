@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 
 import { join } from "path";
 import { homedir } from "os";
 import { resolveProject, PROJECTS_DIR } from "../lib/resolveProject.js";
+import { logHook } from "../lib/hookLogger.js";
 
 // Evaluate Session Hook
 // Extracts patterns from transcript
@@ -227,6 +228,7 @@ async function main() {
 
   } catch (error) {
     // Fail silently on parse error or logic error to not break hook
+    logHook("EvaluateSession", "error", "Error analyzing session", String(error));
     console.error("[ContinuousLearning] Error analyzing session:", error);
   }
 }
