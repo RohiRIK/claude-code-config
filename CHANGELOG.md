@@ -4,6 +4,95 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-15 — Docs, README & CLAUDE.md Overhaul
+
+### CLAUDE.md
+- Redesigned for token efficiency: 51 → 36 lines (~30% reduction)
+- Updated workflow line to include `/capture` after implement
+- Replaced stale commands (`/tdd`, `/code-review`) with `/capture`, `/decay-report`, `/hook-doctor`
+- Added `Cleanup` hook to hooks list
+- Added `## Context-Mode MCP` section
+
+### README.md
+- Added `/capture` to Layer 1 ASCII flow diagram
+- Added `/capture`, `/decay-report`, `/hook-doctor` to Quick-Reference table
+- Removed `/tdd`, `/code-review`, `/e2e`, `/build-fix`, `/refactor-clean` from Quick-Reference
+- Added `Cleanup` hook + session-end decay note to LTM section
+- Updated "Last updated" to 2026-03-15
+
+### docs/workflow-daily.md
+- Added `/capture` step to ASCII flow box
+- Added `### /capture` step description in Step by Step section
+- Added `/capture` to All Commands table
+
+### docs/memory-long-term.md
+- Updated `db.ts` Core Modules description with new decay functions
+- Updated `getContextMerge()` flow: `status=active` filter + decay sort + `updateLastUsed()`
+- Added Cleanup hook to session flow diagram
+- Added `decay_last_run` to Settings Keys Reference
+- Added decay-in-Cleanup to Design Decisions table
+
+### docs/CHANGELOG.md (deleted)
+- Removed — single source of truth is root `CHANGELOG.md`
+
+---
+
+## 2026-03-15 — Memory Decay Scoring + Relevance-Ranked Injection
+
+### memory/db.ts
+- `computeDecayScore(memory)`: score = importance × confidence × 0.5^(days/halfLife)
+- Half-lives: imp5=∞, imp4=180d, imp3=90d, imp2=30d, imp1=14d
+- `decayMemories()`: soft-deprecates active memories with score < 0.25
+  (protected: importance=5 or confirm_count≥5; deprecated = status change only, never deleted)
+- `updateLastUsed(ids[])`: batched UPDATE last_used_at on every recall/getContextMerge
+- `getContextMerge()` and `recall()`: now filter status=active, sort by decay score
+  (Schwartzian transform — one score per item, not O(n log n) recomputation)
+- DEPRECATION_THRESHOLD (0.25) and HALF_LIVES at module scope
+
+### hooks/Cleanup/Cleanup.ts
+- Runs `decayMemories()` at session end; records `decay_last_run` in settings table
+- Logs result to `~/.claude/logs/hooks.log` via `logHook()`
+
+### commands/decay-report.md (new)
+- `/decay-report` — shows active/deprecated counts, 5 score buckets, top 5 at-risk memories,
+  last decay run timestamp; includes one-liner to trigger decay manually
+
+### memory/db.test.ts (new)
+- 6 unit tests covering: importance=5 no-decay, fresh score, old score, recency tie-breaking,
+  confidence proportionality, 90-day half-life accuracy
+
+### memory/package.json
+- Added `"test": "bun test db.test.ts"` — scopes bun test to root-level tests, avoids
+  Playwright spec collision in graph-app/
+
+---
+
+## 2026-03-15 — Hook Error Handling + /capture Command
+
+### hooks/lib/hookLogger.ts (new)
+- Structured JSONL logger writing to `~/.claude/logs/hooks.log`
+- 500KB auto-rotation (keeps last 300KB); module-level `_dirEnsured` flag avoids repeated I/O on hot path
+- Fallback-safe — logger failure never crashes the hook that calls it
+- Exports `logHook(hook, level, msg, detail?, durationMs?)` and `runWithLogging(hook, fn)`
+
+### hooks/lib/hookDoctor.ts + commands/hook-doctor.md (new)
+- `/hook-doctor` slash command: checks all registered hooks exist on disk, reports error/warn counts from last 24h per hook, flags hooks with ≥3 errors as 🔴 unhealthy
+- Imports `LogEntry` type from hookLogger (no duplication); uses `hookName()` helper
+
+### 5 hooks updated: SessionStart, PreCompact, UpdateContext, EvaluateSession, SuggestCompact
+- All `console.error` error/warning calls now also write to `hooks.log` via `logHook()`
+- Info-level success events (context injected, DB updated) now logged to file only (no stderr noise)
+
+### commands/capture.md (new)
+- `/capture <type> "<content>"` — writes to both project context DB and global LTM in one command
+- Types: `decision`, `gotcha`, `progress`, `pattern`, `goal` — each maps to correct context type + LTM category + importance
+- Runs both writes in parallel; never asks clarifying questions
+
+### commands/simplify.md (removed)
+- Deleted redundant user-defined `/simplify` command — built-in skill (3-agent review) is the canonical version
+
+---
+
 ## 2026-03-15 — LtmServer Skill: Port Fix + Robust Start/Stop
 
 ### skills/LtmServer/SKILL.md

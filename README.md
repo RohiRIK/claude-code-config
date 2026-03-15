@@ -1,7 +1,7 @@
 # ~/.claude — Claude Code Global Config
 
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
-> Last updated: 2026-03-09
+> Last updated: 2026-03-15
 >
 > Inspired by [danielmiessler/Personal\_AI\_Infrastructure](https://github.com/danielmiessler/Personal_AI_Infrastructure), [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code),
 > and [Google Always-On Memory Agent](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/agents/always-on-memory-agent).
@@ -28,10 +28,10 @@
          │                  │                  │
          ▼                  ▼                  ▼
   /plan → implement   cmd → subprocess   ltm.db (SQLite)
-  → /simplify         → BM25 index       → PreCompact
-  → /verify           → summaries        → SessionStart
-  → /commit-push-pr   → context          → /learn /recall
-                                         → graph UI :7332
+  → /capture          → BM25 index       → PreCompact
+  → /simplify         → summaries        → SessionStart
+  → /verify           → context          → /learn /recall
+  → /commit-push-pr                      → graph UI :7332
          │                  │                  │
          ▼                  ▼                  ▼
   workflow-daily.md  memory-short-term.md  memory-long-term.md
@@ -55,6 +55,8 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 3. **Promote** — frequently-accessed memories rise in importance
 4. **Dedup** — LLM compares similar memories, merges or supersedes stale ones
 
+**Decay also runs at session end** via Cleanup hook — no need to wait for janitor schedule.
+
 **Graph UI** — Next.js on `:7332`:
 - `/` — force-directed graph of all memory nodes (filter by tag, project, type)
 - `/project/[name]` — drill-down with Graph / Table / Board view switcher
@@ -69,11 +71,13 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 | `/recall` | Search long-term memory before starting work |
 | `/update-context` | Mid-session — log progress/decisions/gotchas |
 | `/ltm-server` | Start/stop/status the graph UI |
+| `/decay-report` | Show memory relevance score distribution and at-risk memories |
 
 **Hook integration:**
 - `SessionStart` — injects top project memories + importance-5 globals at session open
 - `PreCompact` — saves context-summary.md before compaction fires
 - `EvaluateSession` — extracts patterns and progress at session end
+- `Cleanup` — runs `decayMemories()` at session end; deprecated memories excluded from next injection
 
 ---
 
@@ -82,21 +86,19 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 | Command | When to Use |
 |---------|------------|
 | `/plan` | **Always first** — before any non-trivial change |
+| `/capture` | After implementation — save context + learn in one shot |
 | `/simplify` | After implementation — remove complexity |
 | `/verify` | Before committing — tsc + tests + security + diff |
 | `/commit-push-pr` | Final step — precomputes git context |
-| `/tdd` | New features — writes tests FIRST |
-| `/code-review` | After writing code |
 | `/init-context` | New project — seeds goal into SQLite LTM |
 | `/check-context` | Start of session — verify Claude has the right context |
 | `/update-context` | Mid-session — add progress/decisions/gotchas |
 | `/register-project` | Register or rename a project in the context registry |
 | `/learn` | Store a pattern or insight in LTM |
 | `/recall` | Search long-term memory before starting work |
+| `/decay-report` | Show memory relevance score distribution and at-risk memories |
+| `/hook-doctor` | Diagnose hook health — error counts, missing files |
 | `/ltm-server` | Start/stop/status the LTM graph UI |
-| `/e2e` | Critical user flows — Playwright tests |
-| `/build-fix` | When build fails |
-| `/refactor-clean` | Remove dead code |
 | `/goose` | Spawn parallel autonomous agents |
 
 ---

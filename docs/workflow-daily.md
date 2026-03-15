@@ -18,6 +18,8 @@ The Boris Cherny pattern — creator of Claude Code's recommended task loop.
 ║      │         [PostToolUse] Prettier + tsc on every edit            ║
 ║      │         [PostToolUse] warns on console.log                    ║
 ║      ↓                                                               ║
+║    /capture  → save context + learn in one shot                      ║
+║      ↓                                                               ║
 ║    /update-context → log progress/decisions/gotchas to LTM           ║
 ║      ↓                                                               ║
 ║    /simplify → remove complexity, flatten nesting                    ║
@@ -44,6 +46,9 @@ Switch to auto-accept (Shift+Tab×1 or the accept-all toggle). Hooks fire on eve
 - **tsc check** runs `tsc --noEmit` after every `.ts` edit
 - **console.log guard** warns if debug logging sneaks in
 
+### `/capture` — Save Context + Learn in One Shot
+After implementation, run `/capture` to snapshot what just happened — saves context and fires `/learn` in a single step. Use this instead of running `/update-context` and `/learn` separately when you want to lock in both progress and any patterns discovered.
+
 ### `/update-context` — Log to LTM
 After implementation, capture what was done. Run `/update-context progress "✓ did X"` or `/update-context decision "chose Y because Z"`. These persist to SQLite LTM and survive compaction. The `EvaluateSession` hook does this automatically at session end — run it mid-session for important milestones.
 
@@ -66,6 +71,7 @@ Pre-computes the full git context (log, diff, branch), writes a conventional com
 | `/simplify` | After implementation — remove complexity |
 | `/verify` | Before committing — tsc + tests + security + diff |
 | `/commit-push-pr` | Final step — precomputes git context |
+| `/capture` | After implementation — save context + learn in one shot |
 | `/tdd` | New features — writes tests FIRST |
 | `/code-review` | After writing code |
 | `/e2e` | Critical user flows — Playwright tests |

@@ -1,50 +1,41 @@
 # ~/.claude — Global Claude Code Config
 
-## What This Is
-Global config for Claude Code. Applies to ALL projects. Rules enforce style, security, testing, and workflow.
+Global config applying to ALL projects. Rules in `rules/` have full detail.
 
-## Workflow (Boris Cherny pattern)
-```
-/plan → (shift+tab: Plan Mode) → refine → auto-accept → implement → /simplify → /verify → /commit-push-pr
-```
+## Workflow
+`/plan → implement → /capture → /simplify → /verify → /commit-push-pr`
 
-## Key Commands
+## Commands
 | Command | When |
 |---------|------|
 | `/plan` | Before any non-trivial change |
+| `/capture` | After implement — save context + learn |
 | `/simplify` | After implementation |
-| `/verify` | Before committing (runs tsc + tests + build) |
-| `/commit-push-pr` | Final step — precomputes git context |
-| `/tdd` | New features — write tests first |
-| `/code-review` | After writing code |
-| `/init-context` | New project — seeds goal into SQLite LTM |
-| `/learn` | Store a pattern or insight in LTM |
-| `/recall` | Search long-term memory before starting work |
+| `/verify` | Before committing |
+| `/commit-push-pr` | Final step |
+| `/init-context` | New project |
+| `/learn` | Store pattern/insight in LTM |
+| `/recall` | Before starting work on a topic |
+| `/decay-report` | Memory health check |
+| `/hook-doctor` | Diagnose hook errors |
 
-## Agents (invoke via Task tool)
+## Agents
 planner · architect · tdd-guide · code-reviewer · security-reviewer · build-error-resolver · e2e-runner · refactor-cleaner · doc-updater
 
 ## Non-Negotiables
-- **bun** not npm/yarn · **uv** not pip · **zed** for editor
-- Immutability: spread operators, never mutate
-- No hardcoded secrets — env vars only
-- 80% test coverage minimum
-- Conventional commits: `feat|fix|refactor|docs|chore: description`
-- No `console.log` in committed code
-- Long-running commands → tmux
+- **bun** not npm · **uv** not pip · **zed** for editor
+- Spread operators, never mutate · No hardcoded secrets · No `console.log`
+- 80% test coverage · Conventional commits · Long-running commands → tmux
 
 ## Context System
-SQLite LTM at `~/.claude/memory/ltm.db`. Per-project context (goals/decisions/progress/gotchas) + global memories.
-Registry at `~/.claude/projects/registry.json` — use `/register-project` to see your project name.
-Hooks manage context automatically — PreCompact → `context-summary.md` → SessionStart injects at next session.
+SQLite LTM at `~/.claude/memory/ltm.db`. Hooks auto-manage context.
+Registry: `~/.claude/projects/registry.json` — `/register-project` to onboard.
 
-## Active Hooks
-- **SessionStart**: injects project context (60 lines max)
-- **PreCompact**: saves context before compaction
-- **EvaluateSession**: extracts patterns at session end
-- **SuggestCompact**: suggests /compact at 50 tool calls
-- **PostToolUse**: Prettier + tsc on every edit, warns on console.log
-- **PreToolUse**: blocks dev servers outside tmux, opens Zed before git push
+## Hooks
+SessionStart · PreCompact · EvaluateSession · Cleanup · SuggestCompact · PostToolUse · PreToolUse
 
-## Rules (full detail in rules/)
+## Context-Mode MCP
+Sandbox execution to prevent context bloat. Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. `/context-mode:ctx-stats` · `/context-mode:ctx-doctor` · `/context-mode:ctx-upgrade`
+
+## Rules
 coding-style · git-workflow · testing · security · performance · agents · hooks · session-context · patterns · package-manager

@@ -63,7 +63,7 @@ Managed by `memory/schema.sql` and the shared singleton in `memory/shared-db.ts`
 
 ## Core Modules
 
-- **`memory/db.ts`** — CRUD helpers: `learn()`, `getItems()`, `searchMemories()` (FTS5), `getContextMerge()`
+- **`memory/db.ts`** — CRUD helpers: `learn()`, `recall()`, `getContextMerge()`, `computeDecayScore()`, `decayMemories()`, `updateLastUsed()`. `getContextMerge()` and `recall()` filter `status=active` and sort by decay score (Schwartzian transform).
 - **`memory/context.ts`** — Per-project context CRUD (goals, decisions, progress, gotchas)
 - **`memory/migrate.ts`** — Idempotent schema migration runner. Safe to re-run on every server start.
 
@@ -235,8 +235,11 @@ Pages: `/` (D3 force graph + sidebar), `/project/[name]` (drill-down), `/setting
   +-------+---------+
   | Read ltm.db     |
   |                 |  getContextMerge(project):
-  |                 |  - globals (importance=5)   -- all projects
-  |                 |  - project-scoped memories
+  |                 |  - globals (importance≥4, status=active)
+  |                 |    sorted by computeDecayScore() DESC
+  |                 |  - project-scoped (importance≥3, status=active, LIMIT 15)
+  |                 |    sorted by computeDecayScore() DESC
+  |                 |  - updateLastUsed() called on all returned IDs
   |                 |  getItems(project, 'goal')
   |                 |  getItems(project, 'decision')
   |                 |  getItems(project, 'progress', 3)  -- last 3
@@ -256,6 +259,10 @@ Pages: `/` (D3 force graph + sidebar), `/project/[name]` (drill-down), `/setting
   During session:
   UpdateContext hook  -> appends progress items after each tool use
   EvaluateSession     -> extracts patterns at session end -> learn()
+
+  Session ends:
+  Cleanup hook        -> decayMemories() -> status='deprecated' for score < 0.25
+                      -> setSetting('decay_last_run') -> logHook() to hooks.log
 
   Before /compact:
   PreCompact hook     -> reads DB -> writes context-summary.md (60 lines max)
@@ -278,6 +285,7 @@ Pages: `/` (D3 force graph + sidebar), `/project/[name]` (drill-down), `/setting
 | `ltm.promote.minImportance` | `3` | Minimum importance to promote |
 | `ltm.janitor.intervalMinutes` | `0` | Auto-run interval (0 = off) |
 | `ltm.dedup.threshold` | `0.92` | Cosine similarity threshold |
+| `decay_last_run` | — | ISO timestamp of last `decayMemories()` run (set by Cleanup hook) |
 | `ltm.gemini.apiKey` | — | Gemini API key |
 | `ltm.gemini.embedModel` | `text-embedding-004` | Gemini embed model |
 | `ltm.gemini.llmModel` | `gemini-1.5-flash` | Gemini LLM model |
@@ -318,3 +326,4 @@ Or use `/ltm-server start` in Claude Code — opens both in tmux automatically.
 | `draftRef` in SettingsForm | `onPaste` fires before React commits state; ref is always current, closure is not |
 | FTS5 for search | Replaces LIKE scans — full-text index on memory content |
 | Static imports in server.ts | Replaces per-request dynamic imports for providers; `PROVIDER_VERIFY_MAP` gives O(1) lookup |
+| Decay in Cleanup hook (not just janitor) | Every session end guarantees decay runs without requiring janitor schedule; janitor handles heavier embed/dedup pipeline |
