@@ -19,14 +19,32 @@ function defaultName(cwd: string): string {
   return last.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-async function buildLtmSection(project: string): Promise<string> {
+async function buildLtmSection(project: string, sessionContext?: string): Promise<string> {
   if (!existsSync(DB_PATH)) return "";
   try {
-    const { getContextMerge } = await import(join(CLAUDE_DIR, "memory/db.js"));
-    const { globals, scoped } = getContextMerge(project) as {
-      globals: Array<{ id: number; content: string }>;
-      scoped:  Array<{ id: number; content: string; importance: number }>;
-    };
+    const { getContextMerge, getSimilarMemories } = await import(join(CLAUDE_DIR, "memory/db.js"));
+    const { embedText } = await import(join(CLAUDE_DIR, "memory/embeddings.js"));
+    const { getDb } = await import(join(CLAUDE_DIR, "memory/shared-db.js"));
+
+    let globals: Array<{ id: number; content: string }>;
+    let scoped: Array<{ id: number; content: string; importance: number }>;
+
+    // Attempt semantic retrieval if we have API key + session context
+    const queryVec = sessionContext ? await embedText(sessionContext) : null;
+    if (queryVec) {
+      const db = getDb();
+      globals = getSimilarMemories(db, queryVec, { minImportance: 4, limit: 16 });
+      scoped  = getSimilarMemories(db, queryVec, { projectScope: project, minImportance: 2, limit: 15 });
+      process.stderr.write(`[SessionStart] Semantic LTM: ${globals.length} globals, ${scoped.length} scoped\n`);
+    } else {
+      // Fallback: importance + decay ranking
+      const merged = getContextMerge(project) as {
+        globals: Array<{ id: number; content: string }>;
+        scoped:  Array<{ id: number; content: string; importance: number }>;
+      };
+      globals = merged.globals;
+      scoped  = merged.scoped;
+    }
 
     if (globals.length === 0 && scoped.length === 0) return "";
 
@@ -128,8 +146,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  const injected = trimToLines(readFileSync(summaryPath, "utf-8"), MAX_INJECT_LINES);
-  const ltmSection = await buildLtmSection(name);
+  const summaryText = readFileSync(summaryPath, "utf-8");
+  const injected = trimToLines(summaryText, MAX_INJECT_LINES);
+  // Use first ~500 chars of summary as semantic query context
+  const sessionContext = summaryText.slice(0, 500).trim() || undefined;
+  const ltmSection = await buildLtmSection(name, sessionContext);
 
   const output = ltmSection ? `${injected}\n\n${ltmSection}\n` : `${injected}\n`;
 

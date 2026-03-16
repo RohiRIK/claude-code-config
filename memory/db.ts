@@ -260,6 +260,12 @@ export function learn(input: LearnInput): LearnResult {
   }
 
   if (!skipExport) exportMarkdown();
+
+  // Fire-and-forget embedding — never blocks learn()
+  import("./embeddings.js")
+    .then(({ embedMemory }) => embedMemory(db, newId))
+    .catch(err => process.stderr.write(`[learn] Embedding failed for memory ${newId}: ${err}\n`));
+
   return { action: "created", id: newId, confirm_count: 1 };
 }
 
@@ -353,6 +359,37 @@ export function forget(input: { id: number; reason?: string; skipExport?: boolea
   }
   db.run(`DELETE FROM memories WHERE id=?`, [input.id]);
   if (!input.skipExport) exportMarkdown();
+}
+
+export function getSimilarMemories(
+  db: Database,
+  queryVec: Float32Array,
+  opts: { projectScope?: string; limit?: number; minImportance?: number }
+): Memory[] {
+  const { projectScope, limit = 15, minImportance = 2 } = opts;
+  const { blobToVec, cosineSimilarity } = require("./embeddings.js") as typeof import("./embeddings.js");
+
+  let query: string;
+  let params: (string | number)[];
+
+  if (projectScope) {
+    query = `SELECT * FROM memories WHERE project_scope=? AND importance>=? AND embedding IS NOT NULL AND status='active' LIMIT ${limit * 3}`;
+    params = [projectScope, minImportance];
+  } else {
+    query = `SELECT * FROM memories WHERE project_scope IS NULL AND importance>=? AND embedding IS NOT NULL AND status='active' LIMIT ${limit * 3}`;
+    params = [minImportance];
+  }
+
+  const rows = db.query<Memory & { embedding: Buffer }, typeof params>(query).all(...params);
+
+  const scored = rows.map(row => {
+    const { embedding, ...mem } = row as Memory & { embedding: Buffer };
+    const sim = cosineSimilarity(queryVec, blobToVec(embedding));
+    return { mem, sim };
+  });
+
+  scored.sort((a, b) => b.sim - a.sim);
+  return scored.slice(0, limit).map(s => s.mem);
 }
 
 export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[] } {
