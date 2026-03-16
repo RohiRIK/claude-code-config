@@ -8,6 +8,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { normalizeKey } from "./dedup.js";
 import { getDb, DB_PATH } from "./shared-db.js";
+import { scrubSecrets } from "./secretsScrubber.js";
 
 export { DB_PATH };
 const CLAUDE_DIR  = join(homedir(), ".claude");
@@ -212,7 +213,15 @@ export function decayMemories(): DecayResult {
 
 export function learn(input: LearnInput): LearnResult {
   const db = getDb();
-  const dedupKey = normalizeKey(input.content);
+
+  // Scrub secrets before any DB write or dedup check
+  const { scrubbed, redactions } = scrubSecrets(input.content);
+  if (redactions.length > 0) {
+    process.stderr.write(`[learn] Scrubbed ${redactions.length} secret(s): ${redactions.join(", ")}\n`);
+  }
+  const content = scrubbed;
+
+  const dedupKey = normalizeKey(content);
   const skipExport = input.skipExport ?? false;
 
   const existing = db.query<Memory, [string]>(`SELECT * FROM memories WHERE dedup_key=?`).get(dedupKey);
@@ -240,7 +249,7 @@ export function learn(input: LearnInput): LearnResult {
     `INSERT INTO memories (content, category, importance, confidence, source, project_scope, dedup_key)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      input.content,
+      content,
       input.category,
       input.importance ?? 3,
       input.confidence ?? 1.0,
