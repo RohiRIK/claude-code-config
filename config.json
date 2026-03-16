@@ -1,0 +1,16 @@
+{
+  "$schema": "./.config.schema.json",
+  "ltm": {
+    "dbPath": "~/.claude/memory/ltm.db",
+    "decayEnabled": true,
+    "injectTopN": 15
+  },
+  "server": {
+    "apiPort": 7331,
+    "uiPort": 7332
+  },
+  "sync": {
+    "enabled": false,
+    "provider": null
+  }
+}

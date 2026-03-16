@@ -55,6 +55,19 @@ async function buildLtmSection(project: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  // Run pending LTM schema migrations before anything else
+  try {
+    const { runPendingMigrations } = await import(
+      (process.env.HOME ?? homedir()) + "/.claude/memory/migrations.ts"
+    );
+    const results = await runPendingMigrations();
+    if (results.length > 0) {
+      process.stderr.write(`[SessionStart] Applied ${results.length} migration(s)\n`);
+    }
+  } catch (e) {
+    process.stderr.write(`[SessionStart] Migration warning: ${e}\n`);
+  }
+
   const raw = await readStdin();
   const parsed = parseHookInput(raw);
 

@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClaudeConfig",
+  "description": "Schema for ~/.claude/config.json — global Claude Code configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "ltm": {
+      "type": "object",
+      "description": "Long-term memory database settings",
+      "additionalProperties": false,
+      "properties": {
+        "dbPath": {
+          "type": "string",
+          "description": "Path to the SQLite LTM database",
+          "default": "~/.claude/memory/ltm.db"
+        },
+        "decayEnabled": {
+          "type": "boolean",
+          "description": "Whether memory decay scoring is active",
+          "default": true
+        },
+        "injectTopN": {
+          "type": "integer",
+          "description": "Number of top memories injected per session",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 15
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "description": "LTM server port configuration",
+      "additionalProperties": false,
+      "properties": {
+        "apiPort": {
+          "type": "integer",
+          "description": "Port for the LTM REST API server",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 7331
+        },
+        "uiPort": {
+          "type": "integer",
+          "description": "Port for the LTM UI server",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 7332
+        }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "description": "Remote sync / backup settings",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether remote sync is active",
+          "default": false
+        },
+        "provider": {
+          "description": "Cloud storage provider for sync (null = disabled)",
+          "oneOf": [
+            { "type": "string", "enum": ["s3", "r2"] },
+            { "type": "null" }
+          ],
+          "default": null
+        }
+      }
+    }
+  }
+}
