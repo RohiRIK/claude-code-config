@@ -4,6 +4,30 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-16 — Semantic LTM Retrieval (Embedding-Based)
+
+### memory/embeddings.ts (new)
+- Provider-agnostic embedding utilities: `embedText()`, `cosineSimilarity()`, `vecToBlob/blobToVec`, `embedMemory()`, `backfill()`
+- Reads provider + API key from `ltm.db` settings table (same source as graph UI) — no env vars needed
+- Supports: **gemini** | openai | openrouter | cohere | ollama — switched via `ltm.embed.provider` setting
+- Config batch-fetched in one `IN (...)` query and cached per process (O(1) for backfill)
+- Gemini client cached and revalidated against apiKey
+- `--backfill` CLI: embeds all memories with `embedding IS NULL` in batches of 20
+
+### memory/db.ts
+- Added `getSimilarMemories(db, queryVec, opts)` — cosine similarity ranked recall with SQL LIMIT
+- `learn()` now calls `embedMemory()` fire-and-forget after insert (never blocks, logs errors)
+
+### hooks/SessionStart/SessionStart.ts
+- `buildLtmSection()` now embeds session summary and uses `getSimilarMemories()` for semantic injection
+- Falls back to importance+decay ranking when no provider configured
+- Logs `[SessionStart] Semantic LTM: N globals, N scoped` to stderr on each session start
+
+### memory/migrations/003_embedding_index.sql (new)
+- Partial index on `memories(id) WHERE embedding IS NOT NULL`
+
+---
+
 ## 2026-03-15 — Docs, README & CLAUDE.md Overhaul
 
 ### CLAUDE.md
