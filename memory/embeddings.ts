@@ -17,55 +17,62 @@ interface ProviderConfig {
   baseUrl?: string;
 }
 
-function getSetting(db: Database, key: string): string | null {
-  return db.query<{ value: string }, [string]>(
-    `SELECT value FROM settings WHERE key=?`
-  ).get(key)?.value ?? null;
-}
+// Module-level config cache — stable within a process lifetime
+let _configCache: ProviderConfig | null | undefined = undefined;
 
-function getProviderConfig(): ProviderConfig | null {
+function loadProviderConfig(): ProviderConfig | null {
   try {
     const { getDb } = require("./shared-db.js") as typeof import("./shared-db.js");
     const db = getDb();
 
-    // Env var overrides DB provider
-    const provider = (
-      process.env.LTM_EMBED_PROVIDER ??
-      getSetting(db, "ltm.embed.provider") ??
-      "gemini"
-    ) as EmbedProvider;
+    // Batch-fetch all relevant settings in one query
+    const KEYS = [
+      "ltm.embed.provider",
+      "ltm.gemini.apiKey", "ltm.gemini.embedModel",
+      "ltm.openai.apiKey", "ltm.openai.embedModel",
+      "ltm.openrouter.apiKey", "ltm.openrouter.embedModel",
+      "ltm.cohere.apiKey", "ltm.cohere.embedModel",
+      "ltm.ollama.embedModel", "ltm.ollama.baseUrl",
+    ];
+    const placeholders = KEYS.map(() => "?").join(",");
+    const rows = db.query<{ key: string; value: string }, string[]>(
+      `SELECT key, value FROM settings WHERE key IN (${placeholders})`
+    ).all(...KEYS);
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value])) as Record<string, string | undefined>;
+
+    const provider = (process.env.LTM_EMBED_PROVIDER ?? s["ltm.embed.provider"] ?? "gemini") as EmbedProvider;
 
     switch (provider) {
       case "gemini":
         return {
           provider,
-          apiKey: process.env.GEMINI_API_KEY ?? getSetting(db, "ltm.gemini.apiKey") ?? undefined,
-          model: process.env.GEMINI_EMBED_MODEL ?? getSetting(db, "ltm.gemini.embedModel") ?? "gemini-embedding-2-preview",
+          apiKey: process.env.GEMINI_API_KEY ?? s["ltm.gemini.apiKey"],
+          model: process.env.GEMINI_EMBED_MODEL ?? s["ltm.gemini.embedModel"] ?? "gemini-embedding-2-preview",
         };
       case "openai":
         return {
           provider,
-          apiKey: process.env.OPENAI_API_KEY ?? getSetting(db, "ltm.openai.apiKey") ?? undefined,
-          model: process.env.OPENAI_EMBED_MODEL ?? getSetting(db, "ltm.openai.embedModel") ?? "text-embedding-3-small",
+          apiKey: process.env.OPENAI_API_KEY ?? s["ltm.openai.apiKey"],
+          model: process.env.OPENAI_EMBED_MODEL ?? s["ltm.openai.embedModel"] ?? "text-embedding-3-small",
         };
       case "openrouter":
         return {
           provider,
-          apiKey: process.env.OPENROUTER_API_KEY ?? getSetting(db, "ltm.openrouter.apiKey") ?? undefined,
-          model: getSetting(db, "ltm.openrouter.embedModel") ?? "openai/text-embedding-3-large",
+          apiKey: process.env.OPENROUTER_API_KEY ?? s["ltm.openrouter.apiKey"],
+          model: s["ltm.openrouter.embedModel"] ?? "openai/text-embedding-3-large",
           baseUrl: "https://openrouter.ai/api/v1",
         };
       case "cohere":
         return {
           provider,
-          apiKey: process.env.COHERE_API_KEY ?? getSetting(db, "ltm.cohere.apiKey") ?? undefined,
-          model: getSetting(db, "ltm.cohere.embedModel") ?? "embed-v4.0",
+          apiKey: process.env.COHERE_API_KEY ?? s["ltm.cohere.apiKey"],
+          model: s["ltm.cohere.embedModel"] ?? "embed-v4.0",
         };
       case "ollama":
         return {
           provider,
-          model: getSetting(db, "ltm.ollama.embedModel") ?? "nomic-embed-text",
-          baseUrl: getSetting(db, "ltm.ollama.baseUrl") ?? "http://localhost:11434",
+          model: s["ltm.ollama.embedModel"] ?? "nomic-embed-text",
+          baseUrl: s["ltm.ollama.baseUrl"] ?? "http://localhost:11434",
         };
       default:
         return null;
@@ -73,6 +80,12 @@ function getProviderConfig(): ProviderConfig | null {
   } catch {
     return null;
   }
+}
+
+function getProviderConfig(): ProviderConfig | null {
+  if (_configCache !== undefined) return _configCache;
+  _configCache = loadProviderConfig();
+  return _configCache;
 }
 
 // --- Math utils ---
@@ -101,14 +114,16 @@ export function blobToVec(b: Buffer): Float32Array {
 
 // --- Provider-specific embed implementations ---
 
-// Cached Gemini client
+// Cached Gemini client + the key it was initialized with
 let _genAI: import("@google/generative-ai").GoogleGenerativeAI | null = null;
+let _genAIKey: string | undefined;
 
 async function embedGemini(text: string, cfg: ProviderConfig): Promise<Float32Array | null> {
   if (!cfg.apiKey) return null;
-  if (!_genAI) {
+  if (!_genAI || _genAIKey !== cfg.apiKey) {
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     _genAI = new GoogleGenerativeAI(cfg.apiKey);
+    _genAIKey = cfg.apiKey;
   }
   const model = _genAI.getGenerativeModel({ model: cfg.model });
   const result = await model.embedContent(text);
