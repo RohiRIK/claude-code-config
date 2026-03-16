@@ -1,14 +1,81 @@
 /**
- * embeddings.ts — Gemini-based embedding utilities for LTM semantic search.
- * Uses text-embedding-004 (768 dims). Gracefully falls back when no API key.
+ * embeddings.ts — Provider-agnostic embedding utilities for LTM semantic search.
+ * Reads provider config from ltm.db settings table (same source as the graph UI).
+ * Supported providers: gemini | openai | openrouter | cohere | ollama
+ * Falls back gracefully (returns null) when no provider is configured.
  */
 import type { Database } from "bun:sqlite";
 
-const MODEL = "text-embedding-004";
-const DIMS = 768;
+// --- Provider config ---
 
-// Cached client — created once per process
-let _genAI: import("@google/generative-ai").GoogleGenerativeAI | null = null;
+type EmbedProvider = "gemini" | "openai" | "openrouter" | "cohere" | "ollama";
+
+interface ProviderConfig {
+  provider: EmbedProvider;
+  apiKey?: string;
+  model: string;
+  baseUrl?: string;
+}
+
+function getSetting(db: Database, key: string): string | null {
+  return db.query<{ value: string }, [string]>(
+    `SELECT value FROM settings WHERE key=?`
+  ).get(key)?.value ?? null;
+}
+
+function getProviderConfig(): ProviderConfig | null {
+  try {
+    const { getDb } = require("./shared-db.js") as typeof import("./shared-db.js");
+    const db = getDb();
+
+    // Env var overrides DB provider
+    const provider = (
+      process.env.LTM_EMBED_PROVIDER ??
+      getSetting(db, "ltm.embed.provider") ??
+      "gemini"
+    ) as EmbedProvider;
+
+    switch (provider) {
+      case "gemini":
+        return {
+          provider,
+          apiKey: process.env.GEMINI_API_KEY ?? getSetting(db, "ltm.gemini.apiKey") ?? undefined,
+          model: process.env.GEMINI_EMBED_MODEL ?? getSetting(db, "ltm.gemini.embedModel") ?? "gemini-embedding-2-preview",
+        };
+      case "openai":
+        return {
+          provider,
+          apiKey: process.env.OPENAI_API_KEY ?? getSetting(db, "ltm.openai.apiKey") ?? undefined,
+          model: process.env.OPENAI_EMBED_MODEL ?? getSetting(db, "ltm.openai.embedModel") ?? "text-embedding-3-small",
+        };
+      case "openrouter":
+        return {
+          provider,
+          apiKey: process.env.OPENROUTER_API_KEY ?? getSetting(db, "ltm.openrouter.apiKey") ?? undefined,
+          model: getSetting(db, "ltm.openrouter.embedModel") ?? "openai/text-embedding-3-large",
+          baseUrl: "https://openrouter.ai/api/v1",
+        };
+      case "cohere":
+        return {
+          provider,
+          apiKey: process.env.COHERE_API_KEY ?? getSetting(db, "ltm.cohere.apiKey") ?? undefined,
+          model: getSetting(db, "ltm.cohere.embedModel") ?? "embed-v4.0",
+        };
+      case "ollama":
+        return {
+          provider,
+          model: getSetting(db, "ltm.ollama.embedModel") ?? "nomic-embed-text",
+          baseUrl: getSetting(db, "ltm.ollama.baseUrl") ?? "http://localhost:11434",
+        };
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// --- Math utils ---
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) return 0;
@@ -32,32 +99,85 @@ export function blobToVec(b: Buffer): Float32Array {
   return new Float32Array(b.buffer, b.byteOffset, b.byteLength / 4);
 }
 
+// --- Provider-specific embed implementations ---
+
+// Cached Gemini client
+let _genAI: import("@google/generative-ai").GoogleGenerativeAI | null = null;
+
+async function embedGemini(text: string, cfg: ProviderConfig): Promise<Float32Array | null> {
+  if (!cfg.apiKey) return null;
+  if (!_genAI) {
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    _genAI = new GoogleGenerativeAI(cfg.apiKey);
+  }
+  const model = _genAI.getGenerativeModel({ model: cfg.model });
+  const result = await model.embedContent(text);
+  return new Float32Array(result.embedding.values);
+}
+
+async function embedOpenAICompat(text: string, cfg: ProviderConfig): Promise<Float32Array | null> {
+  if (!cfg.apiKey) return null;
+  const baseUrl = cfg.baseUrl ?? "https://api.openai.com/v1";
+  const res = await fetch(`${baseUrl}/embeddings`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: cfg.model, input: text }),
+  });
+  if (!res.ok) throw new Error(`${cfg.provider} API error: ${res.status} ${await res.text()}`);
+  const json = await res.json() as { data: Array<{ embedding: number[] }> };
+  return new Float32Array(json.data[0]!.embedding);
+}
+
+async function embedCohere(text: string, cfg: ProviderConfig): Promise<Float32Array | null> {
+  if (!cfg.apiKey) return null;
+  const res = await fetch("https://api.cohere.com/v2/embed", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: cfg.model, texts: [text], input_type: "search_document", embedding_types: ["float"] }),
+  });
+  if (!res.ok) throw new Error(`cohere API error: ${res.status} ${await res.text()}`);
+  const json = await res.json() as { embeddings: { float: number[][] } };
+  return new Float32Array(json.embeddings.float[0]!);
+}
+
+async function embedOllama(text: string, cfg: ProviderConfig): Promise<Float32Array | null> {
+  const res = await fetch(`${cfg.baseUrl}/api/embed`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: cfg.model, input: text }),
+  });
+  if (!res.ok) throw new Error(`ollama API error: ${res.status} ${await res.text()}`);
+  const json = await res.json() as { embeddings: number[][] };
+  return new Float32Array(json.embeddings[0]!);
+}
+
+// --- Public API ---
+
 /**
- * Embed text using Gemini text-embedding-004.
- * Returns null if GEMINI_API_KEY is not set or on API error.
+ * Embed text using the configured provider (reads from ltm.db settings).
+ * Returns null on missing config or API error — enables graceful fallback.
  */
 export async function embedText(text: string): Promise<Float32Array | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  const cfg = getProviderConfig();
+  if (!cfg) return null;
 
   try {
-    if (!_genAI) {
-      const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      _genAI = new GoogleGenerativeAI(apiKey);
+    switch (cfg.provider) {
+      case "gemini":    return await embedGemini(text, cfg);
+      case "openai":    return await embedOpenAICompat(text, cfg);
+      case "openrouter": return await embedOpenAICompat(text, cfg);
+      case "cohere":    return await embedCohere(text, cfg);
+      case "ollama":    return await embedOllama(text, cfg);
+      default:          return null;
     }
-    const model = _genAI.getGenerativeModel({ model: MODEL });
-    const result = await model.embedContent(text);
-    const values = result.embedding.values;
-    return new Float32Array(values);
   } catch (e) {
-    process.stderr.write(`[embeddings] embedText error: ${e}\n`);
+    process.stderr.write(`[embeddings] embedText error (${cfg.provider}): ${e}\n`);
     return null;
   }
 }
 
 /**
  * Embed a memory by ID and write the embedding BLOB back to DB.
- * No-op if no API key or memory not found.
  */
 export async function embedMemory(db: Database, id: number): Promise<void> {
   const row = db.query<{ content: string }, [number]>(
@@ -73,7 +193,6 @@ export async function embedMemory(db: Database, id: number): Promise<void> {
 
 /**
  * Back-fill: embed all memories with embedding IS NULL.
- * Processes in batches of 20 with a small delay between batches.
  */
 export async function backfill(db: Database): Promise<void> {
   const rows = db.query<{ id: number; content: string }, []>(
