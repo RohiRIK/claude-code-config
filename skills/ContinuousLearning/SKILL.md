@@ -1,7 +1,7 @@
 ---
 name: ContinuousLearning
-description: Manages SQLite long-term memory, session context, and learning. USE WHEN storing
-  insights, searching memories, managing per-project context, or understanding hook behavior.
+description: "Reference for LTM memory commands, context hooks, and DB schema."
+user-invocable: false
 version: 2.1.0
 ---
 

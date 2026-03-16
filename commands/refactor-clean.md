@@ -1,3 +1,8 @@
+---
+description: "Remove dead code and clean up after implementation."
+disable-model-invocation: true
+---
+
 # Refactor Clean
 
 Safely identify and remove dead code with test verification:

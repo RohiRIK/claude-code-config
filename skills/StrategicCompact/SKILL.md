@@ -1,6 +1,7 @@
 ---
 name: StrategicCompact
-description: Context management and compaction strategy.
+description: "Reference for context compaction strategy and timing guidance."
+user-invocable: false
 ---
 
 # StrategicCompact

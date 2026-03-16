@@ -1,0 +1,1 @@
+[2026-03-15T13:36:42.471Z] Cannot find module '/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/build/session/snapshot.js' imported from /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/hooks/precompact.mjs

@@ -1,3 +1,8 @@
+---
+description: "Seed a new project goal into the LTM context system."
+disable-model-invocation: true
+---
+
 # Init Project Context
 
 Seed a new project's initial goal into the SQLite LTM DB (`~/.claude/memory/ltm.db`).

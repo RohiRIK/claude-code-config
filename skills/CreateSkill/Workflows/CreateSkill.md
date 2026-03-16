@@ -2,12 +2,12 @@
 
 Create a new skill following the canonical structure with proper TitleCase naming.
 
-## Step 1: Read the Authoritative Sources
+## Step 1: Load Reference Docs
 
-**REQUIRED FIRST:**
-
-1. Read the skill system documentation: `~/.claude/skills/CORE/SkillSystem.md`
-2. Read the canonical example: `~/.claude/skills/_BLOGGING/SKILL.md`
+```
+SkillSearch('createskill conventions')   → loads Conventions.md (structure rules)
+SkillSearch('createskill frontmatter')   → loads Frontmatter.md (tier system + fields)
+```
 
 ## Step 2: Understand the Request
 
@@ -15,22 +15,17 @@ Ask the user:
 1. What does this skill do?
 2. What should trigger it?
 3. What workflows does it need?
+4. Is it user-invoked only (Tier B), always-on reference (Tier A), auto-trigger (Tier C), or heavy/forked (Tier D)?
 
 ## Step 3: Determine TitleCase Names
 
-**All names must use TitleCase (PascalCase).**
+All names must use TitleCase (PascalCase). See Conventions.md for full table.
 
-| Component | Format | Example |
-|-----------|--------|---------|
-| Skill directory | TitleCase | `Blogging`, `Daemon`, `CreateSkill` |
-| Workflow files | TitleCase.md | `Create.md`, `UpdateDaemonInfo.md` |
-| Reference docs | TitleCase.md | `ProsodyGuide.md`, `ApiReference.md` |
-| Tool files | TitleCase.ts | `ManageServer.ts` |
-| Help files | TitleCase.help.md | `ManageServer.help.md` |
-
-**Wrong naming (NEVER use):**
-- `create-skill`, `create_skill`, `CREATESKILL` → Use `CreateSkill`
-- `create.md`, `CREATE.md`, `create-info.md` → Use `Create.md`, `CreateInfo.md`
+| Component | Example |
+|-----------|---------|
+| Skill directory | `Blogging`, `Daemon`, `CreateSkill` |
+| Workflow files | `Create.md`, `UpdateDaemonInfo.md` |
+| Tool files | `ManageServer.ts` |
 
 ## Step 4: Create the Skill Directory
 
@@ -39,162 +34,84 @@ mkdir -p ~/.claude/skills/[SkillName]/Workflows
 mkdir -p ~/.claude/skills/[SkillName]/Tools
 ```
 
-**Example:**
-```bash
-mkdir -p ~/.claude/skills/Daemon/Workflows
-mkdir -p ~/.claude/skills/Daemon/Tools
-```
-
 ## Step 5: Create SKILL.md
 
-Follow this exact structure:
+Use minimal template (30-50 lines). Set frontmatter based on tier (see Frontmatter.md):
 
 ```yaml
 ---
 name: SkillName
-description: [What it does]. USE WHEN [intent triggers using OR]. [Additional capabilities].
+description: "USE WHEN [intent triggers]."
+# Add tier-specific fields: disable-model-invocation, user-invocable, context: fork, etc.
 ---
 
 # SkillName
 
-[Brief description]
+Brief description.
 
 ## Workflow Routing
 
-**When executing a workflow, output this notification:**
-
-```
-Running the **WorkflowName** workflow from the **SkillName** skill...
-```
-
 | Workflow | Trigger | File |
-|----------|---------|------|
-| **WorkflowOne** | "trigger phrase" | `Workflows/WorkflowOne.md` |
-| **WorkflowTwo** | "another trigger" | `Workflows/WorkflowTwo.md` |
+|---------|---------|------|
+| **WorkflowName** | "trigger phrase" | `Workflows/WorkflowName.md` |
 
 ## Examples
 
 **Example 1: [Common use case]**
 ```
 User: "[Typical user request]"
-→ Invokes WorkflowOne workflow
+→ Invokes WorkflowName workflow
 → [What skill does]
-→ [What user gets back]
 ```
-
-**Example 2: [Another use case]**
-```
-User: "[Different request]"
-→ [Process]
-→ [Output]
-```
-
-## [Additional Documentation]
-
-[Any other relevant info]
 ```
 
 ## Step 6: Create Workflow Files
 
-For each workflow in the routing section:
+For each workflow in the routing table:
 
 ```bash
 touch ~/.claude/skills/[SkillName]/Workflows/[WorkflowName].md
 ```
 
-### Workflow-to-Tool Integration (REQUIRED for workflows with CLI tools)
+### Workflow-to-Tool Integration (if skill has CLI tools)
 
-**If a workflow calls a CLI tool, it MUST include intent-to-flag mapping tables.**
-
-This pattern translates natural language user requests into appropriate CLI flags:
+If a workflow calls a CLI tool, include an intent-to-flag mapping table:
 
 ```markdown
 ## Intent-to-Flag Mapping
 
-### Model/Mode Selection
-
 | User Says | Flag | When to Use |
 |-----------|------|-------------|
-| "fast", "quick", "draft" | `--model haiku` | Speed priority |
-| (default), "best", "high quality" | `--model opus` | Quality priority |
-
-### Output Options
-
-| User Says | Flag | Effect |
-|-----------|------|--------|
-| "JSON output" | `--format json` | Machine-readable |
-| "detailed" | `--verbose` | Extra information |
+| "fast", "quick" | `--model haiku` | Speed priority |
+| (default) | `--model sonnet` | Balanced |
 
 ## Execute Tool
 
-Based on user request, construct the CLI command:
-
 \`\`\`bash
-bun ToolName.ts \
-  [FLAGS_FROM_INTENT_MAPPING] \
-  --required-param "value"
+bun ToolName.ts [FLAGS_FROM_INTENT_MAPPING] --required-param "value"
 \`\`\`
 ```
 
-**Why this matters:**
-- Tools have rich configuration via flags
-- Workflows should expose this flexibility, not hardcode single patterns
-- Users speak naturally; workflows translate to precise CLI
-
-**Reference:** `~/.claude/skills/CORE/CliFirstArchitecture.md` (Workflow-to-Tool Integration section)
-
-**Examples (TitleCase):**
-```bash
-touch ~/.claude/skills/Daemon/Workflows/UpdateDaemonInfo.md
-touch ~/.claude/skills/Daemon/Workflows/UpdatePublicRepo.md
-touch ~/.claude/skills/_BLOGGING/Workflows/Create.md
-touch ~/.claude/skills/_BLOGGING/Workflows/Publish.md
-```
-
-## Step 7: Verify TitleCase
-
-Run this check:
-```bash
-ls ~/.claude/skills/[SkillName]/
-ls ~/.claude/skills/[SkillName]/Workflows/
-ls ~/.claude/skills/[SkillName]/Tools/
-```
-
-Verify ALL files use TitleCase:
-- `SKILL.md` ✓ (exception - always uppercase)
-- `WorkflowName.md` ✓
-- `ToolName.ts` ✓
-- `ToolName.help.md` ✓
-
-## Step 8: Final Checklist
+## Step 7: Final Checklist
 
 ### Naming (TitleCase)
-- [ ] Skill directory uses TitleCase (e.g., `Blogging`, `Daemon`)
-- [ ] All workflow files use TitleCase (e.g., `Create.md`, `UpdateInfo.md`)
-- [ ] All reference docs use TitleCase (e.g., `ProsodyGuide.md`)
-- [ ] All tool files use TitleCase (e.g., `ManageServer.ts`)
+- [ ] Skill directory uses TitleCase
+- [ ] All workflow files use TitleCase
 - [ ] Routing table workflow names match file names exactly
 
 ### YAML Frontmatter
 - [ ] `name:` uses TitleCase
-- [ ] `description:` is single-line with embedded `USE WHEN` clause
-- [ ] No separate `triggers:` or `workflows:` arrays
-- [ ] Description uses intent-based language
-- [ ] Description is under 1024 characters
+- [ ] `description:` is ≤15 words, intent-focused
+- [ ] Correct tier fields set (see Frontmatter.md)
+- [ ] `argument-hint` present if skill takes arguments
 
 ### Markdown Body
 - [ ] `## Workflow Routing` section with table format
-- [ ] All workflow files have routing entries
 - [ ] `## Examples` section with 2-3 concrete usage patterns
 
 ### Structure
-- [ ] `tools/` directory exists (even if empty)
-- [ ] No `backups/` directory inside skill
-
-### CLI-First Integration (for skills with CLI tools)
-- [ ] CLI tools expose configuration via flags (see CliFirstArchitecture.md)
-- [ ] Workflows that call CLI tools have intent-to-flag mapping tables
-- [ ] Flag mappings cover: mode selection, output options, post-processing (where applicable)
+- [ ] No `Context/` or `Docs/` subdirectory — context files go in skill root
+- [ ] SKILL.md ≤ 50 lines (use dynamic loading if needed)
 
 ## Done
 

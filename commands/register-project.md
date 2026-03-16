@@ -1,3 +1,8 @@
+---
+description: "Register or rename a project in the registry."
+disable-model-invocation: true
+---
+
 # /register-project — Register or Rename a Project
 
 Maps the current directory (or any path) to a friendly name in the context registry.

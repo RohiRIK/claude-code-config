@@ -1,6 +1,7 @@
 ---
 name: CodingStandards
-description: Language-specific coding standards for the full stack. USE WHEN writing, reviewing, or debugging TypeScript, Python, PowerShell, or Bash code. Loads detailed standards per language on demand.
+description: "Reference for TypeScript, Python, PowerShell, and Bash code style."
+user-invocable: false
 ---
 
 # CodingStandards

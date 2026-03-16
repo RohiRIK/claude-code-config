@@ -1,3 +1,7 @@
+---
+description: "USE WHEN TypeScript or build errors need to be resolved."
+---
+
 # Build and Fix
 
 Incrementally fix TypeScript and build errors:

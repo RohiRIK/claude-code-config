@@ -1,3 +1,9 @@
+---
+description: "Delete a specific memory by ID from long-term memory."
+disable-model-invocation: true
+argument-hint: "[memory-id]"
+---
+
 # /forget - Delete a Long-Term Memory
 
 Remove a memory by ID. CASCADE removes all its graph relations.

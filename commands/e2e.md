@@ -1,5 +1,7 @@
 ---
-description: Generate and run end-to-end tests with Playwright. Creates test journeys, runs tests, captures screenshots/videos/traces, and uploads artifacts.
+description: "USE WHEN generating or running Playwright end-to-end tests."
+context: fork
+agent: general-purpose
 ---
 
 # E2E Command

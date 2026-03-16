@@ -1,3 +1,8 @@
+---
+description: "Verify what project context is loaded and matches the DB."
+disable-model-invocation: true
+---
+
 # /check-context — Verify Session Context
 
 Verify what context is loaded and confirm DB state matches what was injected at session start.

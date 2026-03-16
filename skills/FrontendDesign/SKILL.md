@@ -1,6 +1,7 @@
 ---
 name: FrontendDesign
-description: Standards, patterns, and workflows for modern frontend development (React, Next.js, Performance). USE WHEN designing components, optimizing UI, or implementing state management.
+description: "Reference for React and Next.js component design patterns."
+user-invocable: false
 ---
 
 # FrontendDesign
@@ -39,8 +40,8 @@ Scaffolds a new React component following the "Composition Over Inheritance" pat
 - **Output**: TypeScript file with Component, Sub-components (Header/Body), and Props interfaces.
 
 ### 2. OptimizePerformance
-Analyzes a code snippet and suggests memoization or virtualization strategies based on `Context-FrontendPatterns.md`.
+Analyzes a code snippet and suggests memoization or virtualization strategies based on `Patterns.md`.
 
 ## Integration with Other Skills
-- **CodeReview**: Refer to `Context-FrontendPatterns.md` during reviews to enforce standards.
+- **CodeReview**: Refer to `Patterns.md` during reviews to enforce standards.
 - **CreateSkill**: Uses FrontendDesign patterns if building UI-based internal tools.

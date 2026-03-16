@@ -1,3 +1,8 @@
+---
+description: "Update project documentation and README files."
+disable-model-invocation: true
+---
+
 # Update Documentation
 
 Sync documentation from source-of-truth:

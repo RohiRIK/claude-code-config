@@ -1,3 +1,8 @@
+---
+description: "Regenerate CODEMAPS files for the current project."
+disable-model-invocation: true
+---
+
 # Update Codemaps
 
 Analyze the codebase structure and update architecture documentation:

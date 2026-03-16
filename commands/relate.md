@@ -1,3 +1,9 @@
+---
+description: "Link two memories with a typed relationship."
+disable-model-invocation: true
+argument-hint: "[src-id] [tgt-id] [supports|contradicts|refines|depends_on|related_to|supersedes]"
+---
+
 # /relate - Link Two Memories
 
 Create a typed graph relationship between two existing memories.

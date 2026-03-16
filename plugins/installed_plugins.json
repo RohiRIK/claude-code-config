@@ -24,10 +24,10 @@
     "security-guidance@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/205b6e0b3036",
-        "version": "205b6e0b3036",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/d5c15b861cd2",
+        "version": "d5c15b861cd2",
         "installedAt": "2026-01-22T09:23:55.983Z",
-        "lastUpdated": "2026-03-04T08:13:13.220Z",
+        "lastUpdated": "2026-03-14T14:55:23.976Z",
         "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
       }
     ],
@@ -37,7 +37,7 @@
         "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15",
         "version": "1.0.15",
         "installedAt": "2026-03-03T08:35:47.521Z",
-        "lastUpdated": "2026-03-10T07:35:16.079Z",
+        "lastUpdated": "2026-03-16T07:07:53.582Z",
         "gitCommitSha": "60747430ecde88ed85fe47fc303d2a72d4e0d492"
       }
     ]

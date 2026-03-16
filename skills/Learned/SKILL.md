@@ -1,6 +1,7 @@
 ---
 name: Learned
-description: Retrieval system for learned patterns and lessons.
+description: "Reference for retrieved patterns and lessons from past sessions."
+user-invocable: false
 ---
 
 # Learned Skills & Patterns
@@ -17,4 +18,4 @@ Access the knowledge base of learned patterns.
 Run a workflow by name:
 `Run the Recall workflow`
 
-*(See `Context-ClaudeHooks.md` for specific examples)*
+*(See `ClaudeHooks.md` for specific examples)*

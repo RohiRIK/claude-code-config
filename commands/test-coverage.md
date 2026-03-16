@@ -1,3 +1,8 @@
+---
+description: "Measure and report test coverage for the current project."
+disable-model-invocation: true
+---
+
 # Test Coverage
 
 Analyze test coverage and generate missing tests:

@@ -1,3 +1,8 @@
+---
+description: "USE WHEN searching past decisions before starting a task."
+argument-hint: "[search query]"
+---
+
 # /recall - Search Long-Term Memory
 
 Search stored memories by text query, tags, category, or project.

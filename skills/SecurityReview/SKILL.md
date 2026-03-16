@@ -1,6 +1,9 @@
 ---
 name: SecurityReview
-description: Security auditing, checklist validation, and vulnerability scanning.
+description: "USE WHEN auditing code for vulnerabilities and security issues."
+context: fork
+agent: Explore
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # SecurityReview
@@ -17,4 +20,4 @@ Security auditing and best practices enforcement.
 Run a workflow by name:
 `Run the AuditCode workflow`
 
-*(See `Context-Security.md` for the full checklist)*
+*(See `Overview.md` for the full checklist)*

@@ -1,3 +1,8 @@
+---
+description: "Stage, commit, push, and open a pull request."
+disable-model-invocation: true
+---
+
 # /commit-push-pr — Commit, Push, and Open PR
 
 Precomputes all git context inline so Claude doesn't have to discover it.

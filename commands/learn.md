@@ -1,3 +1,8 @@
+---
+description: "USE WHEN discovering a new insight or pattern worth preserving."
+argument-hint: "[insight] --category [preference|architecture|gotcha|pattern|workflow|constraint]"
+---
+
 # /learn - Extract Reusable Patterns
 
 Analyze the current session and store any patterns worth saving as long-term memories.

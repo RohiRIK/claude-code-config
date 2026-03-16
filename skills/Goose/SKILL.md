@@ -1,6 +1,8 @@
 ---
 name: Goose
-description: Parallel agent orchestration using Goose recipes. USE WHEN user wants to spawn agents, run recipes, review code, generate tests, refactor, roast code, security audit, or any autonomous development task. Supports non-blocking parallel execution.
+description: "USE WHEN spawning parallel autonomous agents for development tasks."
+context: fork
+agent: general-purpose
 ---
 
 # Goose

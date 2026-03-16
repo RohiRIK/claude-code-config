@@ -1,3 +1,8 @@
+---
+description: "Add a goal, decision, progress, or gotcha to session context."
+disable-model-invocation: true
+---
+
 # /update-context — Mid-Session Context Update
 
 Explicitly add a context item to the DB mid-session. Use this for important items that shouldn't wait until session end (when the `UpdateContext` hook fires automatically).

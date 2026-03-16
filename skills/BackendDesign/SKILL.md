@@ -1,6 +1,7 @@
 ---
 name: BackendDesign
-description: Backend architecture patterns, API design, database optimization, and server-side best practices.
+description: "Reference for API design, database schema, and server architecture."
+user-invocable: false
 ---
 
 # BackendDesign

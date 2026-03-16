@@ -1,5 +1,6 @@
 ---
-description: Restate requirements, assess risks, and create step-by-step implementation plan. WAIT for user CONFIRM before touching any code.
+description: "Create a step-by-step implementation plan before writing code."
+disable-model-invocation: true
 ---
 
 # Plan Command

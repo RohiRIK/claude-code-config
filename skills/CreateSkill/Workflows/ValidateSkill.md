@@ -1,22 +1,21 @@
 # ValidateSkill Workflow
 
-**Purpose:** Check if an existing skill follows the canonical structure with proper TitleCase naming.
+**Purpose:** Check if an existing skill follows the canonical structure.
 
 ---
 
-## Step 1: Read the Authoritative Source
-
-**REQUIRED FIRST:** Read the canonical structure:
+## Step 1: Load Reference Docs
 
 ```
-~/.claude/skills/CORE/SkillSystem.md
+SkillSearch('createskill conventions')   → loads Conventions.md (structure rules)
+SkillSearch('createskill frontmatter')   → loads Frontmatter.md (tier system + fields)
 ```
 
 ---
 
 ## Step 2: Read the Target Skill
 
-```bash
+```
 ~/.claude/skills/[SkillName]/SKILL.md
 ```
 
@@ -28,8 +27,6 @@
 ```bash
 ls ~/.claude/skills/ | grep -i [skillname]
 ```
-
-Verify TitleCase:
 - ✓ `Blogging`, `Daemon`, `CreateSkill`
 - ✗ `createskill`, `create-skill`, `CREATE_SKILL`
 
@@ -37,178 +34,101 @@ Verify TitleCase:
 ```bash
 ls ~/.claude/skills/[SkillName]/Workflows/
 ```
-
-Verify TitleCase:
-- ✓ `Create.md`, `UpdateDaemonInfo.md`, `SyncRepo.md`
-- ✗ `create.md`, `update-daemon-info.md`, `SYNC_REPO.md`
-
-### Tool Files
-```bash
-ls ~/.claude/skills/[SkillName]/Tools/
-```
-
-Verify TitleCase:
-- ✓ `ManageServer.ts`, `ManageServer.help.md`
-- ✗ `manage-server.ts`, `MANAGE_SERVER.ts`
+- ✓ `Create.md`, `UpdateDaemonInfo.md`
+- ✗ `create.md`, `update-daemon-info.md`
 
 ---
 
 ## Step 4: Check YAML Frontmatter
 
-Verify the YAML has:
+### Description
+- ✓ ≤15 words
+- ✓ Intent-focused: `"USE WHEN..."` (Tier C/D), imperative (Tier B), noun phrase (Tier A)
+- ✗ Keyword list: `"skill, create, validate"` — wrong
+- ✗ `SkillSearch()` in description — wrong
+- ✗ Multi-line using `|` — wrong
+- ✗ Separate `triggers:` or `workflows:` arrays — old format, wrong
 
-### Single-Line Description with USE WHEN
-```yaml
----
-name: SkillName
-description: [What it does]. USE WHEN [intent triggers using OR]. [Additional capabilities].
----
-```
+### Tier Classification
+- Tier A: has `user-invocable: false`
+- Tier B: has `disable-model-invocation: true`
+- Tier C: no extra flags (correct default)
+- Tier D: has `context: fork` + `agent: <type>`
 
-**Check for violations:**
-- Multi-line description using `|` (WRONG)
-- Missing `USE WHEN` keyword (WRONG)
-- Separate `triggers:` array in YAML (OLD FORMAT - WRONG)
-- Separate `workflows:` array in YAML (OLD FORMAT - WRONG)
-- `name:` not in TitleCase (WRONG)
+Check: does the tier match the skill's actual use case?
+
+### Argument hint
+- If skill takes user arguments (e.g. `/recall [query]`), must have `argument-hint` field
 
 ---
 
 ## Step 5: Check Markdown Body
 
-Verify the body has:
-
 ### Workflow Routing Section
 ```markdown
 ## Workflow Routing
 
-**When executing a workflow, output this notification:**
-
-```
-Running the **WorkflowName** workflow from the **SkillName** skill...
-```
-
 | Workflow | Trigger | File |
-|----------|---------|------|
+|---------|---------|------|
 | **WorkflowOne** | "trigger phrase" | `Workflows/WorkflowOne.md` |
 ```
-
-**Check for violations:**
-- Missing `## Workflow Routing` section
-- Workflow names not in TitleCase
-- File paths not matching actual file names
+- ✗ Missing `## Workflow Routing` section
+- ✗ Workflow names not in TitleCase
+- ✗ File paths not matching actual file names
 
 ### Examples Section
-```markdown
-## Examples
-
-**Example 1: [Use case]**
-```
-User: "[Request]"
-→ [Action]
-→ [Result]
-```
-```
-
-**Check:** Examples section required (WRONG if missing)
+- ✓ `## Examples` section with 2-3 concrete patterns required
 
 ---
 
-## Step 6: Check Workflow Files
-
-```bash
-ls ~/.claude/skills/[SkillName]/Workflows/
-```
-
-Verify:
-- Every file uses TitleCase naming
-- Every file has a corresponding entry in `## Workflow Routing` section
-- Every routing entry points to an existing file
-- Routing table names match file names exactly
-
----
-
-## Step 7: Check Structure
+## Step 6: Check File Structure
 
 ```bash
 ls -la ~/.claude/skills/[SkillName]/
 ```
-
-Verify:
-- `tools/` directory exists (even if empty)
-- No `backups/` directory inside skill
-- Reference docs at skill root (not in Workflows/)
+- ✓ Context files (.md) at skill root, not in subdirectories
+- ✓ No `Context/`, `Docs/`, `Resources/` subdirectory
+- ✓ SKILL.md ≤ 50 lines (if longer, dynamic loading should be used)
+- ✗ `backups/` inside skill — wrong
 
 ---
 
-## Step 7a: Check CLI-First Integration (for skills with CLI tools)
+## Step 7: Check CLI-First Integration (if skill has tools)
 
-**If the skill has CLI tools in `tools/`:**
-
-### CLI Tool Configuration Flags
-
-Check each tool for flag-based configuration:
 ```bash
 bun ~/.claude/skills/[SkillName]/Tools/[ToolName].ts --help
-```
-
-Verify the tool exposes behavioral configuration via flags:
-- Mode flags (--fast, --thorough, --dry-run) where applicable
-- Output flags (--format, --quiet, --verbose)
-- Resource flags (--model, etc.) if applicable
-- Post-processing flags if applicable
-
-### Workflow Intent-to-Flag Mapping
-
-For workflows that call CLI tools, check for intent-to-flag mapping tables:
-
-```bash
 grep -l "Intent-to-Flag" ~/.claude/skills/[SkillName]/Workflows/*.md
 ```
 
-**Required pattern in workflows with CLI tools:**
-```markdown
-## Intent-to-Flag Mapping
-
-| User Says | Flag | When to Use |
-|-----------|------|-------------|
-| "fast" | `--model haiku` | Speed priority |
-| (default) | `--model sonnet` | Balanced |
-```
-
-**Reference:** `~/.claude/skills/CORE/CliFirstArchitecture.md`
+- [ ] CLI tools expose behavioral configuration via flags
+- [ ] Workflows that call CLI tools have intent-to-flag mapping tables
 
 ---
 
 ## Step 8: Report Results
 
-**COMPLIANT** if all checks pass:
+**COMPLIANT** checklist:
 
 ### Naming (TitleCase)
 - [ ] Skill directory uses TitleCase
 - [ ] All workflow files use TitleCase
 - [ ] All reference docs use TitleCase
-- [ ] All tool files use TitleCase
-- [ ] Routing table names match file names
+- [ ] Routing table names match file names exactly
 
 ### YAML Frontmatter
 - [ ] `name:` uses TitleCase
-- [ ] `description:` is single-line with `USE WHEN`
+- [ ] `description:` ≤15 words, correct format for tier
+- [ ] Tier correctly classified (user-invocable / disable-model-invocation / fork)
+- [ ] `argument-hint` present if skill takes arguments
 - [ ] No separate `triggers:` or `workflows:` arrays
-- [ ] Description under 1024 characters
 
 ### Markdown Body
-- [ ] `## Workflow Routing` section present
+- [ ] `## Workflow Routing` section present with table format
 - [ ] `## Examples` section with 2-3 patterns
-- [ ] All workflows have routing entries
 
 ### Structure
-- [ ] `tools/` directory exists
+- [ ] Context files in skill root (not subdirectories)
+- [ ] SKILL.md ≤ 50 lines
 - [ ] No `backups/` inside skill
-
-### CLI-First Integration (for skills with CLI tools)
-- [ ] CLI tools expose configuration via flags (not hardcoded)
-- [ ] Workflows that call CLI tools have intent-to-flag mapping tables
-- [ ] Flag mappings cover mode, output, and resource selection where applicable
 
 **NON-COMPLIANT** if any check fails. Recommend using CanonicalizeSkill workflow.

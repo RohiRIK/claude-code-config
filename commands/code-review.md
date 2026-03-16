@@ -1,3 +1,7 @@
+---
+description: "USE WHEN reviewing code for quality, security, or correctness."
+---
+
 # Code Review
 
 Comprehensive security and quality review of uncommitted changes:

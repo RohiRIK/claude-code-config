@@ -1,3 +1,8 @@
+---
+description: "Run tsc, tests, and build to confirm correctness before committing."
+disable-model-invocation: true
+---
+
 # /verify — Self-Check Loop
 
 Run this to verify implementation correctness before committing.

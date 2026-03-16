@@ -1,3 +1,8 @@
+---
+description: "Run a read-only system audit and report findings by severity."
+disable-model-invocation: true
+---
+
 # /audit — Read-Only System Auditor
 
 Runs two isolated Gemini CLI instances (Flash + Pro) and produces a ranked findings report.
