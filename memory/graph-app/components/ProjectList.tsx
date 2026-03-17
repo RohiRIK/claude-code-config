@@ -72,7 +72,7 @@ export default function ProjectList({
                   className={`flex-1 text-left text-xs px-3 py-1.5 truncate ${activeProject === p.label && !hidden ? "text-sky-400 font-medium" : "text-gray-400"}`}
                   title={p.label}
                 >
-                  {p.label}
+                  {p.label.split("/").pop() || p.label}
                 </button>
                 {count > 0 && (
                   <span className="text-[9px] text-gray-600 font-mono shrink-0">{count}</span>
