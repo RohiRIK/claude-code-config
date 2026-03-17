@@ -34,19 +34,17 @@ export default function FilterBar({ onSearch, onImportanceMin, importanceMin, on
     return () => clearTimeout(t);
   }, [query, onSearch, semanticMode]);
 
-  const toggleSemanticMode = () => {
-    setSemanticMode(v => {
-      if (!v) {
-        // switching ON: clear keyword results
-        onSearch(null);
-        setQuery("");
-      } else {
-        // switching OFF: clear semantic results
-        setSemResults(null);
-      }
-      return !v;
-    });
-  };
+  // Side effects when semantic mode changes
+  useEffect(() => {
+    if (semanticMode) {
+      onSearch(null);
+      setQuery("");
+    } else {
+      setSemResults(null);
+    }
+  }, [semanticMode, onSearch]);
+
+  const toggleSemanticMode = () => setSemanticMode(v => !v);
 
   const runSemanticSearch = async () => {
     if (!query.trim()) return;

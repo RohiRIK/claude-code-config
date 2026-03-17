@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { categoryBadgeColors } from "@/lib/categoryColors";
 import { nodeColor } from "@/lib/nodeColors";
 import ImportanceStars from "@/components/ImportanceStars";
-import type { ContextNode, GraphNode, MemoryDetail, ProjectNode } from "@/lib/types";
+import type { ContextNode, CtxItem, GraphNode, MemoryDetail, ProjectNode } from "@/lib/types";
 
 interface Props {
   node: GraphNode | null;
@@ -235,8 +235,6 @@ const CONTEXT_TAB_COLORS: Record<string, string> = {
   progress: "bg-emerald-600 border-emerald-500",
 };
 
-type CtxItem = { content: string; created_at: string };
-
 function ProjectPanel({ node }: { node: ProjectNode }) {
   const [tab, setTab] = useState<"goal" | "decision" | "gotcha" | "progress">("goal");
   const [items, setItems] = useState<Record<string, CtxItem[]>>({});
@@ -252,7 +250,10 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
 
   const tabs = ["goal", "decision", "gotcha", "progress"] as const;
   const rawList = items[tab] ?? [];
-  const list = newestFirst ? rawList : [...rawList].reverse();
+  const list = useMemo(
+    () => newestFirst ? rawList : [...rawList].reverse(),
+    [newestFirst, rawList]
+  );
   const color = nodeColor("project");
 
   return (
@@ -313,8 +314,8 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
           <p className="text-xs text-gray-600 italic text-center py-4">No {tab} items</p>
         ) : (
           <ul className="space-y-2">
-            {list.map((item, i) => (
-              <li key={i} className="text-xs text-gray-300 bg-gray-800/40 border border-gray-800 rounded-lg p-2.5 leading-relaxed">
+            {list.map((item) => (
+              <li key={item.created_at} className="text-xs text-gray-300 bg-gray-800/40 border border-gray-800 rounded-lg p-2.5 leading-relaxed">
                 <p>{item.content}</p>
                 <p className="text-[9px] text-gray-600 mt-1.5">
                   <RelativeTime iso={item.created_at} />

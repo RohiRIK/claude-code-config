@@ -88,9 +88,14 @@ export interface SearchResult {
   project_scope: string | null;
 }
 
+export interface CtxItem {
+  content: string;
+  created_at: string;
+}
+
 export interface ProjectDetail {
   name: string;
-  context: Record<string, string[]>;
+  context: Record<string, CtxItem[]>;
   memories: MemoryNode[];
   context_items: ContextNode[];
   relations: GraphLink[];

@@ -155,9 +155,9 @@ export default function ProjectPage() {
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: nodeColor(type) }} />
                       <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{type}</span>
                     </div>
-                    {items.map((content, i) => (
-                      <p key={i} className="px-4 py-1.5 text-xs text-gray-300 border-t border-[#21262d] last:pb-3">
-                        {content}
+                    {items.map((item) => (
+                      <p key={item.created_at} className="px-4 py-1.5 text-xs text-gray-300 border-t border-[#21262d] last:pb-3">
+                        {item.content}
                       </p>
                     ))}
                   </div>
