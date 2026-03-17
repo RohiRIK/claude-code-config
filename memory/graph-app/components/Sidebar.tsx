@@ -9,6 +9,8 @@ import type { ContextNode, GraphNode, MemoryDetail, ProjectNode } from "@/lib/ty
 interface Props {
   node: GraphNode | null;
   onClose: () => void;
+  onRelationClick?: (id: number) => void;
+  nodeLabelById?: (id: number) => string | undefined;
 }
 
 // ── Shared micro-components ──────────────────────────────────────────────────
@@ -84,7 +86,11 @@ function RelativeTime({ iso }: { iso: string }) {
 
 // ── Memory panel ─────────────────────────────────────────────────────────────
 
-function MemoryPanel({ node }: { node: MemoryDetail }) {
+function MemoryPanel({ node, onRelationClick, nodeLabelById }: {
+  node: MemoryDetail;
+  onRelationClick?: (id: number) => void;
+  nodeLabelById?: (id: number) => string | undefined;
+}) {
   return (
     <div className="space-y-5">
       {/* Content */}
@@ -122,15 +128,25 @@ function MemoryPanel({ node }: { node: MemoryDetail }) {
         <div>
           <SectionLabel>Relations</SectionLabel>
           <div className="space-y-1">
-            {node.relations.map((r, i) => (
-              <div key={i} className="flex items-center gap-2 text-[11px] bg-gray-800/40 rounded px-2.5 py-1.5 border border-gray-800">
-                <span className={r.direction === "outgoing" ? "text-sky-500" : "text-purple-500"}>
-                  {r.direction === "outgoing" ? "↗" : "↙"}
-                </span>
-                <span className="text-gray-500 italic flex-1">{r.type}</span>
-                <span className="text-gray-600 font-mono">#{r.related_id}</span>
-              </div>
-            ))}
+            {node.relations.map((r, i) => {
+              const label = nodeLabelById?.(r.related_id);
+              return (
+                <button
+                  key={r.related_id}
+                  onClick={() => onRelationClick?.(r.related_id)}
+                  className="w-full flex items-center gap-2 text-[11px] bg-gray-800/40 rounded px-2.5 py-1.5 border border-gray-800 hover:border-gray-600 hover:bg-gray-700/40 transition-colors cursor-pointer text-left"
+                >
+                  <span className={r.direction === "outgoing" ? "text-sky-500" : "text-purple-500"}>
+                    {r.direction === "outgoing" ? "↗" : "↙"}
+                  </span>
+                  <span className="text-gray-500 italic shrink-0">{r.type}</span>
+                  {label && (
+                    <span className="text-gray-400 truncate flex-1 text-[10px]">"{label}"</span>
+                  )}
+                  <span className="text-gray-600 font-mono shrink-0">#{r.related_id}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -305,7 +321,7 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
 
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
 
-export default function Sidebar({ node, onClose }: Props) {
+export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById }: Props) {
   const [detail, setDetail] = useState<MemoryDetail | null>(null);
 
   useEffect(() => {
@@ -361,7 +377,7 @@ export default function Sidebar({ node, onClose }: Props) {
         {isContext && <ContextPanel node={node as ContextNode} />}
         {!isProject && !isContext && (
           detail
-            ? <MemoryPanel node={detail} />
+            ? <MemoryPanel node={detail} onRelationClick={onRelationClick} nodeLabelById={nodeLabelById} />
             : (
               <div className="flex items-center justify-center h-24 text-xs text-gray-600">
                 Loading…

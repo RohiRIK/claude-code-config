@@ -122,12 +122,25 @@ export default function Home() {
     return { nodes, links };
   }, [data, activeProject, importanceMin, searchResults, hiddenProjects]);
 
+  const nodeById = useMemo(() => {
+    const map = new Map<number, GraphNode>();
+    for (const n of data?.nodes ?? []) map.set(n.id, n);
+    return map;
+  }, [data?.nodes]);
+
   const handleSpotlightSelect = useCallback((result: SearchResult) => {
     graphRef.current?.zoomToNode(result.id);
-    // Find the node in data and open Sidebar
-    const node = data?.nodes.find(n => n.id === result.id);
+    const node = nodeById.get(result.id);
     if (node) setSelected(node);
-  }, [data]);
+  }, [nodeById]);
+
+  const handleRelationClick = useCallback((id: number) => {
+    graphRef.current?.zoomToNode(id);
+    const node = nodeById.get(id);
+    if (node) setSelected(node);
+  }, [nodeById]);
+
+  const nodeLabelById = useCallback((id: number) => nodeById.get(id)?.label, [nodeById]);
 
   return (
     <div className="flex flex-col h-full">
@@ -154,11 +167,7 @@ export default function Home() {
       </div>
       {semanticMode && (
         <SemanticSearch
-          onSelect={(id) => {
-            graphRef.current?.zoomToNode(id);
-            const node = data?.nodes.find((n) => n.id === id);
-            if (node) setSelected(node);
-          }}
+          onSelect={handleRelationClick}
         />
       )}
       <div className="flex flex-1 overflow-hidden">
@@ -222,7 +231,12 @@ export default function Home() {
             </>
           )}
         </div>
-        <Sidebar node={selected} onClose={() => setSelected(null)} />
+        <Sidebar
+          node={selected}
+          onClose={() => setSelected(null)}
+          onRelationClick={handleRelationClick}
+          nodeLabelById={nodeLabelById}
+        />
       </div>
 
       <SpotlightModal

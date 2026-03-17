@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { GraphNode, Tag } from "@/lib/types";
 
 interface Props {
@@ -28,6 +28,16 @@ export default function ProjectList({
 }: Props) {
   const allProjects = nodes.filter(n => "is_project" in n);
   const [projectsOpen, setProjectsOpen] = useState(true);
+
+  const projectMemoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of nodes) {
+      if (!("is_project" in n) && !("is_context" in n) && "project_scope" in n && n.project_scope) {
+        counts[n.project_scope] = (counts[n.project_scope] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [nodes]);
   const [tagsOpen, setTagsOpen] = useState(true);
 
   return (
@@ -51,6 +61,7 @@ export default function ProjectList({
           </button>
           {allProjects.map(p => {
             const hidden = hiddenProjects.has(p.label);
+            const count = projectMemoryCounts[p.label] ?? 0;
             return (
               <div
                 key={p.id}
@@ -63,6 +74,9 @@ export default function ProjectList({
                 >
                   {p.label}
                 </button>
+                {count > 0 && (
+                  <span className="text-[9px] text-gray-600 font-mono shrink-0">{count}</span>
+                )}
                 <button
                   onClick={() => onToggleHide(p.label)}
                   className="shrink-0 p-1 rounded opacity-30 group-hover:opacity-100 transition-opacity text-gray-600 hover:text-gray-300"
@@ -91,8 +105,13 @@ export default function ProjectList({
           onClick={() => setTagsOpen(o => !o)}
           className="flex-1 flex items-center justify-between px-3 py-2 hover:bg-[#21262d] transition-colors"
         >
-          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
-            Tags{activeTags.size > 0 ? ` · ${activeTags.size}` : ""}
+          <span className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+            Tags
+            {activeTags.size > 0 && (
+              <span className="text-[9px] text-sky-400 bg-sky-900/30 border border-sky-800/40 rounded px-1 py-0.5 normal-case tracking-normal font-normal">
+                {activeTags.size} active
+              </span>
+            )}
           </span>
           <span className="text-gray-600"><ChevronIcon open={tagsOpen} /></span>
         </button>
