@@ -141,6 +141,8 @@ export interface SemanticResult {
   id: number;
   content: string;
   category: string;
+  importance: number;
+  project_scope: string | null;
   similarity: number;
 }
 

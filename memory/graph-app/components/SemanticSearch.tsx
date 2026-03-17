@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { categoryTextColors } from "@/lib/categoryColors";
+import { categoryBadgeColors } from "@/lib/categoryColors";
+import ImportanceStars from "@/components/ImportanceStars";
 import type { SemanticResult } from "@/lib/types";
 
 interface SemanticSearchProps {
@@ -60,19 +61,28 @@ export default function SemanticSearch({ onSelect }: SemanticSearchProps) {
       )}
 
       {results !== null && results.length > 0 && (
-        <div className="space-y-1 max-h-52 overflow-y-auto">
+        <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
           {results.map((r) => (
             <button
               key={r.id}
               onClick={() => onSelect(r.id)}
-              className="w-full text-left px-3 py-2 rounded bg-[#161b22] hover:bg-[#1c2128] border border-gray-800 hover:border-gray-700 transition-colors"
+              className="w-full text-left px-3 py-2.5 rounded bg-[#161b22] hover:bg-[#1c2128] border border-gray-800 hover:border-gray-600 transition-colors"
             >
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[10px] font-mono bg-sky-900/40 text-sky-400 border border-sky-800/50 rounded px-1.5 py-0.5">
+              {/* Top row: similarity + category + project */}
+              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                <span className="text-[10px] font-mono bg-sky-900/40 text-sky-400 border border-sky-800/50 rounded px-1.5 py-0.5 shrink-0">
                   {Math.round(r.similarity * 100)}%
                 </span>
-                <span className={`text-[10px] font-medium ${categoryTextColors[r.category] ?? "text-gray-400"}`}>
+                <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded border capitalize shrink-0 ${categoryBadgeColors[r.category] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
                   {r.category}
+                </span>
+                {r.project_scope && (
+                  <span className="text-[10px] text-gray-500 bg-gray-800/60 border border-gray-700/50 rounded px-1.5 py-0.5 truncate max-w-[120px]">
+                    {r.project_scope.split("/").pop()}
+                  </span>
+                )}
+                <span className="ml-auto shrink-0">
+                  <ImportanceStars n={r.importance} />
                 </span>
               </div>
               <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">{r.content}</p>

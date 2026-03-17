@@ -134,7 +134,7 @@ export async function semanticSearch(
   query: string,
   topK = 10,
   minSimilarity = 0.5,
-): Promise<Array<{ id: number; content: string; category: string; similarity: number }>> {
+): Promise<Array<{ id: number; content: string; category: string; importance: number; project_scope: string | null; similarity: number }>> {
   const db = getDb();
   const provider = getEmbeddingProvider();
 
@@ -146,10 +146,10 @@ export async function semanticSearch(
   // Load all memories with embeddings
   const rows = db
     .query<
-      { id: number; content: string; category: string; embedding: Buffer },
+      { id: number; content: string; category: string; importance: number; project_scope: string | null; embedding: Buffer },
       []
     >(
-      `SELECT id, content, category, embedding FROM memories WHERE embedding IS NOT NULL AND status = 'active'`,
+      `SELECT id, content, category, importance, project_scope, embedding FROM memories WHERE embedding IS NOT NULL AND status = 'active'`,
     )
     .all();
 
@@ -158,7 +158,7 @@ export async function semanticSearch(
     .map((row) => {
       const memVector = blobToVector(row.embedding);
       const similarity = cosineSimilarity(queryVector, memVector);
-      return { id: row.id, content: row.content, category: row.category, similarity };
+      return { id: row.id, content: row.content, category: row.category, importance: row.importance, project_scope: row.project_scope, similarity };
     })
     .filter((r) => r.similarity >= minSimilarity)
     .sort((a, b) => b.similarity - a.similarity)

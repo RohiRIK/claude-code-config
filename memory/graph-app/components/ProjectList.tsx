@@ -65,7 +65,7 @@ export default function ProjectList({
             return (
               <div
                 key={p.id}
-                className={`group flex items-center gap-1 pr-1 hover:bg-[#21262d] transition-colors ${hidden ? "opacity-40" : ""}`}
+                className={`group flex items-center gap-1 pr-1 hover:bg-[#21262d] transition-colors ${hidden ? "opacity-40" : count === 0 ? "opacity-50" : ""}`}
               >
                 <button
                   onClick={() => !hidden && onSelect(activeProject === p.label ? null : p.label)}

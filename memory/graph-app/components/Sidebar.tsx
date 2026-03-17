@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { categoryBadgeColors } from "@/lib/categoryColors";
 import { nodeColor } from "@/lib/nodeColors";
+import ImportanceStars from "@/components/ImportanceStars";
 import type { ContextNode, GraphNode, MemoryDetail, ProjectNode } from "@/lib/types";
 
 interface Props {
@@ -15,15 +16,6 @@ interface Props {
 
 // ── Shared micro-components ──────────────────────────────────────────────────
 
-function ImportanceStars({ n }: { n: number }) {
-  return (
-    <span>
-      {Array.from({ length: 5 }, (_, i) => (
-        <span key={i} className={i < n ? "text-amber-400" : "text-gray-700"}>★</span>
-      ))}
-    </span>
-  );
-}
 
 function ConfidenceBar({ v }: { v: number }) {
   const pct = Math.round(v * 100);
