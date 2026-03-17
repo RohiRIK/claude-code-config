@@ -4,6 +4,30 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-17 — Memory Health Dashboard Redesign
+
+### memory/graph-app/app/health/page.tsx (redesigned)
+- **Global health banner**: LTM score (0–100 weighted avg), pills for Active / Superseded / At-Risk / Projects, mini per-project score strip
+- **Action Items section**: neglected/needs-attention projects with View link, at-risk memories with Boost, superseded memories with 2-step Delete confirmation ("Delete" → "Sure?")
+- **2-column project grid**: healthy cards compact (score + metadata only), unhealthy cards expand with metric bars
+- Removed: standalone confidence distribution chart, dead "no at-risk" tombstone section
+- Extracted `scoreTextColor`, `scoreBgColor`, `statusBadgeColor`, `statusIcon` helpers; single-pass `overallScore` reduce; `projectStatusCounts` computed once above JSX
+
+### memory/server.ts
+- `GET /api/health/projects`: fixed epoch-0 timestamp handling — `last_used_at <= '1970-01-02'` treated as NULL for freshness/activity/stale calculations
+- `GET /api/health/superseded` (new): returns all memories with `status = 'superseded'` for review and deletion
+
+### memory/graph-app/lib/types.ts
+- Added `SupersededMemory` interface (Phase 5)
+
+### memory/graph-app/lib/api.ts
+- Added `api.supersededMemories()` → `GET /health/superseded`
+
+### memory/graph-app/app/layout.tsx + pending/page.tsx + settings/page.tsx
+- Fixed scroll bug: `overflow-hidden` on layout wrapper clipped all pages to viewport height; replaced with `min-h-0` + `overflow-y-auto` per scrollable page
+
+---
+
 ## 2026-03-16 — Semantic LTM Retrieval (Embedding-Based)
 
 ### memory/embeddings.ts (new)
