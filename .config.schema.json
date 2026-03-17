@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Claude Code Config",
+  "description": "Configuration for ~/.claude — Claude Code personal environment",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference (for VS Code IntelliSense)"
+    },
+    "ltm": {
+      "type": "object",
+      "description": "Long-term memory (LTM) settings",
+      "additionalProperties": false,
+      "properties": {
+        "dbPath": {
+          "type": "string",
+          "description": "Path to the SQLite LTM database",
+          "default": "~/.claude/memory/ltm.db"
+        },
+        "decayEnabled": {
+          "type": "boolean",
+          "description": "Whether memory decay scoring is active (stale memories lose relevance over time)",
+          "default": true
+        },
+        "injectTopN": {
+          "type": "integer",
+          "description": "Maximum number of LTM memories injected at session start",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 15
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "description": "Graph UI and API server ports",
+      "additionalProperties": false,
+      "properties": {
+        "apiPort": {
+          "type": "integer",
+          "description": "Port for the Bun API server (server.ts)",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 7331
+        },
+        "uiPort": {
+          "type": "integer",
+          "description": "Port for the Next.js graph UI (graph-app/)",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 7332
+        }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "description": "Optional cloud sync for the LTM database",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether cloud sync is active",
+          "default": false
+        },
+        "provider": {
+          "description": "Cloud provider for LTM backup/sync",
+          "oneOf": [
+            { "type": "string", "enum": ["s3", "r2"] },
+            { "type": "null" }
+          ],
+          "default": null
+        }
+      }
+    }
+  }
+}
