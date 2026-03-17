@@ -4,6 +4,36 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-17 — Graph UI Improvements + Sidebar Redesign
+
+### memory/graph-app/components/Graph.tsx
+- **Hover tooltips**: floating DOM div (zero React re-renders) shows category, label, content preview, importance stars on mouseenter
+- **Important node labels**: nodes with importance ≥ 4 always show abbreviated label (`node-label-important`); lower-importance nodes keep zoom-fade behavior
+- **Search result highlighting**: `highlightedIds` prop — matched nodes get blue stroke + `glow-search` SVG filter; non-matches dim to 0.15 opacity
+- **Graph toolbar**: `⊞ Fit` and `↺ Reset` buttons (top-right, backdrop-blur); `GraphHandle` extended with `fitToScreen()` + `resetSimulation()`; simulation stored in `simRef`; `fitBounds()` extracted as named function called by both `simulation.on("end")` and toolbar
+- Removed `<title>` appends (conflicted with custom tooltips); tooltip built with safe DOM methods (no innerHTML)
+
+### memory/graph-app/app/page.tsx
+- Derives `highlightedIds` from `searchResults` when non-empty, passes to Graph
+- Toolbar buttons wired to `graphRef.current?.fitToScreen()` / `resetSimulation()`
+
+### memory/graph-app/app/pending/page.tsx
+- Cards now `line-clamp-3` by default; "Show more ↓" / "Show less ↑" toggle for content > 120 chars
+- `expandedIds` state uses immutable Set pattern
+
+### memory/graph-app/components/Sidebar.tsx (full redesign)
+- Accent-colored gradient header tinted to node type/category color
+- Content in bordered card (`bg-gray-800/40`)
+- `CategoryBadge` using existing `categoryBadgeColors`; context types (goal/decision/gotcha/progress) each get distinct color
+- Confidence bar: green/yellow/red by threshold
+- Relative timestamps ("7d ago", "today") with full ISO on hover via `RelativeTime` component
+- Project name is clickable link → `/project/[name]`
+- Metadata in `MetaRow` key-value table
+- Relations: directional arrows (↗/↙) + italic type label
+- Project panel: tinted header card + colored tabs with item counts per context type
+
+---
+
 ## 2026-03-17 — Memory Health Dashboard Redesign
 
 ### memory/graph-app/app/health/page.tsx (redesigned)
