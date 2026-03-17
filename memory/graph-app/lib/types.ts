@@ -168,3 +168,35 @@ export interface HealthData {
   stats: HealthStatusCount[];
   avgConf: number;
 }
+
+// Phase 5: Superseded memories
+export interface SupersededMemory {
+  id: number;
+  content: string;
+  category: string;
+  project_scope: string | null;
+  confidence: number;
+  created_at: string;
+}
+
+// Phase 4: Project Health Score
+
+export type ProjectHealthStatus = "healthy" | "needs_attention" | "neglected";
+
+export interface ProjectHealthMetrics {
+  memoryFreshness: number;  // 0–1: % memories accessed in last 30 days
+  avgConfidence: number;    // 0–1: average confidence of active memories
+  contextCoverage: number;  // 0–1: presence of goal/decision/gotcha/progress items
+  sessionActivity: number;  // 0–1: any memory accessed in last 14 days
+}
+
+export interface ProjectHealthScore {
+  project: string;
+  score: number;                // 0–100 weighted composite
+  status: ProjectHealthStatus;
+  metrics: ProjectHealthMetrics;
+  memoryCount: number;
+  staleCount: number;           // memories not accessed in 30+ days
+  contextItemCount: number;
+  lastActivityAt: string | null;
+}

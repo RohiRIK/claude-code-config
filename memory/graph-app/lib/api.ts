@@ -6,10 +6,12 @@ import type {
   MemoryDetail,
   PendingMemory,
   ProjectDetail,
+  ProjectHealthScore,
   SearchResult,
   SemanticResult,
   SettingsModels,
   Stats,
+  SupersededMemory,
   Tag,
 } from "./types";
 
@@ -101,4 +103,10 @@ export const api = {
   // Phase 3: Health dashboard
   health: (): Promise<HealthData> => get("/health"),
   boostMemory: (id: number): Promise<{ ok: boolean }> => post(`/memory/${id}/boost`),
+
+  // Phase 4: Project Health Score
+  projectHealth: (): Promise<ProjectHealthScore[]> => get("/health/projects"),
+
+  // Phase 5: Superseded memories
+  supersededMemories: (): Promise<SupersededMemory[]> => get("/health/superseded"),
 };

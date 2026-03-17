@@ -749,6 +749,95 @@ Bun.serve({
       return Response.json({ atRisk, distribution, stats, avgConf: avgConf?.avg ?? 0 });
     }
 
+    // ============================================================
+    // Phase 4: Project Health Score
+    // ============================================================
+
+    if (p === "/api/health/projects" && req.method === "GET") {
+      type MetricRow = {
+        project: string;
+        memoryCount: number;
+        staleCount: number;
+        avgConfidence: number;
+        lastActivityAt: string | null;
+        recentCount: number;
+      };
+      type CtxRow = { project_name: string; contextItemCount: number };
+
+      // 2 queries total regardless of project count (previously 1 + 2N)
+      const metricsRows = db.query<MetricRow, []>(
+        `SELECT
+          project_scope as project,
+          COUNT(*) as memoryCount,
+          SUM(CASE WHEN last_used_at > '1970-01-02' AND last_used_at < datetime('now', '-30 days') THEN 1 ELSE 0 END) as staleCount,
+          AVG(confidence) as avgConfidence,
+          MAX(CASE WHEN last_used_at > '1970-01-02' THEN last_used_at ELSE NULL END) as lastActivityAt,
+          SUM(CASE WHEN last_used_at > '1970-01-02' AND last_used_at >= datetime('now', '-30 days') THEN 1 ELSE 0 END) as recentCount
+        FROM memories
+        WHERE project_scope IS NOT NULL AND status = 'active'
+        GROUP BY project_scope`
+      ).all();
+
+      const ctxRows = db.query<CtxRow, []>(
+        "SELECT project_name, COUNT(DISTINCT type) as contextItemCount FROM context_items GROUP BY project_name"
+      ).all();
+      const ctxMap = new Map(ctxRows.map((r) => [r.project_name, r.contextItemCount]));
+
+      const cutoff14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+      const scores = metricsRows.map((metrics) => {
+        const { project } = metrics;
+        const memoryCount = metrics.memoryCount ?? 0;
+        const staleCount = metrics.staleCount ?? 0;
+        const recentCount = metrics.recentCount ?? 0;
+        const contextItemCount = ctxMap.get(project) ?? 0;
+
+        const memoryFreshness = memoryCount > 0 ? recentCount / memoryCount : 0;
+        const avgConfidence = metrics.avgConfidence ?? 0;
+        const contextCoverage = Math.min(1, contextItemCount / 4);
+        const sessionActivity =
+          metrics.lastActivityAt && new Date(metrics.lastActivityAt) >= cutoff14d ? 1 : 0;
+
+        const score = Math.round(
+          memoryFreshness * 35 +
+          avgConfidence * 25 +
+          contextCoverage * 20 +
+          sessionActivity * 20
+        );
+
+        const status =
+          score >= 70 ? "healthy" :
+          score >= 40 ? "needs_attention" :
+          "neglected";
+
+        return {
+          project,
+          score,
+          status,
+          metrics: { memoryFreshness, avgConfidence, contextCoverage, sessionActivity },
+          memoryCount,
+          staleCount,
+          contextItemCount,
+          lastActivityAt: metrics.lastActivityAt ?? null,
+        };
+      });
+
+      scores.sort((a, b) => b.score - a.score);
+      return Response.json(scores);
+    }
+
+    // ============================================================
+    // Phase 5: Superseded memories
+    // ============================================================
+
+    if (p === "/api/health/superseded" && req.method === "GET") {
+      const rows = db.query<
+        { id: number; content: string; category: string; project_scope: string | null; confidence: number; created_at: string },
+        []
+      >("SELECT id, content, category, project_scope, confidence, created_at FROM memories WHERE status = 'superseded' ORDER BY created_at DESC").all();
+      return Response.json(rows);
+    }
+
     const boostMatch = p.match(/^\/api\/memory\/(\d+)\/boost$/);
     if (boostMatch?.[1] && req.method === "POST") {
       const id = Number(boostMatch[1]);

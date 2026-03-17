@@ -89,7 +89,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-gray-200">
+    <div className="min-h-full overflow-y-auto bg-[#0d1117] text-gray-200">
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-xl font-semibold text-white">Settings</h1>
