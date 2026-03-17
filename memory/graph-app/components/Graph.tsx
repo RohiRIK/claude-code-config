@@ -7,12 +7,15 @@ import type { GraphData, GraphNode } from "@/lib/types";
 
 export interface GraphHandle {
   zoomToNode: (id: number) => void;
+  fitToScreen: () => void;
+  resetSimulation: () => void;
 }
 
 interface Props {
   data: GraphData;
   activeProject: string | null;
   dimmedIds?: Set<number>;
+  highlightedIds?: Set<number>;
   onNodeClick: (node: GraphNode) => void;
 }
 
@@ -41,13 +44,41 @@ interface RawLink {
   type: string;
 }
 
+/** Build tooltip content using safe DOM methods — no innerHTML */
+function populateTooltip(tip: HTMLDivElement, d: RawNode) {
+  while (tip.firstChild) tip.removeChild(tip.firstChild);
+
+  const cat = document.createElement("div");
+  cat.style.cssText = "color:#6b7280;font-size:10px;text-transform:uppercase;letter-spacing:0.05em";
+  cat.textContent = d.category;
+  tip.appendChild(cat);
+
+  const label = document.createElement("div");
+  label.style.cssText = "color:#e5e7eb;font-weight:600;margin:2px 0";
+  label.textContent = d.label;
+  tip.appendChild(label);
+
+  const preview = document.createElement("div");
+  preview.style.cssText = "color:#9ca3af;font-size:10px";
+  preview.textContent = d.content.length > 120 ? d.content.substring(0, 119) + "…" : d.content;
+  tip.appendChild(preview);
+
+  const stars = document.createElement("div");
+  stars.style.cssText = "color:#f59e0b;font-size:10px;margin-top:4px";
+  stars.textContent = "★".repeat(d.importance) + "☆".repeat(Math.max(0, 5 - d.importance));
+  tip.appendChild(stars);
+}
+
 const Graph = forwardRef<GraphHandle, Props>(function Graph(
-  { data, activeProject, dimmedIds, onNodeClick },
+  { data, activeProject, dimmedIds, highlightedIds, onNodeClick },
   ref
 ) {
   const svgRef = useRef<SVGSVGElement>(null);
   const simNodesRef = useRef<RawNode[]>([]);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const simRef = useRef<d3.Simulation<RawNode, RawLink> | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const fitBoundsRef = useRef<(() => void) | null>(null);
   const router = useRouter();
 
   useImperativeHandle(ref, () => ({
@@ -62,6 +93,12 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
         d3.zoomIdentity.translate(W / 2 - (node.x ?? 0), H / 2 - (node.y ?? 0)).scale(1.5)
       );
     },
+    fitToScreen() {
+      fitBoundsRef.current?.();
+    },
+    resetSimulation() {
+      simRef.current?.alpha(1).restart();
+    },
   }), []);
 
   // Main effect: build simulation. Only reruns when data changes.
@@ -70,6 +107,22 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
     if (!svgEl) return;
     const svg = d3.select(svgEl);
     svg.selectAll("*").remove();
+
+    // Create tooltip div once, reuse across data changes
+    if (!tooltipRef.current) {
+      const tip = document.createElement("div");
+      tip.style.cssText = [
+        "position:fixed", "visibility:hidden", "pointer-events:none",
+        "z-index:9999", "max-width:280px",
+        "background:#1c2333", "border:1px solid #374151",
+        "border-radius:8px", "padding:8px 10px",
+        "font-size:11px", "color:#d1d5db", "line-height:1.5",
+        "box-shadow:0 4px 12px rgba(0,0,0,0.5)",
+      ].join(";");
+      document.body.appendChild(tip);
+      tooltipRef.current = tip;
+    }
+    const tip = tooltipRef.current;
 
     const width = svgEl.clientWidth || 900;
     const height = svgEl.clientHeight || 600;
@@ -96,6 +149,13 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
     const feMerge = filter.append("feMerge");
     feMerge.append("feMergeNode").attr("in", "blur");
     feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    // Search highlight glow filter (stronger blue)
+    const searchFilter = defs.append("filter").attr("id", "glow-search").attr("x", "-60%").attr("y", "-60%").attr("width", "220%").attr("height", "220%");
+    searchFilter.append("feGaussianBlur").attr("in", "SourceGraphic").attr("stdDeviation", "5").attr("result", "blur");
+    const sfeMerge = searchFilter.append("feMerge");
+    sfeMerge.append("feMergeNode").attr("in", "blur");
+    sfeMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
     const rawNodes: RawNode[] = data.nodes.map(n => ({
       id: n.id,
@@ -132,6 +192,7 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.08))
       .force("collision", d3.forceCollide<RawNode>().radius(d => nodeRadius(d.importance, d.is_project, d.is_context) + 2))
       .alphaDecay(0.025);
+    simRef.current = simulation;
 
     const link = g.selectAll<SVGLineElement, RawLink>("line")
       .data(rawLinks)
@@ -153,6 +214,17 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
           onNodeClick(d._original);
         }
       })
+      .on("mouseenter", (event: MouseEvent, d: RawNode) => {
+        populateTooltip(tip, d);
+        tip.style.visibility = "visible";
+        tip.style.left = `${event.clientX + 14}px`;
+        tip.style.top = `${event.clientY - 10}px`;
+      })
+      .on("mousemove", (event: MouseEvent) => {
+        tip.style.left = `${event.clientX + 14}px`;
+        tip.style.top = `${event.clientY - 10}px`;
+      })
+      .on("mouseleave", () => { tip.style.visibility = "hidden"; })
       .call(
         d3.drag<SVGGElement, RawNode>()
           .on("start", (event, d) => {
@@ -187,8 +259,19 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       .attr("pointer-events", "none")
       .text(d => d.label.length > 14 ? d.label.substring(0, 13) + "…" : d.label);
 
-    // Memory labels — only visible when zoomed in (CSS opacity trick via zoom handler)
-    node.filter(d => !d.is_project)
+    // Important node labels (importance >= 4) — always visible at all zoom levels
+    node.filter(d => !d.is_project && d.importance >= 4)
+      .append("text")
+      .attr("class", "node-label-important")
+      .attr("dy", d => nodeRadius(d.importance, d.is_project, d.is_context) + 7)
+      .attr("text-anchor", "middle")
+      .attr("font-size", 7)
+      .attr("fill", "#9ca3af")
+      .attr("pointer-events", "none")
+      .text(d => d.label.length > 18 ? d.label.substring(0, 17) + "…" : d.label);
+
+    // Memory labels (importance < 4) — only visible when zoomed in
+    node.filter(d => !d.is_project && d.importance < 4)
       .append("text")
       .attr("class", "node-label-memory")
       .attr("dy", d => nodeRadius(d.importance, d.is_project, d.is_context) + 7)
@@ -198,14 +281,13 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       .attr("pointer-events", "none")
       .text(d => d.label.length > 16 ? d.label.substring(0, 15) + "…" : d.label);
 
-    node.append("title").text(d => `[${d.category}] ${d.label}`);
-
-    // Populate cached selection now that labels exist
+    // Populate cached selection — only zoom-faded labels (not important ones)
     memoryLabels = g.selectAll<SVGTextElement, RawNode>(".node-label-memory");
 
-    simulation.on("end", () => {
-      if (rawNodes.length === 0) return;
-      const bounds = rawNodes.reduce(
+    const fitBounds = () => {
+      const nodes = simNodesRef.current;
+      if (nodes.length === 0) return;
+      const bounds = nodes.reduce(
         (acc, n) => ({
           minX: Math.min(acc.minX, n.x ?? 0), maxX: Math.max(acc.maxX, n.x ?? 0),
           minY: Math.min(acc.minY, n.y ?? 0), maxY: Math.max(acc.maxY, n.y ?? 0),
@@ -218,7 +300,9 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       const tx = (width - scale * (x0 + x1)) / 2;
       const ty = (height - scale * (y0 + y1)) / 2;
       d3.select(svgEl).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
-    });
+    };
+    fitBoundsRef.current = fitBounds;
+    simulation.on("end", fitBounds);
 
     simulation.on("tick", () => {
       link
@@ -229,9 +313,22 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
       node.attr("transform", d => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
-    return () => { simulation.stop(); };
+    return () => {
+      simulation.stop();
+      tip.style.visibility = "hidden";
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // Cleanup tooltip div on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
+      }
+    };
+  }, []);
 
   // Highlight activeProject without rebuilding simulation
   useEffect(() => {
@@ -249,6 +346,28 @@ const Graph = forwardRef<GraphHandle, Props>(function Graph(
     d3.select(svgEl).selectAll<SVGGElement, RawNode>("g.node")
       .attr("opacity", d => dimmedIds?.size && dimmedIds.has(d.id) ? 0.15 : 1);
   }, [dimmedIds]);
+
+  // Highlight search-matched nodes with a blue glow
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const circles = d3.select(svgEl).selectAll<SVGCircleElement, RawNode>("circle.node-circle");
+    if (highlightedIds?.size) {
+      circles
+        .attr("stroke", d => {
+          if (highlightedIds.has(d.id)) return "#60a5fa";
+          if (activeProject && d.project_scope === activeProject) return "#ffffff";
+          return "#1f2937";
+        })
+        .attr("stroke-width", d => highlightedIds.has(d.id) || (!!activeProject && d.project_scope === activeProject) ? 2.5 : 1)
+        .attr("filter", d => d.is_project ? "url(#glow)" : (highlightedIds.has(d.id) ? "url(#glow-search)" : null));
+    } else {
+      circles
+        .attr("stroke", d => activeProject && d.project_scope === activeProject ? "#ffffff" : "#1f2937")
+        .attr("stroke-width", d => activeProject && d.project_scope === activeProject ? 2.5 : 1)
+        .attr("filter", d => d.is_project ? "url(#glow)" : null);
+    }
+  }, [highlightedIds, activeProject]);
 
   return <svg ref={svgRef} className="w-full h-full bg-[#0d1117]" />;
 });

@@ -9,6 +9,15 @@ export default function PendingPage() {
   const [pending, setPending] = useState<PendingMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState<number | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (id: number) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const loadPending = useCallback(async () => {
     setLoading(true);
@@ -141,7 +150,17 @@ export default function PendingPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-300 leading-relaxed">{mem.content}</p>
+                    <p className={`text-sm text-gray-300 leading-relaxed ${expandedIds.has(mem.id) ? "" : "line-clamp-3"}`}>
+                      {mem.content}
+                    </p>
+                    {mem.content.length > 120 && (
+                      <button
+                        onClick={() => toggleExpand(mem.id)}
+                        className="text-[10px] text-gray-500 hover:text-gray-300 mt-1 transition-colors"
+                      >
+                        {expandedIds.has(mem.id) ? "Show less ↑" : "Show more ↓"}
+                      </button>
+                    )}
                     <p className="text-[10px] text-gray-600 mt-1.5">
                       {new Date(mem.created_at).toLocaleString()}
                     </p>

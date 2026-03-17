@@ -93,6 +93,12 @@ export default function Home() {
     return dimmed;
   }, [data?.nodes, activeTags]);
 
+  // Highlight nodes matching search results
+  const highlightedIds = useMemo((): Set<number> | undefined => {
+    if (!searchResults?.length) return undefined;
+    return new Set(searchResults.map(r => r.id));
+  }, [searchResults]);
+
   const filteredData = useMemo((): GraphData | null => {
     if (!data) return null;
     const searchIds = searchResults ? new Set(searchResults.map(r => r.id)) : null;
@@ -192,9 +198,27 @@ export default function Home() {
                 data={filteredData}
                 activeProject={activeProject}
                 dimmedIds={dimmedIds}
+                highlightedIds={highlightedIds}
                 onNodeClick={setSelected}
               />
               <NodeLegend />
+              {/* Graph toolbar — top-right corner */}
+              <div className="absolute top-3 right-3 flex gap-1.5 bg-[#161b22]/80 backdrop-blur-sm border border-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => graphRef.current?.fitToScreen()}
+                  title="Fit to screen"
+                  className="px-2 py-1 text-[11px] text-gray-400 hover:text-white hover:bg-gray-700/60 rounded transition-colors"
+                >
+                  ⊞ Fit
+                </button>
+                <button
+                  onClick={() => graphRef.current?.resetSimulation()}
+                  title="Reset simulation"
+                  className="px-2 py-1 text-[11px] text-gray-400 hover:text-white hover:bg-gray-700/60 rounded transition-colors"
+                >
+                  ↺ Reset
+                </button>
+              </div>
             </>
           )}
         </div>
