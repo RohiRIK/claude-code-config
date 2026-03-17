@@ -4,6 +4,23 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-17 — Graph UI Polish: Unified Search, Project Names, Context Sort
+
+### memory/graph-app/components/FilterBar.tsx
+- **Unified search bar**: owns `semanticMode` state internally — one input switches between keyword and semantic modes with an inline toggle button; semantic results appear as a dropdown below the bar
+- Removed the separate `SemanticSearch` panel and the `Semantic` toggle button from `page.tsx`
+
+### memory/graph-app/components/ProjectList.tsx
+- **Short project names**: displays `p.label.split("/").pop()` in the list; full path shown in `title` tooltip
+
+### memory/graph-app/components/Sidebar.tsx + server.ts + lib/api.ts
+- **Sort context items by date**: server now returns `{ content, created_at }[]` per category; `ProjectPanel` shows relative creation date on each item; "↓ newest / ↑ oldest" toggle appears when a tab has 2+ items (defaults to newest first)
+
+### memory/graph-app/components/ImportanceStars.tsx (new)
+- Shared component extracted from `SemanticSearch` — renders 5-star importance indicator; used in `FilterBar` semantic results and `Sidebar`
+
+---
+
 ## 2026-03-17 — Graph UI Improvements + Sidebar Redesign
 
 ### memory/graph-app/components/Graph.tsx
