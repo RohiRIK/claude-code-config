@@ -57,7 +57,7 @@ export const api = {
   memory: (id: number): Promise<MemoryDetail> => get(`/memory/${id}`),
   search: (q: string): Promise<SearchResult[]> =>
     get(`/search?q=${encodeURIComponent(q)}`),
-  context: (project: string): Promise<Record<string, string[]>> =>
+  context: (project: string): Promise<Record<string, { content: string; created_at: string }[]>> =>
     get(`/context/${encodeURIComponent(project)}`),
   project: (name: string): Promise<ProjectDetail> =>
     get(`/project/${encodeURIComponent(name)}`),

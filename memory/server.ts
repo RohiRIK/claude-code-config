@@ -314,12 +314,12 @@ function getGraphData() {
 
 // Context items for a specific project (for sidebar)
 function getProjectContext(projectName: string) {
-  const rows = queryDb<{ type: string; content: string }>(
-    `SELECT type, content FROM context_items WHERE project_name=? ORDER BY type, id DESC`,
+  const rows = queryDb<{ type: string; content: string; created_at: string }>(
+    `SELECT type, content, created_at FROM context_items WHERE project_name=? ORDER BY type, id DESC`,
     [projectName]
   );
-  const grouped: Record<string, string[]> = { goal: [], decision: [], gotcha: [], progress: [] };
-  for (const r of rows) { (grouped[r.type] ??= []).push(r.content); }
+  const grouped: Record<string, { content: string; created_at: string }[]> = { goal: [], decision: [], gotcha: [], progress: [] };
+  for (const r of rows) { (grouped[r.type] ??= []).push({ content: r.content, created_at: r.created_at }); }
   return grouped;
 }
 

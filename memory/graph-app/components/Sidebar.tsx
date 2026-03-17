@@ -235,9 +235,12 @@ const CONTEXT_TAB_COLORS: Record<string, string> = {
   progress: "bg-emerald-600 border-emerald-500",
 };
 
+type CtxItem = { content: string; created_at: string };
+
 function ProjectPanel({ node }: { node: ProjectNode }) {
   const [tab, setTab] = useState<"goal" | "decision" | "gotcha" | "progress">("goal");
-  const [items, setItems] = useState<Record<string, string[]>>({});
+  const [items, setItems] = useState<Record<string, CtxItem[]>>({});
+  const [newestFirst, setNewestFirst] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -248,7 +251,8 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
   }, [node.label]);
 
   const tabs = ["goal", "decision", "gotcha", "progress"] as const;
-  const list = items[tab] ?? [];
+  const rawList = items[tab] ?? [];
+  const list = newestFirst ? rawList : [...rawList].reverse();
   const color = nodeColor("project");
 
   return (
@@ -270,7 +274,17 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
 
       {/* Context tabs */}
       <div>
-        <SectionLabel>Context</SectionLabel>
+        <div className="flex items-center justify-between mb-1.5">
+          <SectionLabel>Context</SectionLabel>
+          {rawList.length > 1 && (
+            <button
+              onClick={() => setNewestFirst(v => !v)}
+              className="text-[9px] text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              {newestFirst ? "↓ newest" : "↑ oldest"}
+            </button>
+          )}
+        </div>
         <div className="flex gap-1 mb-3">
           {tabs.map(t => {
             const active = tab === t;
@@ -301,7 +315,10 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
           <ul className="space-y-2">
             {list.map((item, i) => (
               <li key={i} className="text-xs text-gray-300 bg-gray-800/40 border border-gray-800 rounded-lg p-2.5 leading-relaxed">
-                {item}
+                <p>{item.content}</p>
+                <p className="text-[9px] text-gray-600 mt-1.5">
+                  <RelativeTime iso={item.created_at} />
+                </p>
               </li>
             ))}
           </ul>
