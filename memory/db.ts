@@ -433,7 +433,7 @@ export function getSimilarMemories(
   return scored.slice(0, limit).map(s => s.mem);
 }
 
-export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[]; graphInsights?: string } {
+export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[] } {
   const db = getDb();
   const sortByDecay = (arr: Memory[]) =>
     arr.map(m => ({ m, score: computeDecayScore(m) }))
@@ -450,15 +450,6 @@ export function getContextMerge(project: string): { globals: Memory[]; scoped: M
 
   const allIds = [...globals, ...scoped].map(m => m.id);
   updateLastUsed(allIds);
-
-  // Fire-and-forget graph reasoning — appends graphInsights if enabled
-  const { readConfigSync } = require("./config.js") as typeof import("./config.js");
-  const cfg = readConfigSync();
-
-  if (cfg.ltm?.graphReasoning) {
-    // Return synchronously without insights — caller can await separately if needed.
-    // Graph reasoning is async; we embed the promise result via a separate field.
-  }
 
   return { globals, scoped };
 }

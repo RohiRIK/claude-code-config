@@ -39,6 +39,10 @@ export interface TraversalResult {
 const CONFLICT_TYPES = new Set<RelationshipType>(["contradicts", "supersedes"]);
 const REINFORCE_TYPES = new Set<RelationshipType>(["supports", "refines"]);
 
+function edgeKey(a: number, b: number): string {
+  return `${Math.min(a, b)}:${Math.max(a, b)}`;
+}
+
 interface EdgeRow {
   neighbor_id: number;
   relationship_type: RelationshipType;
@@ -90,14 +94,15 @@ export async function traverseGraph(
     const [curId, curDepth] = queue.shift()!;
     if (curDepth >= depth) continue;
 
+    const curNode = getMemoryNode(db, curId);
+    if (!curNode) continue;
+
     const neighbors = getNeighbors(db, curId);
     for (const edge of neighbors) {
-      const curNode = getMemoryNode(db, curId);
       const neighborNode = getMemoryNode(db, edge.neighbor_id);
-      if (!neighborNode || !curNode) continue;
+      if (!neighborNode) continue;
 
-      const edgeKey = [Math.min(curId, edge.neighbor_id), Math.max(curId, edge.neighbor_id)].join(":");
-      edgeMap.set(edgeKey, edge.relationship_type);
+      edgeMap.set(edgeKey(curId, edge.neighbor_id), edge.relationship_type);
 
       if (CONFLICT_TYPES.has(edge.relationship_type)) {
         conflicts.push({ a: curNode, b: neighborNode, type: edge.relationship_type });
@@ -163,8 +168,7 @@ function getPairsWithoutEdge(nodes: MemoryNode[], edgeMap: Map<string, Relations
     for (let j = i + 1; j < subset.length; j++) {
       const a = subset[i]!;
       const b = subset[j]!;
-      const key = [Math.min(a.id, b.id), Math.max(a.id, b.id)].join(":");
-      if (!edgeMap.has(key)) {
+      if (!edgeMap.has(edgeKey(a.id, b.id))) {
         pairs.push([a, b]);
       }
     }
@@ -174,18 +178,21 @@ function getPairsWithoutEdge(nodes: MemoryNode[], edgeMap: Map<string, Relations
 
 function buildClusters(db: Database, ids: number[]): MemoryNode[][] {
   if (ids.length === 0) return [];
-  // Build adjacency from memory_relations among visited set
   const idSet = new Set(ids);
   const adj = new Map<number, Set<number>>();
   for (const id of ids) adj.set(id, new Set());
 
-  for (const id of ids) {
-    const neighbors = getNeighbors(db, id);
-    for (const n of neighbors) {
-      if (idSet.has(n.neighbor_id)) {
-        adj.get(id)!.add(n.neighbor_id);
-        adj.get(n.neighbor_id)!.add(id);
-      }
+  // Single batch query instead of N×getNeighbors calls
+  const placeholders = ids.map(() => "?").join(",");
+  const relations = db.query<{ source: number; target: number }, number[]>(
+    `SELECT source_memory_id as source, target_memory_id as target FROM memory_relations
+     WHERE source_memory_id IN (${placeholders}) OR target_memory_id IN (${placeholders})`
+  ).all(...ids, ...ids);
+
+  for (const r of relations) {
+    if (idSet.has(r.source) && idSet.has(r.target)) {
+      adj.get(r.source)!.add(r.target);
+      adj.get(r.target)!.add(r.source);
     }
   }
 
@@ -200,9 +207,7 @@ function buildClusters(db: Database, ids: number[]): MemoryNode[][] {
       const cur = q.pop()!;
       if (visited.has(cur)) continue;
       visited.add(cur);
-      const node = db.query<MemoryNode, [number]>(
-        `SELECT id, content, category, importance, project_scope FROM memories WHERE id=?`
-      ).get(cur);
+      const node = getMemoryNode(db, cur);
       if (node) cluster.push(node);
       for (const neighbor of adj.get(cur) ?? []) {
         if (!visited.has(neighbor)) q.push(neighbor);

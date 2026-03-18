@@ -25,6 +25,7 @@ import {
 import { semanticSearch } from "./janitor/embeddings.js";
 import { SETTING_DEFAULTS, SETTING_KEYS } from "./janitor/providers/types.js";
 import { anthropicLLM } from "./janitor/providers/anthropic.js";
+import { traverseGraph } from "./graph.js";
 import { cohereEmbedding } from "./janitor/providers/cohere.js";
 import { geminiEmbedding } from "./janitor/providers/gemini.js";
 import { ollamaEmbedding } from "./janitor/providers/ollama.js";
@@ -848,7 +849,6 @@ Bun.serve({
       const depth = Math.min(4, Math.max(1, parseInt(url.searchParams.get("depth") ?? "2", 10)));
       const infer = url.searchParams.get("infer") === "true";
       try {
-        const { traverseGraph } = await import("./graph.js");
         const result = await traverseGraph(memId, depth, infer);
         return Response.json({
           chain: result.chain,

@@ -112,8 +112,8 @@ function ReasoningPanel({ result, onNodeClick }: {
         <div>
           <SectionLabel>Conflicts ({result.conflicts.length})</SectionLabel>
           <div className="space-y-1">
-            {result.conflicts.map((p, i) => (
-              <div key={i} className="text-[10px] bg-red-900/10 border border-red-800/30 rounded px-2.5 py-1.5">
+            {result.conflicts.map((p) => (
+              <div key={`${p.a.id}-${p.b.id}-${p.type}`} className="text-[10px] bg-red-900/10 border border-red-800/30 rounded px-2.5 py-1.5">
                 <span className="text-red-400">↔</span>
                 <span className="text-gray-400 ml-1 italic">{p.type}</span>
                 <div className="text-gray-400 mt-0.5 truncate">"{p.a.content.substring(0, 40)}"</div>
@@ -129,8 +129,8 @@ function ReasoningPanel({ result, onNodeClick }: {
         <div>
           <SectionLabel>Reinforcements ({result.reinforcements.length})</SectionLabel>
           <div className="space-y-1">
-            {result.reinforcements.map((p, i) => (
-              <div key={i} className="text-[10px] bg-green-900/10 border border-green-800/30 rounded px-2.5 py-1.5">
+            {result.reinforcements.map((p) => (
+              <div key={`${p.a.id}-${p.b.id}-${p.type}`} className="text-[10px] bg-green-900/10 border border-green-800/30 rounded px-2.5 py-1.5">
                 <span className="text-green-400">↑</span>
                 <span className="text-gray-400 ml-1 italic">{p.type}</span>
                 <div className="text-gray-400 mt-0.5 truncate">"{p.a.content.substring(0, 40)}"</div>
@@ -145,8 +145,8 @@ function ReasoningPanel({ result, onNodeClick }: {
         <div>
           <SectionLabel>Inferred Edges ({result.inferred.length})</SectionLabel>
           <div className="space-y-1">
-            {result.inferred.map((e, i) => (
-              <div key={i} className="text-[10px] bg-violet-900/10 border border-violet-800/30 rounded px-2.5 py-1.5">
+            {result.inferred.map((e) => (
+              <div key={`${e.a.id}-${e.b.id}`} className="text-[10px] bg-violet-900/10 border border-violet-800/30 rounded px-2.5 py-1.5">
                 <span className="text-violet-400">≈</span>
                 <span className="text-gray-400 ml-1 italic">{e.type}</span>
                 {e.persisted && <span className="ml-1 text-[9px] text-violet-600">saved</span>}
