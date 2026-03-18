@@ -5,7 +5,7 @@
  */
 import type { SQLQueryBindings } from "bun:sqlite";
 import { Database } from "bun:sqlite";
-import { existsSync, mkdirSync, readFileSync, watch } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, watch } from "fs";
 import { dirname, join } from "path";
 
 import { CLAUDE_DIR } from "../hooks/lib/resolveProject.js";
@@ -140,6 +140,32 @@ async function fetchProviderModels(
 }
 
 const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
+const CONFIG_PATH = join(CLAUDE_DIR, "config.json");
+
+function readClaudeConfig(): Record<string, unknown> {
+  if (!existsSync(CONFIG_PATH)) return {};
+  try { return JSON.parse(readFileSync(CONFIG_PATH, "utf-8")) as Record<string, unknown>; }
+  catch { return {}; }
+}
+
+function writeClaudeConfig(patch: Record<string, unknown>): void {
+  const current = readClaudeConfig();
+  const merged = deepMerge(current, patch);
+  writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2) + "\n");
+}
+
+function deepMerge(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...base };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v !== null && typeof v === "object" && !Array.isArray(v) &&
+        typeof out[k] === "object" && out[k] !== null && !Array.isArray(out[k])) {
+      out[k] = deepMerge(out[k] as Record<string, unknown>, v as Record<string, unknown>);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
 const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
 const UI_PATH = join(CLAUDE_DIR, "memory", "graph-ui", "index.html");
 const PID_PATH = join(CLAUDE_DIR, "tmp", "ltm-server.pid");
@@ -837,6 +863,24 @@ Bun.serve({
         []
       >("SELECT id, content, category, project_scope, confidence, created_at FROM memories WHERE status = 'superseded' ORDER BY created_at DESC").all();
       return Response.json(rows);
+    }
+
+    // ============================================================
+    // Claude config.json: GET /api/config, PUT /api/config
+    // ============================================================
+
+    if (p === "/api/config" && req.method === "GET") {
+      return Response.json(readClaudeConfig());
+    }
+
+    if (p === "/api/config" && req.method === "PUT") {
+      try {
+        const patch = (await req.json()) as Record<string, unknown>;
+        writeClaudeConfig(patch);
+        return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
     }
 
     // ============================================================

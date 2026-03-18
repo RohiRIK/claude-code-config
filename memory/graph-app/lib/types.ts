@@ -186,6 +186,18 @@ export interface SupersededMemory {
   created_at: string;
 }
 
+// Claude config.json types
+export interface ClaudeLtmConfig {
+  graphReasoning: boolean;
+  autoRelate: boolean;
+  decayEnabled: boolean;
+  injectTopN: number;
+}
+
+export interface ClaudeConfig {
+  ltm: ClaudeLtmConfig;
+}
+
 // Graph Reasoning types
 
 export interface ReasoningMemoryNode {

@@ -1,4 +1,6 @@
 import type {
+  ClaudeConfig,
+  ClaudeLtmConfig,
   CtxItem,
   GraphData,
   HealthData,
@@ -115,4 +117,9 @@ export const api = {
   // Graph Reasoning
   reasoning: (id: number, depth = 2): Promise<ReasoningResult> =>
     get(`/reasoning/${id}?depth=${depth}`),
+
+  // Claude config.json
+  getConfig: (): Promise<ClaudeConfig> => get("/config"),
+  updateConfig: (ltmPatch: Partial<ClaudeLtmConfig>): Promise<{ ok: boolean }> =>
+    put("/config", { ltm: ltmPatch }),
 };
