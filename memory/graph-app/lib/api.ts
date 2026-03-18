@@ -8,6 +8,7 @@ import type {
   PendingMemory,
   ProjectDetail,
   ProjectHealthScore,
+  ReasoningResult,
   SearchResult,
   SemanticResult,
   SettingsModels,
@@ -110,4 +111,8 @@ export const api = {
 
   // Phase 5: Superseded memories
   supersededMemories: (): Promise<SupersededMemory[]> => get("/health/superseded"),
+
+  // Graph Reasoning
+  reasoning: (id: number, depth = 2): Promise<ReasoningResult> =>
+    get(`/reasoning/${id}?depth=${depth}`),
 };

@@ -30,6 +30,16 @@
           "minimum": 1,
           "maximum": 50,
           "default": 15
+        },
+        "autoRelate": {
+          "type": "boolean",
+          "description": "Automatically detect and store relations between new and similar memories",
+          "default": true
+        },
+        "graphReasoning": {
+          "type": "boolean",
+          "description": "Inject graph traversal insights (chains, conflicts, reinforcements) into session context",
+          "default": false
         }
       }
     },

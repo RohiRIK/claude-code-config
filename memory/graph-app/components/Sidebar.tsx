@@ -5,13 +5,14 @@ import { api } from "@/lib/api";
 import { categoryBadgeColors } from "@/lib/categoryColors";
 import { nodeColor } from "@/lib/nodeColors";
 import ImportanceStars from "@/components/ImportanceStars";
-import type { ContextNode, CtxItem, GraphNode, MemoryDetail, ProjectNode } from "@/lib/types";
+import type { ContextNode, CtxItem, GraphNode, MemoryDetail, ProjectNode, ReasoningResult } from "@/lib/types";
 
 interface Props {
   node: GraphNode | null;
   onClose: () => void;
   onRelationClick?: (id: number) => void;
   nodeLabelById?: (id: number) => string | undefined;
+  onReasoningResult?: (ids: Set<number>, conflictIds: Set<number>, reinforceIds: Set<number>) => void;
 }
 
 // ── Shared micro-components ──────────────────────────────────────────────────
@@ -74,6 +75,88 @@ function RelativeTime({ iso }: { iso: string }) {
   if (days < 30) return <span title={date.toLocaleString()}>{days}d ago</span>;
   if (days < 365) return <span title={date.toLocaleString()}>{Math.floor(days / 30)}mo ago</span>;
   return <span title={date.toLocaleString()}>{Math.floor(days / 365)}y ago</span>;
+}
+
+// ── Reasoning panel ──────────────────────────────────────────────────────────
+
+function ReasoningPanel({ result, onNodeClick }: {
+  result: ReasoningResult;
+  onNodeClick?: (id: number) => void;
+}) {
+  if (result.chain.length === 0) {
+    return <p className="text-xs text-gray-600 italic text-center py-4">No connected memories found.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Chain */}
+      <div>
+        <SectionLabel>Reasoning Chain ({result.chain.length} nodes)</SectionLabel>
+        <div className="space-y-1">
+          {result.chain.map((n, i) => (
+            <button
+              key={n.id}
+              onClick={() => onNodeClick?.(n.id)}
+              className="w-full flex items-center gap-2 text-[11px] bg-yellow-900/10 border border-yellow-800/30 rounded px-2.5 py-1.5 hover:border-yellow-700/50 hover:bg-yellow-900/20 transition-colors cursor-pointer text-left"
+            >
+              <span className="text-yellow-600 font-mono shrink-0 text-[9px]">{i + 1}</span>
+              <span className="text-gray-300 truncate flex-1">{n.content.substring(0, 60)}</span>
+              <span className="text-gray-600 font-mono shrink-0">#{n.id}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Conflicts */}
+      {result.conflicts.length > 0 && (
+        <div>
+          <SectionLabel>Conflicts ({result.conflicts.length})</SectionLabel>
+          <div className="space-y-1">
+            {result.conflicts.map((p, i) => (
+              <div key={i} className="text-[10px] bg-red-900/10 border border-red-800/30 rounded px-2.5 py-1.5">
+                <span className="text-red-400">↔</span>
+                <span className="text-gray-400 ml-1 italic">{p.type}</span>
+                <div className="text-gray-400 mt-0.5 truncate">"{p.a.content.substring(0, 40)}"</div>
+                <div className="text-gray-500 truncate">vs "{p.b.content.substring(0, 40)}"</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reinforcements */}
+      {result.reinforcements.length > 0 && (
+        <div>
+          <SectionLabel>Reinforcements ({result.reinforcements.length})</SectionLabel>
+          <div className="space-y-1">
+            {result.reinforcements.map((p, i) => (
+              <div key={i} className="text-[10px] bg-green-900/10 border border-green-800/30 rounded px-2.5 py-1.5">
+                <span className="text-green-400">↑</span>
+                <span className="text-gray-400 ml-1 italic">{p.type}</span>
+                <div className="text-gray-400 mt-0.5 truncate">"{p.a.content.substring(0, 40)}"</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Inferred edges */}
+      {result.inferred.length > 0 && (
+        <div>
+          <SectionLabel>Inferred Edges ({result.inferred.length})</SectionLabel>
+          <div className="space-y-1">
+            {result.inferred.map((e, i) => (
+              <div key={i} className="text-[10px] bg-violet-900/10 border border-violet-800/30 rounded px-2.5 py-1.5">
+                <span className="text-violet-400">≈</span>
+                <span className="text-gray-400 ml-1 italic">{e.type}</span>
+                {e.persisted && <span className="ml-1 text-[9px] text-violet-600">saved</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Memory panel ─────────────────────────────────────────────────────────────
@@ -331,11 +414,16 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
 
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
 
-export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById }: Props) {
+export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById, onReasoningResult }: Props) {
   const [detail, setDetail] = useState<MemoryDetail | null>(null);
+  const [reasoning, setReasoning] = useState<ReasoningResult | null>(null);
+  const [reasoningLoading, setReasoningLoading] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(false);
 
   useEffect(() => {
     setDetail(null);
+    setReasoning(null);
+    setShowReasoning(false);
     if (!node || "is_project" in node || "is_context" in node) return;
     const controller = new AbortController();
     api.memory(node.id)
@@ -344,10 +432,31 @@ export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById 
     return () => controller.abort();
   }, [node]);
 
+  function handleReason() {
+    if (!node || "is_project" in node || "is_context" in node) return;
+    if (reasoning) { setShowReasoning(v => !v); return; }
+    setReasoningLoading(true);
+    api.reasoning(node.id, 2)
+      .then(r => {
+        setReasoning(r);
+        setShowReasoning(true);
+        setReasoningLoading(false);
+        // Notify parent to highlight traversed nodes
+        const chainIds = new Set(r.chain.map(n => n.id));
+        const conflictIds = new Set<number>();
+        const reinforceIds = new Set<number>();
+        for (const c of r.conflicts) { conflictIds.add(c.a.id); conflictIds.add(c.b.id); }
+        for (const rc of r.reinforcements) { reinforceIds.add(rc.a.id); reinforceIds.add(rc.b.id); }
+        onReasoningResult?.(chainIds, conflictIds, reinforceIds);
+      })
+      .catch(() => setReasoningLoading(false));
+  }
+
   if (!node) return null;
 
   const isProject = "is_project" in node;
   const isContext = "is_context" in node;
+  const isMemory = !isProject && !isContext;
 
   const typeLabel = isProject ? "Project" : isContext ? "Context" : "Memory";
   const accentColor = isProject ? nodeColor("project") : isContext ? "#6b7280" : nodeColor(node.category);
@@ -371,13 +480,29 @@ export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById 
               {node.label}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors mt-0.5"
-            aria-label="Close"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {isMemory && (
+              <button
+                onClick={handleReason}
+                disabled={reasoningLoading}
+                className={`h-6 px-2 text-[10px] rounded-md border transition-colors font-medium ${
+                  showReasoning
+                    ? "bg-yellow-900/40 border-yellow-700/60 text-yellow-400"
+                    : "bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600"
+                } disabled:opacity-50`}
+                title="Traverse graph and show reasoning chain"
+              >
+                {reasoningLoading ? "…" : "Reason"}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors mt-0.5"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
         </div>
       </div>
 
@@ -385,14 +510,18 @@ export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById 
       <div className="flex-1 overflow-y-auto p-4">
         {isProject && <ProjectPanel node={node as ProjectNode} />}
         {isContext && <ContextPanel node={node as ContextNode} />}
-        {!isProject && !isContext && (
-          detail
-            ? <MemoryPanel node={detail} onRelationClick={onRelationClick} nodeLabelById={nodeLabelById} />
-            : (
+        {isMemory && (
+          <>
+            {showReasoning && reasoning ? (
+              <ReasoningPanel result={reasoning} onNodeClick={onRelationClick} />
+            ) : detail ? (
+              <MemoryPanel node={detail} onRelationClick={onRelationClick} nodeLabelById={nodeLabelById} />
+            ) : (
               <div className="flex items-center justify-center h-24 text-xs text-gray-600">
                 Loading…
               </div>
-            )
+            )}
+          </>
         )}
       </div>
     </div>

@@ -186,6 +186,30 @@ export interface SupersededMemory {
   created_at: string;
 }
 
+// Graph Reasoning types
+
+export interface ReasoningMemoryNode {
+  id: number;
+  content: string;
+  category: string;
+  importance: number;
+  project_scope: string | null;
+}
+
+export interface ReasoningPair {
+  a: ReasoningMemoryNode;
+  b: ReasoningMemoryNode;
+  type: string;
+}
+
+export interface ReasoningResult {
+  chain: ReasoningMemoryNode[];
+  conflicts: ReasoningPair[];
+  reinforcements: ReasoningPair[];
+  clusters: number[][];
+  inferred: Array<ReasoningPair & { persisted: boolean }>;
+}
+
 // Phase 4: Project Health Score
 
 export type ProjectHealthStatus = "healthy" | "needs_attention" | "neglected";

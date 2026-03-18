@@ -838,6 +838,30 @@ Bun.serve({
       return Response.json(rows);
     }
 
+    // ============================================================
+    // Graph Reasoning: GET /api/reasoning/:memoryId?depth=2
+    // ============================================================
+
+    const reasoningMatch = p.match(/^\/api\/reasoning\/(\d+)$/);
+    if (reasoningMatch?.[1] && req.method === "GET") {
+      const memId = parseInt(reasoningMatch[1], 10);
+      const depth = Math.min(4, Math.max(1, parseInt(url.searchParams.get("depth") ?? "2", 10)));
+      const infer = url.searchParams.get("infer") === "true";
+      try {
+        const { traverseGraph } = await import("./graph.js");
+        const result = await traverseGraph(memId, depth, infer);
+        return Response.json({
+          chain: result.chain,
+          conflicts: result.conflicts,
+          reinforcements: result.reinforcements,
+          clusters: result.clusters.map(c => c.map(n => n.id)),
+          inferred: result.inferred,
+        });
+      } catch (e) {
+        return Response.json({ error: String(e) }, { status: 500 });
+      }
+    }
+
     const boostMatch = p.match(/^\/api\/memory\/(\d+)\/boost$/);
     if (boostMatch?.[1] && req.method === "POST") {
       const id = Number(boostMatch[1]);

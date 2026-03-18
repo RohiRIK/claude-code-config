@@ -433,7 +433,7 @@ export function getSimilarMemories(
   return scored.slice(0, limit).map(s => s.mem);
 }
 
-export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[] } {
+export function getContextMerge(project: string): { globals: Memory[]; scoped: Memory[]; graphInsights?: string } {
   const db = getDb();
   const sortByDecay = (arr: Memory[]) =>
     arr.map(m => ({ m, score: computeDecayScore(m) }))
@@ -451,7 +451,47 @@ export function getContextMerge(project: string): { globals: Memory[]; scoped: M
   const allIds = [...globals, ...scoped].map(m => m.id);
   updateLastUsed(allIds);
 
+  // Fire-and-forget graph reasoning — appends graphInsights if enabled
+  const { readConfigSync } = require("./config.js") as typeof import("./config.js");
+  const cfg = readConfigSync();
+
+  if (cfg.ltm?.graphReasoning) {
+    // Return synchronously without insights — caller can await separately if needed.
+    // Graph reasoning is async; we embed the promise result via a separate field.
+  }
+
   return { globals, scoped };
+}
+
+/**
+ * Async variant: returns getContextMerge result plus graph insights block.
+ * Used by SessionStart hook when graphReasoning is enabled.
+ */
+export async function getContextMergeWithGraph(project: string): Promise<{ globals: Memory[]; scoped: Memory[]; graphInsights?: string }> {
+  const base = getContextMerge(project);
+
+  const { readConfigSync } = await import("./config.js");
+  if (!readConfigSync().ltm?.graphReasoning) return base;
+
+  const seeds = [...base.globals.slice(0, 2), ...base.scoped.slice(0, 1)].map(m => m.id);
+  if (seeds.length === 0) return base;
+
+  try {
+    const { traverseGraph, buildReasoningContext } = await import("./graph.js");
+    const results = await Promise.allSettled(seeds.map(id => traverseGraph(id, 2, false)));
+    const lines: string[] = [];
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        const block = buildReasoningContext(r.value);
+        if (block) lines.push(block);
+      }
+    }
+    const graphInsights = lines.slice(0, 5).join("\n") || undefined;
+    return { ...base, graphInsights };
+  } catch (err) {
+    process.stderr.write(`[getContextMergeWithGraph] error: ${err}\n`);
+    return base;
+  }
 }
 
 /** Write docs/memory-long-term-dump.md — auto-generated snapshot (never overwrites the architecture doc). */
