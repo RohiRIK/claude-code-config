@@ -17,22 +17,23 @@ interface ProviderConfig {
   baseUrl?: string;
 }
 
-// Module-level config cache — stable within a process lifetime
-let _configCache: ProviderConfig | null | undefined = undefined;
+// Module-level config caches — stable within a process lifetime
+let _embedConfigCache: ProviderConfig | null | undefined = undefined;
+let _llmConfigCache: ProviderConfig | null | undefined = undefined;
 
-function loadProviderConfig(): ProviderConfig | null {
+/** Shared loader for both embed and llm provider configs. */
+function loadConfig(type: "embed" | "llm"): ProviderConfig | null {
   try {
     const { getDb } = require("./shared-db.js") as typeof import("./shared-db.js");
     const db = getDb();
-
-    // Batch-fetch all relevant settings in one query
+    const t = type;
     const KEYS = [
-      "ltm.embed.provider",
-      "ltm.gemini.apiKey", "ltm.gemini.embedModel",
-      "ltm.openai.apiKey", "ltm.openai.embedModel",
-      "ltm.openrouter.apiKey", "ltm.openrouter.embedModel",
-      "ltm.cohere.apiKey", "ltm.cohere.embedModel",
-      "ltm.ollama.embedModel", "ltm.ollama.baseUrl",
+      `ltm.${t}.provider`,
+      "ltm.gemini.apiKey", `ltm.gemini.${t}Model`,
+      "ltm.openai.apiKey", `ltm.openai.${t}Model`,
+      "ltm.openrouter.apiKey", `ltm.openrouter.${t}Model`,
+      `ltm.cohere.apiKey`, `ltm.cohere.${t}Model`,
+      `ltm.ollama.${t}Model`, "ltm.ollama.baseUrl",
     ];
     const placeholders = KEYS.map(() => "?").join(",");
     const rows = db.query<{ key: string; value: string }, string[]>(
@@ -40,40 +41,28 @@ function loadProviderConfig(): ProviderConfig | null {
     ).all(...KEYS);
     const s = Object.fromEntries(rows.map(r => [r.key, r.value])) as Record<string, string | undefined>;
 
-    const provider = (process.env.LTM_EMBED_PROVIDER ?? s["ltm.embed.provider"] ?? "gemini") as EmbedProvider;
+    const envProvider = t === "embed" ? process.env.LTM_EMBED_PROVIDER : process.env.LTM_LLM_PROVIDER;
+    const provider = (envProvider ?? s[`ltm.${t}.provider`] ?? "gemini") as EmbedProvider;
+
+    const DEFAULTS: Record<EmbedProvider, { model: string }> = {
+      gemini:     { model: t === "embed" ? "gemini-embedding-2-preview" : "gemini-2.0-flash-lite" },
+      openai:     { model: t === "embed" ? "text-embedding-3-small" : "gpt-4o-mini" },
+      openrouter: { model: t === "embed" ? "openai/text-embedding-3-large" : "google/gemini-2.0-flash-001" },
+      cohere:     { model: t === "embed" ? "embed-v4.0" : "command-r-plus" },
+      ollama:     { model: t === "embed" ? "nomic-embed-text" : "llama3.2" },
+    };
 
     switch (provider) {
       case "gemini":
-        return {
-          provider,
-          apiKey: process.env.GEMINI_API_KEY ?? s["ltm.gemini.apiKey"],
-          model: process.env.GEMINI_EMBED_MODEL ?? s["ltm.gemini.embedModel"] ?? "gemini-embedding-2-preview",
-        };
+        return { provider, apiKey: process.env.GEMINI_API_KEY ?? s["ltm.gemini.apiKey"], model: s[`ltm.gemini.${t}Model`] ?? DEFAULTS.gemini.model };
       case "openai":
-        return {
-          provider,
-          apiKey: process.env.OPENAI_API_KEY ?? s["ltm.openai.apiKey"],
-          model: process.env.OPENAI_EMBED_MODEL ?? s["ltm.openai.embedModel"] ?? "text-embedding-3-small",
-        };
+        return { provider, apiKey: process.env.OPENAI_API_KEY ?? s["ltm.openai.apiKey"], model: s[`ltm.openai.${t}Model`] ?? DEFAULTS.openai.model };
       case "openrouter":
-        return {
-          provider,
-          apiKey: process.env.OPENROUTER_API_KEY ?? s["ltm.openrouter.apiKey"],
-          model: s["ltm.openrouter.embedModel"] ?? "openai/text-embedding-3-large",
-          baseUrl: "https://openrouter.ai/api/v1",
-        };
+        return { provider, apiKey: process.env.OPENROUTER_API_KEY ?? s["ltm.openrouter.apiKey"], model: s[`ltm.openrouter.${t}Model`] ?? DEFAULTS.openrouter.model, baseUrl: "https://openrouter.ai/api/v1" };
       case "cohere":
-        return {
-          provider,
-          apiKey: process.env.COHERE_API_KEY ?? s["ltm.cohere.apiKey"],
-          model: s["ltm.cohere.embedModel"] ?? "embed-v4.0",
-        };
+        return { provider, apiKey: process.env.COHERE_API_KEY ?? s["ltm.cohere.apiKey"], model: s[`ltm.cohere.${t}Model`] ?? DEFAULTS.cohere.model };
       case "ollama":
-        return {
-          provider,
-          model: s["ltm.ollama.embedModel"] ?? "nomic-embed-text",
-          baseUrl: s["ltm.ollama.baseUrl"] ?? "http://localhost:11434",
-        };
+        return { provider, model: s[`ltm.ollama.${t}Model`] ?? DEFAULTS.ollama.model, baseUrl: s["ltm.ollama.baseUrl"] ?? "http://localhost:11434" };
       default:
         return null;
     }
@@ -83,9 +72,15 @@ function loadProviderConfig(): ProviderConfig | null {
 }
 
 function getProviderConfig(): ProviderConfig | null {
-  if (_configCache !== undefined) return _configCache;
-  _configCache = loadProviderConfig();
-  return _configCache;
+  if (_embedConfigCache !== undefined) return _embedConfigCache;
+  _embedConfigCache = loadConfig("embed");
+  return _embedConfigCache;
+}
+
+function getLlmConfig(): ProviderConfig | null {
+  if (_llmConfigCache !== undefined) return _llmConfigCache;
+  _llmConfigCache = loadConfig("llm");
+  return _llmConfigCache;
 }
 
 // --- Math utils ---
@@ -233,57 +228,6 @@ export async function backfill(db: Database): Promise<void> {
   process.stderr.write(`[embeddings] Back-fill complete: ${done}/${rows.length} embedded\n`);
 }
 
-// --- LLM config (for classifyRelation) ---
-
-interface LlmConfig {
-  provider: EmbedProvider;
-  apiKey?: string;
-  model: string;
-  baseUrl?: string;
-}
-
-let _llmConfigCache: LlmConfig | null | undefined = undefined;
-
-function getLlmConfig(): LlmConfig | null {
-  if (_llmConfigCache !== undefined) return _llmConfigCache;
-  try {
-    const { getDb } = require("./shared-db.js") as typeof import("./shared-db.js");
-    const db = getDb();
-    const KEYS = [
-      "ltm.llm.provider",
-      "ltm.gemini.apiKey", "ltm.gemini.llmModel",
-      "ltm.openai.apiKey", "ltm.openai.llmModel",
-      "ltm.openrouter.apiKey", "ltm.openrouter.llmModel",
-      "ltm.ollama.llmModel", "ltm.ollama.baseUrl",
-    ];
-    const placeholders = KEYS.map(() => "?").join(",");
-    const rows = db.query<{ key: string; value: string }, string[]>(
-      `SELECT key, value FROM settings WHERE key IN (${placeholders})`
-    ).all(...KEYS);
-    const s = Object.fromEntries(rows.map(r => [r.key, r.value])) as Record<string, string | undefined>;
-    const provider = (process.env.LTM_LLM_PROVIDER ?? s["ltm.llm.provider"] ?? "gemini") as EmbedProvider;
-    switch (provider) {
-      case "gemini":
-        _llmConfigCache = { provider, apiKey: process.env.GEMINI_API_KEY ?? s["ltm.gemini.apiKey"], model: s["ltm.gemini.llmModel"] ?? "gemini-2.0-flash-lite" };
-        break;
-      case "openai":
-        _llmConfigCache = { provider, apiKey: process.env.OPENAI_API_KEY ?? s["ltm.openai.apiKey"], model: s["ltm.openai.llmModel"] ?? "gpt-4o-mini" };
-        break;
-      case "openrouter":
-        _llmConfigCache = { provider, apiKey: process.env.OPENROUTER_API_KEY ?? s["ltm.openrouter.apiKey"], model: s["ltm.openrouter.llmModel"] ?? "google/gemini-2.0-flash-001", baseUrl: "https://openrouter.ai/api/v1" };
-        break;
-      case "ollama":
-        _llmConfigCache = { provider, model: s["ltm.ollama.llmModel"] ?? "llama3.2", baseUrl: s["ltm.ollama.baseUrl"] ?? "http://localhost:11434" };
-        break;
-      default:
-        _llmConfigCache = null;
-    }
-  } catch {
-    _llmConfigCache = null;
-  }
-  return _llmConfigCache;
-}
-
 // --- Semantic similarity search ---
 
 export type SimilarMemory = { id: number; content: string; similarity: number };
@@ -325,7 +269,7 @@ Respond with exactly one of: supports, contradicts, refines, related_to, none`;
 
 const VALID_RELATIONS = new Set<string>(["supports", "contradicts", "refines", "related_to"]);
 
-async function callLlm(cfg: LlmConfig, userMessage: string): Promise<string | null> {
+async function callLlm(cfg: ProviderConfig, userMessage: string): Promise<string | null> {
   const body = {
     model: cfg.model,
     messages: [
