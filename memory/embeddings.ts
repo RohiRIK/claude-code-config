@@ -233,6 +233,147 @@ export async function backfill(db: Database): Promise<void> {
   process.stderr.write(`[embeddings] Back-fill complete: ${done}/${rows.length} embedded\n`);
 }
 
+// --- LLM config (for classifyRelation) ---
+
+interface LlmConfig {
+  provider: EmbedProvider;
+  apiKey?: string;
+  model: string;
+  baseUrl?: string;
+}
+
+let _llmConfigCache: LlmConfig | null | undefined = undefined;
+
+function getLlmConfig(): LlmConfig | null {
+  if (_llmConfigCache !== undefined) return _llmConfigCache;
+  try {
+    const { getDb } = require("./shared-db.js") as typeof import("./shared-db.js");
+    const db = getDb();
+    const KEYS = [
+      "ltm.llm.provider",
+      "ltm.gemini.apiKey", "ltm.gemini.llmModel",
+      "ltm.openai.apiKey", "ltm.openai.llmModel",
+      "ltm.openrouter.apiKey", "ltm.openrouter.llmModel",
+      "ltm.ollama.llmModel", "ltm.ollama.baseUrl",
+    ];
+    const placeholders = KEYS.map(() => "?").join(",");
+    const rows = db.query<{ key: string; value: string }, string[]>(
+      `SELECT key, value FROM settings WHERE key IN (${placeholders})`
+    ).all(...KEYS);
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value])) as Record<string, string | undefined>;
+    const provider = (process.env.LTM_LLM_PROVIDER ?? s["ltm.llm.provider"] ?? "gemini") as EmbedProvider;
+    switch (provider) {
+      case "gemini":
+        _llmConfigCache = { provider, apiKey: process.env.GEMINI_API_KEY ?? s["ltm.gemini.apiKey"], model: s["ltm.gemini.llmModel"] ?? "gemini-2.0-flash-lite" };
+        break;
+      case "openai":
+        _llmConfigCache = { provider, apiKey: process.env.OPENAI_API_KEY ?? s["ltm.openai.apiKey"], model: s["ltm.openai.llmModel"] ?? "gpt-4o-mini" };
+        break;
+      case "openrouter":
+        _llmConfigCache = { provider, apiKey: process.env.OPENROUTER_API_KEY ?? s["ltm.openrouter.apiKey"], model: s["ltm.openrouter.llmModel"] ?? "google/gemini-2.0-flash-001", baseUrl: "https://openrouter.ai/api/v1" };
+        break;
+      case "ollama":
+        _llmConfigCache = { provider, model: s["ltm.ollama.llmModel"] ?? "llama3.2", baseUrl: s["ltm.ollama.baseUrl"] ?? "http://localhost:11434" };
+        break;
+      default:
+        _llmConfigCache = null;
+    }
+  } catch {
+    _llmConfigCache = null;
+  }
+  return _llmConfigCache;
+}
+
+// --- Semantic similarity search ---
+
+export type SimilarMemory = { id: number; content: string; similarity: number };
+
+/**
+ * Find the top-N most similar memories to the given text using stored embeddings.
+ */
+export async function getSimilarMemories(text: string, topN = 5, threshold = 0.5): Promise<SimilarMemory[]> {
+  const vec = await embedText(text);
+  if (!vec) return [];
+
+  const { getDb } = require("./shared-db.js") as typeof import("./shared-db.js");
+  const db = getDb();
+  const rows = db.query<{ id: number; content: string; embedding: Buffer }, []>(
+    `SELECT id, content, embedding FROM memories WHERE embedding IS NOT NULL AND status='active'`
+  ).all();
+
+  const scored = rows
+    .map(row => ({ id: row.id, content: row.content, similarity: cosineSimilarity(vec, blobToVec(row.embedding)) }))
+    .filter(r => r.similarity >= threshold)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, topN);
+
+  return scored;
+}
+
+// --- Relation classification ---
+
+type AutoRelationType = "supports" | "contradicts" | "refines" | "related_to";
+
+const CLASSIFY_PROMPT = `You are a memory relation classifier. Given two facts (A and B), respond with exactly ONE word:
+- "supports" — B reinforces or agrees with A
+- "contradicts" — B conflicts with or contradicts A
+- "refines" — B adds detail or nuance to A
+- "related_to" — B is on the same topic but no clear support/conflict/refinement
+- "none" — B has no meaningful relation to A
+
+Respond with exactly one of: supports, contradicts, refines, related_to, none`;
+
+const VALID_RELATIONS = new Set<string>(["supports", "contradicts", "refines", "related_to"]);
+
+async function callLlm(cfg: LlmConfig, userMessage: string): Promise<string | null> {
+  const body = {
+    model: cfg.model,
+    messages: [
+      { role: "system", content: CLASSIFY_PROMPT },
+      { role: "user", content: userMessage },
+    ],
+    max_tokens: 10,
+    temperature: 0,
+  };
+
+  try {
+    let url: string;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (cfg.provider === "gemini") {
+      url = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
+      headers["Authorization"] = `Bearer ${cfg.apiKey ?? ""}`;
+    } else if (cfg.provider === "ollama") {
+      url = `${cfg.baseUrl}/v1/chat/completions`;
+    } else {
+      // openai / openrouter
+      url = cfg.baseUrl ? `${cfg.baseUrl}/chat/completions` : "https://api.openai.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${cfg.apiKey ?? ""}`;
+    }
+
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+    return json.choices?.[0]?.message?.content?.trim().toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Classify the relation between two memory strings using a lightweight LLM call.
+ * Returns null if no LLM provider configured or call fails.
+ */
+export async function classifyRelation(a: string, b: string): Promise<AutoRelationType | null> {
+  const cfg = getLlmConfig();
+  if (!cfg) return null;
+
+  const userMessage = `Memory A: ${a}\n\nMemory B: ${b}`;
+  const raw = await callLlm(cfg, userMessage);
+  if (!raw || !VALID_RELATIONS.has(raw)) return null;
+  return raw as AutoRelationType;
+}
+
 // CLI: bun embeddings.ts --backfill
 if (import.meta.main) {
   const args = process.argv.slice(2);

@@ -211,6 +211,37 @@ export function decayMemories(): DecayResult {
   return { deprecated: toDeprecate.length, scored: rows.length };
 }
 
+// Auto-relation detection — called fire-and-forget from learn()
+async function autoDetectRelations(
+  newId: number,
+  content: string,
+  getSimilarMemories: (text: string, topN: number, threshold: number) => Promise<Array<{ id: number; content: string; similarity: number }>>,
+  classifyRelation: (a: string, b: string) => Promise<RelationshipType | null>,
+): Promise<void> {
+  try {
+    const { readConfigSync } = await import("./config.js");
+    if (readConfigSync().ltm?.autoRelate === false) return;
+
+    const candidates = await getSimilarMemories(content, 5, 0.6);
+    const others = candidates.filter(c => c.id !== newId);
+    if (!others.length) return;
+
+    await Promise.allSettled(
+      others.map(async (candidate) => {
+        const relType = await classifyRelation(content, candidate.content);
+        if (!relType) return;
+        try {
+          relate({ source_id: newId, target_id: candidate.id, relationship_type: relType });
+        } catch {
+          // Memory may have been deleted between detection and insertion — ignore
+        }
+      })
+    );
+  } catch (err) {
+    process.stderr.write(`[autoDetectRelations] error for memory ${newId}: ${err}\n`);
+  }
+}
+
 export function learn(input: LearnInput): LearnResult {
   const db = getDb();
 
@@ -270,10 +301,11 @@ export function learn(input: LearnInput): LearnResult {
 
   if (!skipExport) exportMarkdown();
 
-  // Fire-and-forget embedding — never blocks learn()
-  import("./embeddings.js")
-    .then(({ embedMemory }) => embedMemory(db, newId))
-    .catch(err => process.stderr.write(`[learn] Embedding failed for memory ${newId}: ${err}\n`));
+  // Fire-and-forget: embed + auto-relate — never blocks learn()
+  import("./embeddings.js").then(async ({ embedMemory, getSimilarMemories, classifyRelation }) => {
+    await embedMemory(db, newId);
+    await autoDetectRelations(newId, content, getSimilarMemories, classifyRelation);
+  }).catch(err => process.stderr.write(`[learn] Background task failed for memory ${newId}: ${err}\n`));
 
   return { action: "created", id: newId, confirm_count: 1 };
 }

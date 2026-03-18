@@ -17,6 +17,7 @@ export interface LtmConfig {
   dbPath: string;
   decayEnabled: boolean;
   injectTopN: number;
+  autoRelate: boolean;
 }
 
 export interface ServerConfig {
@@ -42,6 +43,7 @@ const DEFAULTS: Config = {
     dbPath: "~/.claude/memory/ltm.db",
     decayEnabled: true,
     injectTopN: 15,
+    autoRelate: true,
   },
   server: {
     apiPort: 7331,
@@ -124,6 +126,16 @@ export function validateConfig(raw?: unknown): { valid: boolean; errors: string[
 
 // ── Loader ─────────────────────────────────────────────────────────────────────
 
+/** Sync flag reader — for use in fire-and-forget contexts like autoDetectRelations */
+export function readConfigSync(): Partial<Config> {
+  if (!existsSync(CONFIG_PATH)) return {};
+  try {
+    return JSON.parse(require("fs").readFileSync(CONFIG_PATH, "utf8")) as Partial<Config>;
+  } catch {
+    return {};
+  }
+}
+
 export async function loadConfig(): Promise<Config> {
   if (!existsSync(CONFIG_PATH)) return { ...DEFAULTS };
 
@@ -151,6 +163,7 @@ export async function loadConfig(): Promise<Config> {
       dbPath:       ltm.dbPath       ?? DEFAULTS.ltm.dbPath,
       decayEnabled: ltm.decayEnabled ?? DEFAULTS.ltm.decayEnabled,
       injectTopN:   ltm.injectTopN   ?? DEFAULTS.ltm.injectTopN,
+      autoRelate:   ltm.autoRelate   ?? DEFAULTS.ltm.autoRelate,
     },
     server: {
       apiPort: server.apiPort ?? DEFAULTS.server.apiPort,

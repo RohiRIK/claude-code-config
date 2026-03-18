@@ -24,6 +24,11 @@
           "description": "Whether memory decay scoring is active (stale memories lose relevance over time)",
           "default": true
         },
+        "autoRelate": {
+          "type": "boolean",
+          "description": "Auto-detect and create relations between similar memories after each learn() call using LLM classification",
+          "default": true
+        },
         "injectTopN": {
           "type": "integer",
           "description": "Maximum number of LTM memories injected at session start",
