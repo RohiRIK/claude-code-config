@@ -19,6 +19,7 @@ export interface LtmConfig {
   injectTopN: number;
   autoRelate: boolean;
   graphReasoning: boolean;
+  evaluateSessionLlm: boolean;
 }
 
 export interface ServerConfig {
@@ -46,6 +47,7 @@ const DEFAULTS: Config = {
     injectTopN: 15,
     autoRelate: true,
     graphReasoning: false,
+    evaluateSessionLlm: false,
   },
   server: {
     apiPort: 7331,
@@ -80,6 +82,9 @@ export function validateConfig(raw?: unknown): { valid: boolean; errors: string[
       }
       if ("graphReasoning" in ltm && typeof ltm["graphReasoning"] !== "boolean") {
         errors.push("ltm.graphReasoning: must be a boolean");
+      }
+      if ("evaluateSessionLlm" in ltm && typeof ltm["evaluateSessionLlm"] !== "boolean") {
+        errors.push("ltm.evaluateSessionLlm: must be a boolean");
       }
       if ("injectTopN" in ltm) {
         const n = ltm["injectTopN"];
@@ -168,8 +173,9 @@ export async function loadConfig(): Promise<Config> {
       dbPath:       ltm.dbPath       ?? DEFAULTS.ltm.dbPath,
       decayEnabled: ltm.decayEnabled ?? DEFAULTS.ltm.decayEnabled,
       injectTopN:   ltm.injectTopN   ?? DEFAULTS.ltm.injectTopN,
-      autoRelate:     ltm.autoRelate     ?? DEFAULTS.ltm.autoRelate,
-      graphReasoning: ltm.graphReasoning ?? DEFAULTS.ltm.graphReasoning,
+      autoRelate:        ltm.autoRelate        ?? DEFAULTS.ltm.autoRelate,
+      graphReasoning:    ltm.graphReasoning    ?? DEFAULTS.ltm.graphReasoning,
+      evaluateSessionLlm: ltm.evaluateSessionLlm ?? DEFAULTS.ltm.evaluateSessionLlm,
     },
     server: {
       apiPort: server.apiPort ?? DEFAULTS.server.apiPort,

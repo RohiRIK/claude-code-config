@@ -74,6 +74,61 @@ async function findTranscript(sessionId: string | undefined): Promise<{ path: st
   return { path: transcriptPath, id: finalSessionId };
 }
 
+function extractAssistantText(messages: any[]): string {
+  const parts: string[] = [];
+  for (const m of messages) {
+    const content = m?.message?.content;
+    if (!Array.isArray(content)) continue;
+    if (m?.message?.role !== "assistant") continue;
+    for (const block of content) {
+      if (block?.type === "text" && typeof block.text === "string")
+        parts.push(block.text.trim());
+    }
+  }
+  const full = parts.join("\n\n");
+  return full.length > 8000 ? full.slice(-8000) : full;
+}
+
+async function runLlmExtraction(text: string, projectName: string, sessionId?: string): Promise<void> {
+  const [{ getLlmConfig, callLlm }, { learn }, { addItem }] = await Promise.all([
+    import(join(CLAUDE_DIR, "memory/embeddings.js")),
+    import(join(CLAUDE_DIR, "memory/db.js")),
+    import(join(CLAUDE_DIR, "memory/context.js")),
+  ]);
+  const cfg = (getLlmConfig as Function)();
+  if (!cfg) return;
+
+  const SYSTEM = `Extract from Claude session messages. Return ONLY valid JSON:
+{"decisions":["..."],"gotchas":["..."],"patterns":["..."],"progress":"..."}
+- decisions: architectural choices made (max 5, <120 chars each)
+- gotchas: problems hit and how fixed (max 5, <120 chars each)
+- patterns: reusable patterns discovered (max 5, <120 chars each)
+- progress: single sentence of what was accomplished
+Empty array if nothing found. No markdown fences.`;
+
+  const raw = await (callLlm as Function)(cfg, text, { systemPrompt: SYSTEM, maxTokens: 800, raw: true });
+  if (!raw) return;
+
+  let extracted: { decisions: string[]; gotchas: string[]; patterns: string[]; progress: string };
+  try {
+    extracted = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim());
+  } catch { return; }
+
+  const LEARN_ITEMS: Array<{ key: keyof typeof extracted; category: string; importance: number }> = [
+    { key: "decisions", category: "architecture", importance: 3 },
+    { key: "gotchas",   category: "gotcha",       importance: 4 },
+    { key: "patterns",  category: "pattern",       importance: 3 },
+  ];
+  for (const { key, category, importance } of LEARN_ITEMS) {
+    for (const item of ((extracted[key] as string[]) ?? []).slice(0, 5)) {
+      if (item.length > 10)
+        (learn as Function)({ content: item, category, importance, project_scope: projectName, source: "evaluate-session", skipExport: true });
+    }
+  }
+  if (extracted.progress?.length > 5)
+    (addItem as Function)(projectName, "progress", extracted.progress, sessionId);
+}
+
 async function main() {
   let inputStr = "";
   // Hook inputs are optional for this tool now, but we pass through stdin
@@ -194,14 +249,25 @@ async function main() {
     writeFileSync(patternFile, fileContent);
     // console.error(`[ContinuousLearning] Patterns saved to: ${patternFile}`);
 
+    const projectName = resolveProject(input.cwd ?? "").name;
     try {
       const { learn } = await import(join(CLAUDE_DIR, "memory/db.js"));
-      const { resolveProject } = await import(join(CLAUDE_DIR, "hooks/lib/resolveProject.js"));
-      const { name: projectName } = resolveProject(input.cwd ?? "");
       for (const msg of errorBlocks.slice(0, 3)) {
         if (msg.trim().length > 20) {
           (learn as Function)({ content: msg.trim(), category: "gotcha", importance: 3,
                   project_scope: projectName, source: "evaluate-session" });
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    try {
+      const { readConfigSync } = await import(join(CLAUDE_DIR, "memory/config.js"));
+      if ((readConfigSync() as { ltm?: { evaluateSessionLlm?: boolean } }).ltm?.evaluateSessionLlm) {
+        const assistantText = extractAssistantText(messages);
+        if (assistantText.length > 100) {
+          runLlmExtraction(assistantText, projectName, sessionId).catch((err: unknown) => {
+            logHook("EvaluateSession", "warn", "LLM extraction failed", String(err));
+          });
         }
       }
     } catch { /* non-fatal */ }

@@ -269,14 +269,18 @@ Respond with exactly one of: supports, contradicts, refines, related_to, none`;
 
 const VALID_RELATIONS = new Set<string>(["supports", "contradicts", "refines", "related_to"]);
 
-async function callLlm(cfg: ProviderConfig, userMessage: string): Promise<string | null> {
+export async function callLlm(
+  cfg: ProviderConfig,
+  userMessage: string,
+  options?: { systemPrompt?: string; maxTokens?: number; raw?: boolean },
+): Promise<string | null> {
   const body = {
     model: cfg.model,
     messages: [
-      { role: "system", content: CLASSIFY_PROMPT },
+      { role: "system", content: options?.systemPrompt ?? CLASSIFY_PROMPT },
       { role: "user", content: userMessage },
     ],
-    max_tokens: 10,
+    max_tokens: options?.maxTokens ?? 10,
     temperature: 0,
   };
 
@@ -298,7 +302,9 @@ async function callLlm(cfg: ProviderConfig, userMessage: string): Promise<string
     const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
     if (!res.ok) return null;
     const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-    return json.choices?.[0]?.message?.content?.trim().toLowerCase() ?? null;
+    const content = json.choices?.[0]?.message?.content ?? null;
+    if (content === null) return null;
+    return options?.raw ? content.trim() : content.trim().toLowerCase();
   } catch {
     return null;
   }

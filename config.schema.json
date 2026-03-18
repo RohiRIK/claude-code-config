@@ -40,6 +40,11 @@
           "type": "boolean",
           "description": "Inject graph traversal insights (chains, conflicts, reinforcements) into session context",
           "default": false
+        },
+        "evaluateSessionLlm": {
+          "type": "boolean",
+          "description": "Use LLM to extract decisions, gotchas, and patterns from session transcripts into LTM",
+          "default": false
         }
       }
     },
