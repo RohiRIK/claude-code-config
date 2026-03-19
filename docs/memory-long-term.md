@@ -9,20 +9,21 @@
 ## Overview
 
 ```
-  Claude Code Sessions
-         |
-         v
+  Claude Code Sessions          Any MCP Client
+  (+ other MCP clients)         (Cursor/Windsurf/etc.)
+         |                              |
+         v                              v
   +------+-------+  PreCompact   +-------------------+
   |    Hooks     | ------------> | context-summary.md |
   |  (4 hooks)   | <------------ | (human-readable)   |
   +------+-------+  SessionStart +-------------------+
-         |
-         | read / write
-         v
-  +------+-------+
-  |   ltm.db     |  <-- single WAL SQLite at ~/.claude/memory/ltm.db
-  | (SQLite WAL) |
-  +------+-------+
+         |                              |
+         | read / write          MCP tools/resources
+         v                              |
+  +------+-------+              +-------+-------+
+  |   ltm.db     | <----------- | mcp-server.ts |
+  | (SQLite WAL) |  (STDIO MCP) | ltm:// server |
+  +------+-------+              +---------------+
          |
     +----+----+
     |         |
@@ -66,6 +67,7 @@ Managed by `memory/schema.sql` and the shared singleton in `memory/shared-db.ts`
 - **`memory/db.ts`** — CRUD helpers: `learn()`, `recall()`, `getContextMerge()`, `computeDecayScore()`, `decayMemories()`, `updateLastUsed()`. `getContextMerge()` and `recall()` filter `status=active` and sort by decay score (Schwartzian transform).
 - **`memory/context.ts`** — Per-project context CRUD (goals, decisions, progress, gotchas)
 - **`memory/migrate.ts`** — Idempotent schema migration runner. Safe to re-run on every server start.
+- **`memory/mcp-server.ts`** — STDIO MCP server. Exposes all LTM primitives to any MCP-compatible client. Registered as `ltm` in `settings.json`. Toggle with `mcp.enabled` in `config.json`.
 
 ---
 
@@ -313,6 +315,25 @@ NEXT_PUBLIC_WS_URL=ws://localhost:7331 bun dev --port 7332
 
 Or use `/ltm-server start` in Claude Code — opens both in tmux automatically.
 
+### MCP Server (for external clients)
+
+The `ltm` MCP server is registered in `settings.json` and starts automatically when Claude Code opens. For external clients (Cursor, Windsurf, Claude Desktop), add this to their MCP config:
+
+```json
+{
+  "ltm": {
+    "command": "bun",
+    "args": ["run", "/Users/rohirikman/.claude/memory/mcp-server.ts"]
+  }
+}
+```
+
+**Available tools:** `ltm_recall` · `ltm_learn` · `ltm_relate` · `ltm_forget` · `ltm_context` · `ltm_graph` · `ltm_context_items`
+
+**Available resources:** `memory://globals` · `memory://recent` · `memory://tags` · `memory://project/{name}`
+
+**STDIO gotcha:** Never use `console.log()` in `mcp-server.ts` — stdout is reserved for the JSON-RPC protocol. Use `console.error()` for diagnostics only.
+
 ---
 
 ## Design Decisions
@@ -327,3 +348,5 @@ Or use `/ltm-server start` in Claude Code — opens both in tmux automatically.
 | FTS5 for search | Replaces LIKE scans — full-text index on memory content |
 | Static imports in server.ts | Replaces per-request dynamic imports for providers; `PROVIDER_VERIFY_MAP` gives O(1) lookup |
 | Decay in Cleanup hook (not just janitor) | Every session end guarantees decay runs without requiring janitor schedule; janitor handles heavier embed/dedup pipeline |
+| STDIO transport for MCP server | Local only, single client, zero network overhead — correct for a personal tool; SSE/HTTP transport would add complexity with no benefit |
+| MCP server as pure adapter layer | `mcp-server.ts` delegates 100% to existing `db.ts`/`context.ts`/`graph.ts` — no reimplementation. Any logic fix applies to both hooks and MCP clients automatically |

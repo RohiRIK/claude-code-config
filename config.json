@@ -3,11 +3,16 @@
   "ltm": {
     "dbPath": "~/.claude/memory/ltm.db",
     "decayEnabled": true,
-    "injectTopN": 15
+    "injectTopN": 15,
+    "graphReasoning": true,
+    "autoRelate": true
   },
   "server": {
     "apiPort": 7331,
     "uiPort": 7332
+  },
+  "mcp": {
+    "enabled": true
   },
   "sync": {
     "enabled": false,

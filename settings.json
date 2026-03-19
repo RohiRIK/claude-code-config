@@ -48,11 +48,11 @@
         ]
       },
       {
-        "matcher": "Bash|Read|Grep|WebFetch|Agent|Task|mcp__plugin_context-mode_context-mode__execute|mcp__plugin_context-mode_context-mode__execute_file|mcp__plugin_context-mode_context-mode__batch_execute",
+        "matcher": "Bash|WebFetch|Read|Grep|Agent|Task|mcp__plugin_context-mode_context-mode__ctx_execute|mcp__plugin_context-mode_context-mode__ctx_execute_file|mcp__plugin_context-mode_context-mode__ctx_batch_execute",
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/hooks/pretooluse.mjs"
+            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.25/hooks/pretooluse.mjs"
           }
         ]
       }
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/hooks/sessionstart.mjs"
+            "command": "node \"/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15/hooks/sessionstart.mjs\""
           }
         ]
       }
@@ -211,6 +211,10 @@
   },
   "effortLevel": "low",
   "mcpServers": {
+    "ltm": {
+      "command": "bun",
+      "args": ["run", "/Users/rohirikman/.claude/memory/mcp-server.ts"]
+    },
     "filesystem": {
       "command": "/Users/rohirikman/.bun/bin/mcp-server-filesystem",
       "args": [

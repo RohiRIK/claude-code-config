@@ -69,6 +69,18 @@
         }
       }
     },
+    "mcp": {
+      "type": "object",
+      "description": "MCP server settings",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the LTM MCP server is active",
+          "default": true
+        }
+      }
+    },
     "sync": {
       "type": "object",
       "description": "Remote sync / backup settings",

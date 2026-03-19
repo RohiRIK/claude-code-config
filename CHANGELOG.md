@@ -4,6 +4,27 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-19 — LTM MCP Server
+
+### memory/mcp-server.ts (new)
+- **STDIO MCP server** exposing the full LTM system to any MCP-compatible client (Cursor, Windsurf, Claude Desktop, etc.)
+- **7 tools**: `ltm_recall`, `ltm_learn`, `ltm_relate`, `ltm_forget`, `ltm_context`, `ltm_graph`, `ltm_context_items` — all delegate to existing `db.ts` / `context.ts` / `graph.ts` functions with no reimplementation
+- **4 resources**: `memory://globals` (importance=5 memories), `memory://recent` (last 20), `memory://tags` (tag counts), `memory://project/{name}` (ResourceTemplate for per-project memories)
+- **3 prompts**: `recall_before_task`, `learn_after_session`, `graph_reason`
+- Fire-and-forget `notifications/message` logging on `memory_stored` and `graph_traversal` events
+
+### settings.json
+- Added `ltm` entry to `mcpServers` — `bun run ~/.claude/memory/mcp-server.ts`
+- Restart Claude Code to pick up the new server
+
+### config.json + config.schema.json
+- Added `mcp.enabled` boolean flag (default `true`) to toggle the server without removing the settings entry
+
+### memory/package.json
+- Added `@modelcontextprotocol/sdk` and `zod` dependencies
+
+---
+
 ## 2026-03-17 — Graph UI Polish: Unified Search, Project Names, Context Sort
 
 ### memory/graph-app/components/FilterBar.tsx

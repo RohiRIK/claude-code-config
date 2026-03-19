@@ -63,6 +63,13 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 - `/settings` — configure embedding model, dedup thresholds, janitor schedule
 - `/pending` — review memories awaiting confirmation
 
+**MCP Server** — Any MCP-compatible client (Cursor, Windsurf, Claude Desktop) can access LTM directly:
+- Registered as `ltm` in `settings.json` — starts automatically with Claude Code
+- Toggle with `mcp.enabled` in `config.json`
+- 7 tools: `ltm_recall` · `ltm_learn` · `ltm_relate` · `ltm_forget` · `ltm_context` · `ltm_graph` · `ltm_context_items`
+- 4 resources: `memory://globals` · `memory://recent` · `memory://tags` · `memory://project/{name}`
+- 3 prompts: `recall_before_task` · `learn_after_session` · `graph_reason`
+
 **Key commands:**
 
 | Command | Purpose |
