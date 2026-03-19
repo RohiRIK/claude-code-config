@@ -317,13 +317,13 @@ export function recall(input: RecallInput = {}): MemoryWithRelations[] {
   let ids: Set<number> | null = null;
 
   if (input.query) {
-    // Sanitize for FTS5: quote each token to prevent reserved-word/column errors
+    // Sanitize for FTS5: quote each token (prevents reserved-word errors) and join with OR
     const ftsQuery = input.query
       .trim()
       .split(/\s+/)
       .filter(Boolean)
       .map(t => `"${t.replace(/"/g, '""')}"`)
-      .join(" ");
+      .join(" OR ");
     const ftsResults = db.query<{ rowid: number }, [string]>(
       `SELECT rowid FROM memories_fts WHERE memories_fts MATCH ? ORDER BY rank LIMIT 50`
     ).all(ftsQuery);
