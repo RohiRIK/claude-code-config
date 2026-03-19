@@ -13,6 +13,7 @@ const DB_PATH      = join(CLAUDE_DIR, "memory", "ltm.db");
 const MAX_INJECT_LINES = 60;
 const MAX_LTM_LINES    = 30;
 const MAX_AGE_MS       = 30 * 24 * 60 * 60 * 1000;
+const LTM_REMINDER     = "⚡ LTM MCP live — use mcp__ltm__ltm_recall before tasks, mcp__ltm__ltm_learn after discoveries.\n";
 
 function defaultName(cwd: string): string {
   const last = cwd.replace(/\/$/, "").split("/").pop() ?? "";
@@ -28,6 +29,7 @@ async function buildLtmSection(project: string, sessionContext?: string): Promis
 
     let globals: Array<{ id: number; content: string }>;
     let scoped: Array<{ id: number; content: string; importance: number }>;
+    let graphInsights: string | undefined;
 
     // Attempt semantic retrieval if we have API key + session context
     const queryVec = sessionContext ? await embedText(sessionContext) : null;
@@ -46,6 +48,17 @@ async function buildLtmSection(project: string, sessionContext?: string): Promis
       scoped  = merged.scoped;
     }
 
+    // Graph reasoning: append insights if enabled
+    try {
+      const { readConfigSync } = await import(join(CLAUDE_DIR, "memory/config.js"));
+      const cfg = readConfigSync();
+      if (cfg?.ltm?.graphReasoning) {
+        const { getContextMergeWithGraph } = await import(join(CLAUDE_DIR, "memory/db.js"));
+        const withGraph = await getContextMergeWithGraph(project);
+        graphInsights = withGraph.graphInsights;
+      }
+    } catch (_) {}
+
     if (globals.length === 0 && scoped.length === 0) return "";
 
     const lines: string[] = ["LTM:", ""];
@@ -59,6 +72,11 @@ async function buildLtmSection(project: string, sessionContext?: string): Promis
     if (scoped.length > 0) {
       lines.push("project:");
       for (const m of scoped) lines.push(`- [${m.id}] ${m.content}`);
+      lines.push("");
+    }
+
+    if (graphInsights) {
+      lines.push(graphInsights);
       lines.push("");
     }
 
@@ -152,7 +170,9 @@ async function main(): Promise<void> {
   const sessionContext = summaryText.slice(0, 500).trim() || undefined;
   const ltmSection = await buildLtmSection(name, sessionContext);
 
-  const output = ltmSection ? `${injected}\n\n${ltmSection}\n` : `${injected}\n`;
+  const output = ltmSection
+    ? `${injected}\n\n${ltmSection}\n${LTM_REMINDER}`
+    : `${injected}\n${LTM_REMINDER}`;
 
   process.stdout.write(output);
   logHook("SessionStart", "info", `Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);

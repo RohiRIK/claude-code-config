@@ -31,6 +31,17 @@ planner · architect · tdd-guide · code-reviewer · security-reviewer · build
 SQLite LTM at `~/.claude/memory/ltm.db`. Hooks auto-manage context.
 Registry: `~/.claude/projects/registry.json` — `/register-project` to onboard.
 
+## LTM MCP Auto-Use
+
+The `ltm` MCP server is always available. Use it proactively — do NOT wait for `/recall` or `/learn`:
+
+- **Before any non-trivial task**: call `mcp__ltm__ltm_recall` with the topic as `query`
+- **After discovering a non-obvious pattern or gotcha**: call `mcp__ltm__ltm_learn`
+- **When making an architectural decision**: call `mcp__ltm__ltm_learn` with `category=architecture`
+
+Skip for trivial/one-liner requests. Use judgment — the goal is automatic knowledge retrieval,
+not calling recall before every sentence.
+
 ## Hooks
 SessionStart · PreCompact · EvaluateSession · Cleanup · SuggestCompact · PostToolUse · PreToolUse
 
