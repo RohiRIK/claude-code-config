@@ -24,6 +24,17 @@ async function isEnabled(): Promise<boolean> {
   }
 }
 
+// Strip embedding blob before sending over MCP — it serializes as {"0":59,...} ~260KB per memory
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function strip(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(strip);
+  if (obj && typeof obj === "object") {
+    const { embedding: _e, ...rest } = obj;
+    return Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, strip(v)]));
+  }
+  return obj;
+}
+
 // ─── Server ──────────────────────────────────────────────────────────────────
 
 const server = new McpServer(
@@ -44,7 +55,7 @@ server.tool(
   },
   async ({ query, project, limit, category }) => {
     const results = recall({ query, project, limit, category });
-    return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+    return { content: [{ type: "text", text: JSON.stringify(strip(results), null, 2) }] };
   },
 );
 
@@ -113,7 +124,7 @@ server.tool(
   },
   async ({ project }) => {
     const result = getContextMerge(project);
-    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    return { content: [{ type: "text", text: JSON.stringify(strip(result), null, 2) }] };
   },
 );
 
@@ -177,7 +188,7 @@ server.resource(
     const rows = db.query<Memory, []>(
       `SELECT * FROM memories WHERE importance = 5 AND project_scope IS NULL AND status = 'active' ORDER BY created_at DESC`,
     ).all();
-    return { contents: [{ uri: "memory://globals", text: JSON.stringify(rows, null, 2), mimeType: "application/json" }] };
+    return { contents: [{ uri: "memory://globals", text: JSON.stringify(strip(rows), null, 2), mimeType: "application/json" }] };
   },
 );
 
@@ -190,7 +201,7 @@ server.resource(
     const rows = db.query<Memory, []>(
       `SELECT * FROM memories WHERE status = 'active' ORDER BY created_at DESC LIMIT 20`,
     ).all();
-    return { contents: [{ uri: "memory://recent", text: JSON.stringify(rows, null, 2), mimeType: "application/json" }] };
+    return { contents: [{ uri: "memory://recent", text: JSON.stringify(strip(rows), null, 2), mimeType: "application/json" }] };
   },
 );
 
@@ -205,7 +216,7 @@ server.resource(
        JOIN memory_tags mt ON t.id = mt.tag_id
        GROUP BY t.id ORDER BY count DESC`,
     ).all();
-    return { contents: [{ uri: "memory://tags", text: JSON.stringify(rows, null, 2), mimeType: "application/json" }] };
+    return { contents: [{ uri: "memory://tags", text: JSON.stringify(strip(rows), null, 2), mimeType: "application/json" }] };
   },
 );
 
@@ -223,7 +234,7 @@ server.resource(
     return {
       contents: [{
         uri: uri.href,
-        text: JSON.stringify(rows, null, 2),
+        text: JSON.stringify(strip(rows), null, 2),
         mimeType: "application/json",
       }],
     };
