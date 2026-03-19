@@ -67,14 +67,12 @@ server.tool(
       project_scope: project,
     });
 
-    server.server.notification({
-      method: "notifications/message",
-      params: {
-        level: "info",
-        logger: "ltm",
-        data: `memory_stored: id=${result.id} category=${category} importance=${importance ?? 3} action=${result.action}`,
-      },
-    });
+    try {
+      server.server.notification({
+        method: "notifications/message",
+        params: { level: "info", logger: "ltm", data: `memory_stored: id=${result.id} category=${category} importance=${importance ?? 3} action=${result.action}` },
+      });
+    } catch { /* notifications not supported by this client — ignore */ }
 
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
@@ -144,14 +142,12 @@ server.tool(
       }
     }
 
-    server.server.notification({
-      method: "notifications/message",
-      params: {
-        level: "info",
-        logger: "ltm",
-        data: `graph_traversal: nodes=${totalNodes} edges=${totalEdges} depth=${depth}`,
-      },
-    });
+    try {
+      server.server.notification({
+        method: "notifications/message",
+        params: { level: "info", logger: "ltm", data: `graph_traversal: nodes=${totalNodes} edges=${totalEdges} depth=${depth}` },
+      });
+    } catch { /* notifications not supported by this client — ignore */ }
 
     return { content: [{ type: "text", text: blocks.join("\n\n") || "No reasoning context found." }] };
   },
@@ -282,6 +278,10 @@ server.prompt(
 );
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+
+process.on("unhandledRejection", (err) => {
+  process.stderr.write(`[ltm-mcp] Unhandled rejection: ${err}\n`);
+});
 
 async function main() {
   if (!(await isEnabled())) {
