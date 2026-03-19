@@ -317,9 +317,16 @@ export function recall(input: RecallInput = {}): MemoryWithRelations[] {
   let ids: Set<number> | null = null;
 
   if (input.query) {
+    // Sanitize for FTS5: quote each token to prevent reserved-word/column errors
+    const ftsQuery = input.query
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(t => `"${t.replace(/"/g, '""')}"`)
+      .join(" ");
     const ftsResults = db.query<{ rowid: number }, [string]>(
       `SELECT rowid FROM memories_fts WHERE memories_fts MATCH ? ORDER BY rank LIMIT 50`
-    ).all(input.query);
+    ).all(ftsQuery);
     ids = new Set(ftsResults.map(r => r.rowid));
   }
 
