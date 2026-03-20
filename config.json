@@ -5,7 +5,9 @@
     "decayEnabled": true,
     "injectTopN": 15,
     "graphReasoning": true,
-    "autoRelate": true
+    "autoRelate": true,
+    "evaluateSessionLlm": false,
+    "semanticFallback": true
   },
   "server": {
     "apiPort": 7331,
@@ -13,9 +15,5 @@
   },
   "mcp": {
     "enabled": true
-  },
-  "sync": {
-    "enabled": false,
-    "provider": null
   }
 }

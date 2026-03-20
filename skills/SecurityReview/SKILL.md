@@ -1,23 +1,36 @@
 ---
 name: SecurityReview
-description: "USE WHEN auditing code for vulnerabilities and security issues."
+description: USE WHEN auditing code for vulnerabilities, secrets, or security issues.
 context: fork
-agent: Explore
+agent: security-reviewer
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # SecurityReview
 
-Security auditing and best practices enforcement.
+Full security audit skill. Forks a `security-reviewer` subagent — does not run inline.
 
 ## Workflow Routing
 
-| Workflow | Description | Trigger |
-| :--- |
-| :--- | :--- |
-| **AuditCode** | Perform security audit on code. | `Audit security`, `Check for vulnerabilities`, `Security review` |
+| Workflow | Trigger |
+|----------|---------|
+| **AuditCode** | "audit security", "check vulnerabilities", "security review", "scan for secrets", "OWASP check", "is this code secure?" |
 
-Run a workflow by name:
+Run a workflow:
 `Run the AuditCode workflow`
 
-*(See `Overview.md` for the full checklist)*
+## What Gets Checked
+
+- Hardcoded secrets, API keys, tokens (see `Overview.md` for full checklist)
+- OWASP Top 10: injection, XSS, CSRF, broken auth, insecure deserialization
+- Input validation gaps
+- Path traversal, SSRF, command injection
+- Insecure dependencies
+
+Full checklist: `Overview.md` (12KB — loaded on demand by AuditCode workflow)
+
+## Integration
+
+- After writing auth/API/input-handling code → auto-trigger
+- Before `/commit-push-pr` on security-sensitive changes → manual trigger
+- Pairs with `code-reviewer` for complete post-implementation review

@@ -6,42 +6,38 @@ user-invocable: false
 
 # FrontendDesign
 
-**Invoke when:** designing React components, optimizing frontend performance, implementing state management, handling forms, or ensuring accessibility.
+React/Next.js component design patterns and performance optimisation.
 
-## Customization
+## Quick Reference
 
-**Before executing, check for user customizations at:**
-`~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/FrontendDesign/`
+| Need | Load |
+|------|------|
+| Component patterns, composition | `Patterns.md` |
+| Context overview | `Context-Overview.md` |
+| Generate a component | Run `GenerateComponent` workflow |
+| Optimise performance | Run `OptimizePerformance` workflow |
 
-## Voice Notification
+## Workflow Routing
 
-**When executing a workflow, do BOTH:**
+| Workflow | Trigger |
+|----------|---------|
+| **GenerateComponent** | "create component", "scaffold component", "new React component" |
+| **OptimizePerformance** | "optimise performance", "too many re-renders", "memoize this", "virtualize list", "slow component" |
 
-1. **Send voice notification**:
-   ```bash
-   curl -s -X POST http://localhost:8888/notify \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Running the WORKFLOWNAME workflow from the FrontendDesign skill"}' \
-     > /dev/null 2>&1 &
-   ```
+Run a workflow:
+`Run the GenerateComponent workflow`
+`Run the OptimizePerformance workflow`
 
-2. **Output text notification**:
-   ```
-   Running the **WorkflowName** workflow from the **FrontendDesign** skill...
-   ```
+## Key Principles (from Patterns.md)
 
-**Full documentation:** `~/.claude/skills/CORE/SkillNotifications.md`
+- Composition over inheritance — build with small focused components
+- Explicit `Props` types (no `any`, no implicit props spreading)
+- `useMemo`/`useCallback` only when profiling shows a problem — not pre-emptively
+- Virtualise lists >100 items (use `@tanstack/virtual`)
+- Co-locate state as close to where it's used as possible
 
-## Available Workflows
+## Integration
 
-### 1. GenerateComponent
-Scaffolds a new React component following the "Composition Over Inheritance" pattern.
-- **Input**: Component Name, Variant requirements.
-- **Output**: TypeScript file with Component, Sub-components (Header/Body), and Props interfaces.
-
-### 2. OptimizePerformance
-Analyzes a code snippet and suggests memoization or virtualization strategies based on `Patterns.md`.
-
-## Integration with Other Skills
-- **CodeReview**: Refer to `Patterns.md` during reviews to enforce standards.
-- **CreateSkill**: Uses FrontendDesign patterns if building UI-based internal tools.
+- Pairs with `CodingStandards/TypeScript.md` for TS rules in components
+- Pairs with `code-reviewer` agent after building new components
+- Pairs with `SecurityReview` for XSS/input sanitisation in forms

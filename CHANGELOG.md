@@ -4,6 +4,54 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-20 — Supercharged code-simplifier + skill improvements
+
+### agents/code-simplifier.md (new)
+- New post-implementation cleanup agent merging `refactor-cleaner` static analysis with Cherny's code-simplifier micro-cleanup
+- 3-phase workflow: (1) static dead-code scan via `git diff` + grep, (2) simplification with CodingStandards/TypeScript.md rules, (3) `bun tsc --noEmit` + `bun test` verification
+- Baked in Anthropic official agent's "Maintain Balance" rules: no nested ternaries, clarity > brevity, don't remove helpful abstractions
+- Reads `CLAUDE.md` + `CodingStandards/TypeScript.md` at runtime for project-specific overrides
+- LTM learn-after-cleanup hook: calls `mcp__ltm__ltm_learn` when non-obvious patterns found
+- Scoped to session diff only — repo-wide cleanup remains `refactor-cleaner`'s job
+
+### commands/simplify.md (new/restored)
+- Restored `/simplify` command (was deleted in b26a50c)
+- Now invokes `code-simplifier` agent instead of old plugin
+- Routing table for when to use `refactor-cleaner`, `security-reviewer`, `code-reviewer` instead
+
+### skills/Simplify/SKILL.md (new)
+- Skill reference card for the `/simplify` command
+- 3-phase summary table + agent boundary routing
+
+### skills/SecurityReview/SKILL.md
+- Fixed `agent: Explore` → `agent: security-reviewer` (was pointing at wrong agent)
+- Added OWASP Top 10 quick-reference bullets inline
+- Added integration guidance for auto-trigger vs manual use
+- Description tightened to ≤15 words per CreateSkill convention
+
+### skills/BackendDesign/SKILL.md
+- Added Quick Reference table linking to all content files (API.md, Patterns.md, clickhouse-io.md)
+- Added key principles inline (Zod, Drizzle, error shape, auth rules)
+- Removed broken orphan "do BOTH" line
+- Added integration with `database-reviewer` + `SecurityReview`
+
+### skills/FrontendDesign/SKILL.md
+- Removed stale voice notification block (localhost:8888 — server not running)
+- Removed `CORE/USER/SKILLCUSTOMIZATIONS` PAI leftover path
+- Added proper workflow routing table with both workflows
+- Added key principles inline (composition, explicit Props, memoize only when profiled)
+
+### skills/FrontendDesign/Workflows/OptimizePerformance.md (new)
+- Created missing workflow file (was referenced in SKILL.md but didn't exist)
+- Covers: re-render analysis, memoization, virtualisation, state co-location
+
+### config.json
+- Removed dead `sync` block (`enabled: false, provider: null` — feature never built)
+- Added explicit `evaluateSessionLlm: false` (was hidden default)
+- Added explicit `semanticFallback: true` (was hidden default)
+
+---
+
 ## 2026-03-20 — Semantic Fallback for LTM Recall
 
 ### memory/db.ts
