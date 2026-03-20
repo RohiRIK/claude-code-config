@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 
-export function useWebSocket(url: string, onRefresh: () => void): void {
+export function useWebSocket(url: string, onRefresh: () => void, onClustersUpdated?: () => void): void {
   useEffect(() => {
     let ws: WebSocket;
     let closed = false;
@@ -12,6 +12,7 @@ export function useWebSocket(url: string, onRefresh: () => void): void {
         try {
           const msg = JSON.parse(e.data as string) as { type: string };
           if (msg.type === "refresh") onRefresh();
+          else if (msg.type === "clusters_updated") onClustersUpdated?.();
         } catch { /* ignore */ }
       };
       ws.onclose = () => {

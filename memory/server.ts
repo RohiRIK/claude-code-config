@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, watch } from "fs";
 import { dirname, join } from "path";
 
 import { CLAUDE_DIR } from "../hooks/lib/resolveProject.js";
-import { getAllSettings, getSetting, setSetting } from "./shared-db.js";
+import { getAllSettings, getDb, getSetting, setSetting } from "./shared-db.js";
 import {
   approveMemory,
   getEmbeddingProvider,
@@ -25,12 +25,21 @@ import {
 import { semanticSearch } from "./janitor/embeddings.js";
 import { SETTING_DEFAULTS, SETTING_KEYS } from "./janitor/providers/types.js";
 import { anthropicLLM } from "./janitor/providers/anthropic.js";
-import { traverseGraph } from "./graph.js";
+import { traverseGraph, buildReasoningContext } from "./graph.js";
+import { detectCommunities, generateClusterLabel, assignClusterColors } from "./cluster.js";
+import type { Cluster } from "./graph-app/lib/types.js";
+import { embedText } from "./embeddings.js";
+import { getSimilarMemories } from "./db.js";
 import { cohereEmbedding } from "./janitor/providers/cohere.js";
 import { geminiEmbedding } from "./janitor/providers/gemini.js";
 import { ollamaEmbedding } from "./janitor/providers/ollama.js";
 import { openaiEmbedding } from "./janitor/providers/openai.js";
 import { openrouterEmbedding } from "./janitor/providers/openrouter.js";
+
+/** Parse a clamped integer from URL search params. */
+function parseClampedInt(params: URLSearchParams, key: string, defaultVal: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, parseInt(params.get(key) ?? String(defaultVal), 10)));
+}
 
 /** Provider instances indexed by provider id, used by the /api/settings/verify route. */
 const PROVIDER_VERIFY_MAP: Record<string, { verify(): Promise<{ ok: boolean; error?: string }> }> = {
@@ -174,6 +183,10 @@ const PORT = 7331;
 // Cache schema at startup — it never changes at runtime
 const SCHEMA = readFileSync(SCHEMA_PATH, "utf-8");
 
+// Migration 005: cluster tables
+const MIGRATION_005_PATH = join(CLAUDE_DIR, "memory", "migrations", "005_clusters.sql");
+const MIGRATION_005 = readFileSync(MIGRATION_005_PATH, "utf-8");
+
 // Ensure tmp dir and write PID
 mkdirSync(join(CLAUDE_DIR, "tmp"), { recursive: true });
 await Bun.write(PID_PATH, String(process.pid));
@@ -183,6 +196,7 @@ const db = new Database(DB_PATH);
 db.exec("PRAGMA journal_mode=WAL;");
 db.exec("PRAGMA foreign_keys=ON;");
 db.exec(SCHEMA);
+db.exec(MIGRATION_005);
 
 type Params = SQLQueryBindings[];
 
@@ -467,6 +481,70 @@ function broadcast(data: object): void {
   }
 }
 
+// Incremental cluster recompute trigger
+let newMemoriesSinceLastCluster = 0;
+let recomputeScheduled = false;
+
+function scheduledRecompute(): void {
+  if (recomputeScheduled) return;
+  recomputeScheduled = true;
+  // Run async so we don't block the request
+  Promise.resolve().then(async () => {
+    try {
+      const graphData = getGraphData();
+      const nodeIdSet = new Set(graphData.nodes.map(n => n.id));
+      const nodeMap = graphData.nodes as import("./graph-app/lib/types.js").GraphNode[];
+      const communityMap = detectCommunities(nodeMap, graphData.links as import("./graph-app/lib/types.js").GraphLink[]);
+
+      // Group nodes by cluster
+      const clusterNodes = new Map<string, number[]>();
+      for (const [nodeId, clusterId] of communityMap) {
+        if (!nodeIdSet.has(nodeId)) continue;
+        const arr = clusterNodes.get(clusterId) ?? [];
+        arr.push(nodeId);
+        clusterNodes.set(clusterId, arr);
+      }
+
+      // Build node tag lookup for label generation
+      const tagsByNodeId = new Map<number, string[]>();
+      for (const n of graphData.nodes) {
+        if ("tags" in n) tagsByNodeId.set(n.id, n.tags);
+      }
+
+      const clusterList = [...clusterNodes.entries()];
+      const colors = assignClusterColors(clusterList.length);
+      const now = new Date().toISOString();
+
+      const insert = db.prepare<void, [string, string, string, string, string, string]>(
+        "INSERT INTO memory_clusters(id,label,color,node_ids,created_at,updated_at) VALUES(?,?,?,?,?,?)"
+      );
+      db.transaction(() => {
+        db.exec("DELETE FROM memory_clusters");
+        for (let i = 0; i < clusterList.length; i++) {
+          const [clusterId, nodeIds] = clusterList[i]!;
+          const tagGroups = nodeIds.map(nid => tagsByNodeId.get(nid) ?? []);
+          const label = generateClusterLabel(tagGroups, `Cluster ${i + 1}`);
+          const color = colors[i] ?? `hsl(${i * 47 % 360}, 65%, 55%)`;
+          insert.run(clusterId, label, color, JSON.stringify(nodeIds), now, now);
+        }
+      })();
+
+      // clusters_updated is enough — db watcher broadcasts refresh automatically
+      broadcast({ type: "clusters_updated" });
+    } catch {
+      // recompute errors are non-fatal
+    } finally {
+      newMemoriesSinceLastCluster = 0;
+      recomputeScheduled = false;
+    }
+  }).catch(() => { recomputeScheduled = false; });
+}
+
+function maybeScheduleRecompute(): void {
+  newMemoriesSinceLastCluster++;
+  if (newMemoriesSinceLastCluster >= 10) scheduledRecompute();
+}
+
 // Watch DB for changes and broadcast refresh
 // WAL writes go to ltm.db-wal, not ltm.db — watch the WAL file (or dir as fallback)
 let watchDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -650,6 +728,7 @@ Bun.serve({
       const ok = approveMemory(id);
       if (ok) {
         broadcast({ type: "refresh" });
+        maybeScheduleRecompute();
         return Response.json({ ok: true, id });
       }
       return Response.json({ ok: false, error: "Not a pending memory" }, { status: 400 });
@@ -884,13 +963,36 @@ Bun.serve({
     }
 
     // ============================================================
+    // Graph Reasoning Search: GET /api/reasoning/search?q=<topic>&depth=2
+    // ============================================================
+
+    if (p === "/api/reasoning/search" && req.method === "GET") {
+      const q = url.searchParams.get("q")?.trim();
+      if (!q) return Response.json({ error: "q is required" }, { status: 400 });
+      const depth = parseClampedInt(url.searchParams, "depth", 2, 1, 4);
+      try {
+        const queryVec = await embedText(q);
+        if (!queryVec) return Response.json({ insights: null, reason: "no embedding provider configured" });
+        const db = getDb();
+        const similar = getSimilarMemories(db, queryVec, { limit: 1, minImportance: 1 });
+        if (similar.length === 0) return Response.json({ insights: null, reason: "no relevant memories found" });
+        const seedId = similar[0]!.id;
+        const result = await traverseGraph(seedId, depth, false);
+        const insights = buildReasoningContext(result);
+        return Response.json({ seedId, insights: insights || null, chain: result.chain.length, conflicts: result.conflicts.length, reinforcements: result.reinforcements.length });
+      } catch (e) {
+        return Response.json({ error: String(e) }, { status: 500 });
+      }
+    }
+
+    // ============================================================
     // Graph Reasoning: GET /api/reasoning/:memoryId?depth=2
     // ============================================================
 
     const reasoningMatch = p.match(/^\/api\/reasoning\/(\d+)$/);
     if (reasoningMatch?.[1] && req.method === "GET") {
       const memId = parseInt(reasoningMatch[1], 10);
-      const depth = Math.min(4, Math.max(1, parseInt(url.searchParams.get("depth") ?? "2", 10)));
+      const depth = parseClampedInt(url.searchParams, "depth", 2, 1, 4);
       const infer = url.searchParams.get("infer") === "true";
       try {
         const result = await traverseGraph(memId, depth, infer);
@@ -912,6 +1014,79 @@ Bun.serve({
       db.run("UPDATE memories SET confidence = 0.6, last_confirmed_at = datetime('now') WHERE id = ?", [id]);
       broadcast({ type: "refresh" });
       return Response.json({ ok: true });
+    }
+
+    // ============================================================
+    // Cluster detection routes
+    // ============================================================
+
+    if (p === "/api/clusters" && req.method === "GET") {
+      const rows = queryDb<{ id: string; label: string; color: string; node_ids: string; created_at: string; updated_at: string }>(
+        "SELECT id, label, color, node_ids, created_at, updated_at FROM memory_clusters ORDER BY label"
+      );
+      const clusters: Cluster[] = rows.map(r => ({
+        ...r,
+        node_ids: JSON.parse(r.node_ids) as number[],
+      }));
+      return Response.json(clusters);
+    }
+
+    if (p === "/api/clusters/recompute" && req.method === "POST") {
+      scheduledRecompute();
+      return Response.json({ ok: true });
+    }
+
+    if (p === "/api/clusters/merge" && req.method === "POST") {
+      try {
+        const { sourceId, targetId } = (await req.json()) as { sourceId: string; targetId: string };
+        const source = queryOne<{ node_ids: string }>("SELECT node_ids FROM memory_clusters WHERE id=?", [sourceId]);
+        const target = queryOne<{ node_ids: string }>("SELECT node_ids FROM memory_clusters WHERE id=?", [targetId]);
+        if (!source || !target) return Response.json({ ok: false, error: "Cluster not found" }, { status: 404 });
+        const merged: number[] = [...(JSON.parse(source.node_ids) as number[]), ...(JSON.parse(target.node_ids) as number[])];
+        const now = new Date().toISOString();
+        db.run("UPDATE memory_clusters SET node_ids=?, updated_at=? WHERE id=?", [JSON.stringify(merged), now, targetId]);
+        db.run("DELETE FROM memory_clusters WHERE id=?", [sourceId]);
+        db.run("INSERT INTO cluster_overrides(cluster_id,action,payload,created_at) VALUES(?,?,?,?)", [targetId, "merge", JSON.stringify({ sourceId }), now]);
+        broadcast({ type: "clusters_updated" });
+        return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
+    }
+
+    const clusterLabelMatch = p.match(/^\/api\/clusters\/([^/]+)\/label$/);
+    if (clusterLabelMatch?.[1] && req.method === "PUT") {
+      try {
+        const id = decodeURIComponent(clusterLabelMatch[1]);
+        const { label } = (await req.json()) as { label: string };
+        const now = new Date().toISOString();
+        db.run("UPDATE memory_clusters SET label=?, updated_at=? WHERE id=?", [label, now, id]);
+        db.run("INSERT INTO cluster_overrides(cluster_id,action,payload,created_at) VALUES(?,?,?,?)", [id, "rename", JSON.stringify({ label }), now]);
+        broadcast({ type: "clusters_updated" });
+        return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
+    }
+
+    const clusterSplitMatch = p.match(/^\/api\/clusters\/([^/]+)\/split$/);
+    if (clusterSplitMatch?.[1] && req.method === "POST") {
+      try {
+        const id = decodeURIComponent(clusterSplitMatch[1]);
+        const { nodeIds1, nodeIds2 } = (await req.json()) as { nodeIds1: number[]; nodeIds2: number[] };
+        const original = queryOne<{ label: string; color: string }>("SELECT label, color FROM memory_clusters WHERE id=?", [id]);
+        if (!original) return Response.json({ ok: false, error: "Cluster not found" }, { status: 404 });
+        const now = new Date().toISOString();
+        const newId = `cluster-split-${Date.now()}`;
+        const colors = assignClusterColors(2);
+        db.run("UPDATE memory_clusters SET node_ids=?, color=?, updated_at=? WHERE id=?", [JSON.stringify(nodeIds1), colors[0] ?? original.color, now, id]);
+        db.run("INSERT INTO memory_clusters(id,label,color,node_ids,created_at,updated_at) VALUES(?,?,?,?,?,?)", [newId, `${original.label} (split)`, colors[1] ?? original.color, JSON.stringify(nodeIds2), now, now]);
+        db.run("INSERT INTO cluster_overrides(cluster_id,action,payload,created_at) VALUES(?,?,?,?)", [id, "split", JSON.stringify({ newId, nodeIds1, nodeIds2 }), now]);
+        broadcast({ type: "clusters_updated" });
+        return Response.json({ ok: true });
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 });
+      }
     }
 
     return new Response("Not found", { status: 404 });

@@ -1,6 +1,8 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ClusterControls from "@/components/ClusterControls";
+import ClusterPanel from "@/components/ClusterPanel";
 import FilterBar from "@/components/FilterBar";
 import NodeLegend from "@/components/NodeLegend";
 import ProjectList from "@/components/ProjectList";
@@ -9,7 +11,7 @@ import SpotlightModal from "@/components/SpotlightModal";
 import StatsBar from "@/components/StatsBar";
 import { api } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
-import type { GraphData, GraphLink, GraphNode, SearchResult, Stats, Tag } from "@/lib/types";
+import type { Cluster, GraphData, GraphLink, GraphNode, SearchResult, Stats, Tag } from "@/lib/types";
 import type { GraphHandle } from "@/components/Graph";
 
 // D3 uses browser APIs — must be dynamically imported (no SSR)
@@ -37,7 +39,23 @@ export default function Home() {
     try { return new Set(JSON.parse(localStorage.getItem("ltm_hidden_projects") ?? "[]")); }
     catch { return new Set(); }
   });
+  const [clusters, setClusters] = useState<Cluster[]>([]);
+  const [showClusters, setShowClusters] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("showClusters");
+    return saved === null ? true : saved === "true";
+  });
+  const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const graphRef = useRef<GraphHandle>(null);
+
+  const loadClusters = useCallback(async () => {
+    try {
+      const cls = await api.clusters();
+      setClusters(cls);
+    } catch {
+      // clusters may not exist yet — ignore
+    }
+  }, []);
 
   const toggleHideProject = useCallback((name: string) => {
     setHiddenProjects(prev => {
@@ -57,7 +75,9 @@ export default function Home() {
   // Tags change rarely — fetch once on mount, not on every WS refresh
   useEffect(() => { void api.tags().then(setTags); }, []);
   useEffect(() => { void load(); }, [load]);
-  useWebSocket(WS_URL, load);
+  useEffect(() => { void loadClusters(); }, [loadClusters]);
+
+  useWebSocket(WS_URL, load, loadClusters);
 
   // ⌘K / Ctrl+K opens spotlight
   useEffect(() => {
@@ -188,22 +208,31 @@ export default function Home() {
                 activeProject={activeProject}
                 dimmedIds={dimmedIds}
                 highlightedIds={highlightedIds}
-                onNodeClick={setSelected}
+                clusters={clusters}
+                showClusters={showClusters}
+                onNodeClick={node => { setSelectedCluster(null); setSelected(node); }}
+                onClusterClick={id => { setSelected(null); setSelectedCluster(clusters.find(c => c.id === id) ?? null); }}
               />
               <NodeLegend />
               {/* Graph toolbar — top-right corner */}
-              <div className="absolute top-3 right-3 flex gap-1.5 bg-[#161b22]/80 backdrop-blur-sm border border-gray-800 rounded-lg p-1">
+              <div className="absolute top-3 right-3 flex gap-1.5 bg-[var(--bg-secondary)]/80 backdrop-blur-sm border border-[var(--border)] rounded-lg p-1 items-center">
+                <ClusterControls
+                  showClusters={showClusters}
+                  onToggle={val => { setShowClusters(val); localStorage.setItem("showClusters", String(val)); }}
+                  onRecomputed={() => void loadClusters()}
+                />
+                <div className="w-px h-4 bg-[var(--border)]" />
                 <button
                   onClick={() => graphRef.current?.fitToScreen()}
                   title="Fit to screen"
-                  className="px-2 py-1 text-[11px] text-gray-400 hover:text-white hover:bg-gray-700/60 rounded transition-colors"
+                  className="px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-colors"
                 >
                   ⊞ Fit
                 </button>
                 <button
                   onClick={() => graphRef.current?.resetSimulation()}
                   title="Reset simulation"
-                  className="px-2 py-1 text-[11px] text-gray-400 hover:text-white hover:bg-gray-700/60 rounded transition-colors"
+                  className="px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-colors"
                 >
                   ↺ Reset
                 </button>
@@ -211,12 +240,20 @@ export default function Home() {
             </>
           )}
         </div>
-        <Sidebar
-          node={selected}
-          onClose={() => setSelected(null)}
-          onRelationClick={handleRelationClick}
-          nodeLabelById={nodeLabelById}
-        />
+        {selectedCluster ? (
+          <ClusterPanel
+            cluster={selectedCluster}
+            onClose={() => setSelectedCluster(null)}
+            onUpdated={() => void loadClusters()}
+          />
+        ) : (
+          <Sidebar
+            node={selected}
+            onClose={() => setSelected(null)}
+            onRelationClick={handleRelationClick}
+            nodeLabelById={nodeLabelById}
+          />
+        )}
       </div>
 
       <SpotlightModal

@@ -222,6 +222,25 @@ export interface ReasoningResult {
   inferred: Array<ReasoningPair & { persisted: boolean }>;
 }
 
+export interface ReasoningSearchResult {
+  seedId?: number;
+  insights: string | null;
+  reason?: string;
+  chain: number;
+  conflicts: number;
+  reinforcements: number;
+}
+
+// Cluster detection
+export interface Cluster {
+  id: string;
+  label: string;
+  color: string;
+  node_ids: number[];
+  created_at: string;
+  updated_at: string;
+}
+
 // Phase 4: Project Health Score
 
 export type ProjectHealthStatus = "healthy" | "needs_attention" | "neglected";

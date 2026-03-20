@@ -1,6 +1,7 @@
 import type {
   ClaudeConfig,
   ClaudeLtmConfig,
+  Cluster,
   CtxItem,
   GraphData,
   HealthData,
@@ -11,6 +12,7 @@ import type {
   ProjectDetail,
   ProjectHealthScore,
   ReasoningResult,
+  ReasoningSearchResult,
   SearchResult,
   SemanticResult,
   SettingsModels,
@@ -117,9 +119,21 @@ export const api = {
   // Graph Reasoning
   reasoning: (id: number, depth = 2): Promise<ReasoningResult> =>
     get(`/reasoning/${id}?depth=${depth}`),
+  reasoningSearch: (q: string, depth = 2): Promise<ReasoningSearchResult> =>
+    get(`/reasoning/search?q=${encodeURIComponent(q)}&depth=${depth}`),
 
   // Claude config.json
   getConfig: (): Promise<ClaudeConfig> => get("/config"),
   updateConfig: (ltmPatch: Partial<ClaudeLtmConfig>): Promise<{ ok: boolean }> =>
     put("/config", { ltm: ltmPatch }),
+
+  // Cluster detection
+  clusters: (): Promise<Cluster[]> => get("/clusters"),
+  recomputeClusters: (): Promise<{ ok: boolean }> => post("/clusters/recompute"),
+  renameCluster: (id: string, label: string): Promise<{ ok: boolean }> =>
+    put(`/clusters/${encodeURIComponent(id)}/label`, { label }),
+  mergeClusters: (sourceId: string, targetId: string): Promise<{ ok: boolean }> =>
+    post("/clusters/merge", { sourceId, targetId }),
+  splitCluster: (id: string, nodeIds1: number[], nodeIds2: number[]): Promise<{ ok: boolean }> =>
+    post(`/clusters/${encodeURIComponent(id)}/split`, { nodeIds1, nodeIds2 }),
 };
