@@ -39,6 +39,9 @@ The `ltm` MCP server is always available. Use it proactively — do NOT wait for
 - **After discovering a non-obvious pattern or gotcha**: call `mcp__ltm__ltm_learn`
 - **When making an architectural decision**: call `mcp__ltm__ltm_learn` with `category=architecture`
 
+`recall` uses **FTS5 + semantic fallback** — use natural language queries, not just keywords.
+Good: `"how we handle async errors in hooks"` · Bad: `"async errors"`
+
 Skip for trivial/one-liner requests. Use judgment — the goal is automatic knowledge retrieval,
 not calling recall before every sentence.
 

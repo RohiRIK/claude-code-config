@@ -20,6 +20,7 @@ export interface LtmConfig {
   autoRelate: boolean;
   graphReasoning: boolean;
   evaluateSessionLlm: boolean;
+  semanticFallback: boolean;
 }
 
 export interface ServerConfig {
@@ -48,6 +49,7 @@ const DEFAULTS: Config = {
     autoRelate: true,
     graphReasoning: false,
     evaluateSessionLlm: false,
+    semanticFallback: true,
   },
   server: {
     apiPort: 7331,
@@ -85,6 +87,9 @@ export function validateConfig(raw?: unknown): { valid: boolean; errors: string[
       }
       if ("evaluateSessionLlm" in ltm && typeof ltm["evaluateSessionLlm"] !== "boolean") {
         errors.push("ltm.evaluateSessionLlm: must be a boolean");
+      }
+      if ("semanticFallback" in ltm && typeof ltm["semanticFallback"] !== "boolean") {
+        errors.push("ltm.semanticFallback: must be a boolean");
       }
       if ("injectTopN" in ltm) {
         const n = ltm["injectTopN"];
@@ -173,9 +178,10 @@ export async function loadConfig(): Promise<Config> {
       dbPath:       ltm.dbPath       ?? DEFAULTS.ltm.dbPath,
       decayEnabled: ltm.decayEnabled ?? DEFAULTS.ltm.decayEnabled,
       injectTopN:   ltm.injectTopN   ?? DEFAULTS.ltm.injectTopN,
-      autoRelate:        ltm.autoRelate        ?? DEFAULTS.ltm.autoRelate,
-      graphReasoning:    ltm.graphReasoning    ?? DEFAULTS.ltm.graphReasoning,
+      autoRelate:         ltm.autoRelate         ?? DEFAULTS.ltm.autoRelate,
+      graphReasoning:     ltm.graphReasoning     ?? DEFAULTS.ltm.graphReasoning,
       evaluateSessionLlm: ltm.evaluateSessionLlm ?? DEFAULTS.ltm.evaluateSessionLlm,
+      semanticFallback:   ltm.semanticFallback   ?? DEFAULTS.ltm.semanticFallback,
     },
     server: {
       apiPort: server.apiPort ?? DEFAULTS.server.apiPort,

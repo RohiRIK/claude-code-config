@@ -45,6 +45,11 @@
           "type": "boolean",
           "description": "Use LLM to extract decisions, gotchas, and patterns from session transcripts into LTM",
           "default": false
+        },
+        "semanticFallback": {
+          "type": "boolean",
+          "description": "Augment FTS5 keyword recall with cosine-similarity vector search when results are sparse",
+          "default": true
         }
       }
     },

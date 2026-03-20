@@ -4,6 +4,30 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-20 — Semantic Fallback for LTM Recall
+
+### memory/db.ts
+- `recall()` is now `async` — semantic fallback fires when FTS5 returns fewer IDs than the requested `limit`
+- After FTS5 search, if `ids.size < limit`: imports `getSimilarMemories()` from `embeddings.ts`, embeds the query, and merges cosine-similarity results into the same `Set<number>` (automatic dedup)
+- Wrapped in try/catch — FTS5 results always returned even if embedding API fails
+- Gated behind `ltm.semanticFallback` config flag (default `true`)
+
+### memory/config.ts + config.schema.json
+- Added `ltm.semanticFallback: boolean` to `LtmConfig` interface, DEFAULTS, merger, validator, and JSON schema
+
+### memory/mcp-server.ts
+- Updated `ltm_recall` tool handler to `await recall()` (was sync call)
+
+### docs/ltm-recall-flow.md
+- Updated status header and flow diagram — semantic fallback branch now documented as live
+- Replaced `## TODO: Wire Semantic Fallback` section with `## Semantic Fallback — How It Works`
+- Updated key files table with correct line references
+
+### CLAUDE.md
+- Added 2-line hint to the LTM MCP Auto-Use section: `recall` uses FTS5 + semantic fallback — guides Claude to use natural language queries (not just keywords)
+
+---
+
 ## 2026-03-19 — LTM MCP Server
 
 ### memory/mcp-server.ts (new)

@@ -54,7 +54,7 @@ server.tool(
     category: z.enum(["preference", "architecture", "gotcha", "pattern", "workflow", "constraint"]).optional(),
   },
   async ({ query, project, limit, category }) => {
-    const results = recall({ query, project, limit, category });
+    const results = await recall({ query, project, limit, category });
     return { content: [{ type: "text", text: JSON.stringify(strip(results), null, 2) }] };
   },
 );

@@ -310,7 +310,7 @@ export function learn(input: LearnInput): LearnResult {
   return { action: "created", id: newId, confirm_count: 1 };
 }
 
-export function recall(input: RecallInput = {}): MemoryWithRelations[] {
+export async function recall(input: RecallInput = {}): Promise<MemoryWithRelations[]> {
   const db = getDb();
   const limit = input.limit ?? 10;
 
@@ -328,6 +328,22 @@ export function recall(input: RecallInput = {}): MemoryWithRelations[] {
       `SELECT rowid FROM memories_fts WHERE memories_fts MATCH ? ORDER BY rank LIMIT 50`
     ).all(ftsQuery);
     ids = new Set(ftsResults.map(r => r.rowid));
+
+    // Semantic fallback: if FTS5 returned fewer results than requested, augment with vector search
+    if (ids.size < limit) {
+      const { readConfigSync } = await import("./config.js");
+      const cfg = readConfigSync();
+      const semanticEnabled = cfg.ltm?.semanticFallback !== false; // default true
+      if (semanticEnabled) {
+        try {
+          const { getSimilarMemories } = await import("./embeddings.js");
+          const semantic = await getSimilarMemories(input.query, limit * 2, 0.5);
+          for (const m of semantic) ids.add(m.id);
+        } catch (err) {
+          process.stderr.write(`[recall] Semantic fallback failed: ${err}\n`);
+        }
+      }
+    }
   }
 
   if (input.tags && input.tags.length > 0) {
