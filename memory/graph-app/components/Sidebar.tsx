@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { categoryBadgeColors } from "@/lib/categoryColors";
@@ -13,6 +13,7 @@ interface Props {
   onRelationClick?: (id: number) => void;
   nodeLabelById?: (id: number) => string | undefined;
   onReasoningResult?: (ids: Set<number>, conflictIds: Set<number>, reinforceIds: Set<number>) => void;
+  onUpdated?: () => void;
 }
 
 // ── Shared micro-components ──────────────────────────────────────────────────
@@ -161,16 +162,149 @@ function ReasoningPanel({ result, onNodeClick }: {
 
 // ── Memory panel ─────────────────────────────────────────────────────────────
 
-function MemoryPanel({ node, onRelationClick, nodeLabelById }: {
+function MemoryPanel({ node, onRelationClick, nodeLabelById, onUpdated, onClose }: {
   node: MemoryDetail;
   onRelationClick?: (id: number) => void;
   nodeLabelById?: (id: number) => string | undefined;
+  onUpdated?: () => void;
+  onClose?: () => void;
 }) {
+  const [editMode, setEditMode] = useState(false);
+  const [editContent, setEditContent] = useState(node.content);
+  const [editTags, setEditTags] = useState(node.tags.join(", "));
+  const [editImportance, setEditImportance] = useState(node.importance);
+  const [saving, setSaving] = useState(false);
+  const [relationIdx, setRelationIdx] = useState(-1);
+
+  // Reset edit state when node changes
+  useEffect(() => {
+    setEditMode(false);
+    setEditContent(node.content);
+    setEditTags(node.tags.join(", "));
+    setEditImportance(node.importance);
+    setRelationIdx(-1);
+  }, [node.id]);
+
+  // Keyboard navigation
+  const relationsRef = useRef(node.relations);
+  relationsRef.current = node.relations;
+  const relationIdxRef = useRef(relationIdx);
+  relationIdxRef.current = relationIdx;
+  const onRelationClickRef = useRef(onRelationClick);
+  onRelationClickRef.current = onRelationClick;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      const relations = relationsRef.current;
+      if (e.key === "Escape") {
+        onCloseRef.current?.();
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        const next = Math.min(relationIdxRef.current + 1, relations.length - 1);
+        setRelationIdx(next);
+        if (relations[next]) onRelationClickRef.current?.(relations[next].related_id);
+      }
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const prev = Math.max(relationIdxRef.current - 1, 0);
+        setRelationIdx(prev);
+        if (relations[prev]) onRelationClickRef.current?.(relations[prev].related_id);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const tags = editTags.split(",").map(t => t.trim()).filter(Boolean);
+      await api.updateMemory(node.id, { content: editContent, tags, importance: editImportance });
+      setEditMode(false);
+      onUpdated?.();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCancel() {
+    setEditContent(node.content);
+    setEditTags(node.tags.join(", "));
+    setEditImportance(node.importance);
+    setEditMode(false);
+  }
+
+  if (editMode) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <SectionLabel>Content</SectionLabel>
+          <textarea
+            value={editContent}
+            onChange={e => setEditContent(e.target.value)}
+            rows={6}
+            className="w-full text-sm text-gray-200 bg-gray-800/60 border border-gray-700 rounded-lg p-3 resize-y focus:outline-none focus:border-sky-600"
+          />
+        </div>
+        <div>
+          <SectionLabel>Tags (comma-separated)</SectionLabel>
+          <input
+            value={editTags}
+            onChange={e => setEditTags(e.target.value)}
+            className="w-full text-sm text-gray-200 bg-gray-800/60 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:border-sky-600"
+          />
+        </div>
+        <div>
+          <SectionLabel>Importance (1–5)</SectionLabel>
+          <div className="flex gap-1">
+            {[1,2,3,4,5].map(n => (
+              <button
+                key={n}
+                onClick={() => setEditImportance(n)}
+                className={`w-7 h-7 rounded text-sm transition-colors ${editImportance >= n ? "text-yellow-400" : "text-gray-600 hover:text-gray-400"}`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="flex-1 py-1.5 text-xs bg-sky-700 hover:bg-sky-600 text-white rounded-md transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button
+            onClick={handleCancel}
+            className="flex-1 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* Content */}
       <div>
-        <SectionLabel>Content</SectionLabel>
+        <div className="flex items-center justify-between mb-1.5">
+          <SectionLabel>Content</SectionLabel>
+          <button
+            onClick={() => setEditMode(true)}
+            className="text-[10px] text-gray-500 hover:text-sky-400 transition-colors"
+          >
+            Edit
+          </button>
+        </div>
         <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap bg-gray-800/40 rounded-lg p-3 border border-gray-800">
           {node.content}
         </p>
@@ -201,15 +335,20 @@ function MemoryPanel({ node, onRelationClick, nodeLabelById }: {
       {/* Relations */}
       {node.relations.length > 0 && (
         <div>
-          <SectionLabel>Relations</SectionLabel>
+          <SectionLabel>Relations <span className="text-gray-700 font-normal normal-case tracking-normal">(↑↓ to navigate)</span></SectionLabel>
           <div className="space-y-1">
             {node.relations.map((r, i) => {
               const label = nodeLabelById?.(r.related_id);
+              const isActive = i === relationIdx;
               return (
                 <button
                   key={r.related_id}
-                  onClick={() => onRelationClick?.(r.related_id)}
-                  className="w-full flex items-center gap-2 text-[11px] bg-gray-800/40 rounded px-2.5 py-1.5 border border-gray-800 hover:border-gray-600 hover:bg-gray-700/40 transition-colors cursor-pointer text-left"
+                  onClick={() => { setRelationIdx(i); onRelationClick?.(r.related_id); }}
+                  className={`w-full flex items-center gap-2 text-[11px] rounded px-2.5 py-1.5 border transition-colors cursor-pointer text-left ${
+                    isActive
+                      ? "bg-sky-900/30 border-sky-700/50"
+                      : "bg-gray-800/40 border-gray-800 hover:border-gray-600 hover:bg-gray-700/40"
+                  }`}
                 >
                   <span className={r.direction === "outgoing" ? "text-sky-500" : "text-purple-500"}>
                     {r.direction === "outgoing" ? "↗" : "↙"}
@@ -264,10 +403,25 @@ const CONTEXT_CATEGORY_COLORS: Record<string, string> = {
   progress: "bg-emerald-900/40 text-emerald-300 border-emerald-800/50",
 };
 
+const CONTEXT_CATEGORY_META: Record<string, { label: string; description: string }> = {
+  goal:     { label: "Current Goal",    description: "What this project is trying to achieve right now." },
+  decision: { label: "Decision Made",   description: "An architectural or design choice that was intentionally made." },
+  gotcha:   { label: "Watch Out",       description: "A pitfall, bug, or tricky behavior to remember and avoid." },
+  progress: { label: "Progress Log",    description: "What was done in a recent session — a work log entry." },
+};
+
 function ContextPanel({ node }: { node: ContextNode }) {
   const badgeColor = CONTEXT_CATEGORY_COLORS[node.category] ?? "bg-gray-800 text-gray-400 border-gray-700";
+  const meta = CONTEXT_CATEGORY_META[node.category];
   return (
     <div className="space-y-5">
+      {/* Category banner with human description */}
+      {meta && (
+        <div className={`rounded-lg px-3 py-2.5 border ${badgeColor}`}>
+          <div className="text-[11px] font-semibold mb-0.5">{meta.label}</div>
+          <div className="text-[10px] opacity-80">{meta.description}</div>
+        </div>
+      )}
       <div>
         <SectionLabel>Content</SectionLabel>
         <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap bg-gray-800/40 rounded-lg p-3 border border-gray-800">
@@ -275,12 +429,9 @@ function ContextPanel({ node }: { node: ContextNode }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded border capitalize ${badgeColor}`}>
-          {node.category}
-        </span>
         {node.permanent && (
           <span className="text-[10px] text-amber-500 bg-amber-900/20 border border-amber-800/40 rounded px-1.5 py-0.5">
-            permanent
+            permanent — never trimmed
           </span>
         )}
       </div>
@@ -373,17 +524,19 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
           {tabs.map(t => {
             const active = tab === t;
             const cnt = items[t]?.length ?? 0;
+            const tabLabel = CONTEXT_CATEGORY_META[t]?.label ?? t;
             return (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`flex-1 text-[10px] py-1.5 rounded border font-medium transition-colors capitalize ${
+                title={CONTEXT_CATEGORY_META[t]?.description}
+                className={`flex-1 text-[10px] py-1.5 rounded border font-medium transition-colors ${
                   active
                     ? `${CONTEXT_TAB_COLORS[t]} text-white`
                     : "bg-gray-800/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600"
                 }`}
               >
-                {t}
+                {tabLabel}
                 {cnt > 0 && (
                   <span className={`ml-1 text-[9px] ${active ? "opacity-70" : "text-gray-600"}`}>
                     {cnt}
@@ -394,7 +547,7 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
           })}
         </div>
         {list.length === 0 ? (
-          <p className="text-xs text-gray-600 italic text-center py-4">No {tab} items</p>
+          <p className="text-xs text-gray-600 italic text-center py-4">No {CONTEXT_CATEGORY_META[tab]?.label ?? tab} items yet</p>
         ) : (
           <ul className="space-y-2">
             {list.map((item) => (
@@ -414,11 +567,12 @@ function ProjectPanel({ node }: { node: ProjectNode }) {
 
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
 
-export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById, onReasoningResult }: Props) {
+export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById, onReasoningResult, onUpdated }: Props) {
   const [detail, setDetail] = useState<MemoryDetail | null>(null);
   const [reasoning, setReasoning] = useState<ReasoningResult | null>(null);
   const [reasoningLoading, setReasoningLoading] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setDetail(null);
@@ -441,7 +595,6 @@ export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById,
         setReasoning(r);
         setShowReasoning(true);
         setReasoningLoading(false);
-        // Notify parent to highlight traversed nodes
         const chainIds = new Set(r.chain.map(n => n.id));
         const conflictIds = new Set<number>();
         const reinforceIds = new Set<number>();
@@ -452,78 +605,124 @@ export default function Sidebar({ node, onClose, onRelationClick, nodeLabelById,
       .catch(() => setReasoningLoading(false));
   }
 
-  if (!node) return null;
+  async function handleDelete() {
+    if (!node || "is_project" in node) return;
+    const isCtx = "is_context" in node;
+    const label = node.label.substring(0, 60);
+    if (!confirm(`Delete this ${isCtx ? "context item" : "memory"}?\n\n"${label}"\n\nThis cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      if (isCtx) {
+        await api.deleteContextItem(node.id);
+      } else {
+        await api.deleteMemory(node.id);
+      }
+      onClose();
+      onUpdated?.();
+    } finally {
+      setDeleting(false);
+    }
+  }
 
-  const isProject = "is_project" in node;
-  const isContext = "is_context" in node;
-  const isMemory = !isProject && !isContext;
+  const isProject = node ? "is_project" in node : false;
+  const isContext = node ? "is_context" in node : false;
+  const isMemory = node ? !isProject && !isContext : false;
 
   const typeLabel = isProject ? "Project" : isContext ? "Context" : "Memory";
-  const accentColor = isProject ? nodeColor("project") : isContext ? "#6b7280" : nodeColor(node.category);
+  const accentColor = node
+    ? isProject ? nodeColor("project") : isContext ? "#6b7280" : nodeColor((node as { category: string }).category)
+    : "#6b7280";
 
   return (
-    <div className="w-80 min-w-[280px] bg-[#0d1117] border-l border-gray-800 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div
-        className="px-4 pt-4 pb-3 border-b border-gray-800 relative"
-        style={{ background: `linear-gradient(to bottom, ${accentColor}0d, transparent)` }}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div
-              className="text-[9px] font-semibold uppercase tracking-widest mb-1"
-              style={{ color: accentColor }}
-            >
-              {typeLabel}
-            </div>
-            <div className="text-sm font-semibold text-white leading-snug truncate" title={node.label}>
-              {node.label}
+    <div
+      className={`transition-all duration-200 overflow-hidden shrink-0 ${node ? "w-80" : "w-0"}`}
+    >
+      {node && (
+        <div className="min-w-[280px] bg-[var(--bg-primary)] border-l border-[var(--border)] flex flex-col overflow-hidden h-full">
+          {/* Header */}
+          <div
+            className="px-4 pt-4 pb-3 border-b border-[var(--border)] relative"
+            style={{ background: `linear-gradient(to bottom, ${accentColor}0d, transparent)` }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div
+                  className="text-[9px] font-semibold uppercase tracking-widest mb-1"
+                  style={{ color: accentColor }}
+                >
+                  {typeLabel}
+                </div>
+                <div className="text-sm font-semibold text-[var(--text-primary)] leading-snug truncate" title={node.label}>
+                  {node.label}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {isMemory && (
+                  <button
+                    onClick={handleReason}
+                    disabled={reasoningLoading}
+                    className={`h-6 px-2 text-[10px] rounded-md border transition-colors font-medium ${
+                      showReasoning
+                        ? "bg-yellow-900/40 border-yellow-700/60 text-yellow-400"
+                        : "bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600"
+                    } disabled:opacity-50`}
+                    title="Traverse graph and show reasoning chain"
+                  >
+                    {reasoningLoading ? "…" : "Reason"}
+                  </button>
+                )}
+                {(isMemory || isContext) && (
+                  <button
+                    onClick={() => void handleDelete()}
+                    disabled={deleting}
+                    className="h-6 px-2 text-[10px] rounded-md border border-transparent text-gray-600 hover:text-red-400 hover:border-red-800/50 hover:bg-red-900/20 transition-colors disabled:opacity-50 font-medium"
+                    aria-label="Delete"
+                    title={isContext ? "Delete context item" : "Delete memory"}
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="w-6 h-6 flex items-center justify-center rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors mt-0.5"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {isProject && <ProjectPanel node={node as ProjectNode} />}
+            {isContext && <ContextPanel node={node as ContextNode} />}
             {isMemory && (
-              <button
-                onClick={handleReason}
-                disabled={reasoningLoading}
-                className={`h-6 px-2 text-[10px] rounded-md border transition-colors font-medium ${
-                  showReasoning
-                    ? "bg-yellow-900/40 border-yellow-700/60 text-yellow-400"
-                    : "bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600"
-                } disabled:opacity-50`}
-                title="Traverse graph and show reasoning chain"
-              >
-                {reasoningLoading ? "…" : "Reason"}
-              </button>
+              <>
+                {showReasoning && reasoning ? (
+                  <ReasoningPanel result={reasoning} onNodeClick={onRelationClick} />
+                ) : detail ? (
+                  <MemoryPanel
+                    node={detail}
+                    onRelationClick={onRelationClick}
+                    nodeLabelById={nodeLabelById}
+                    onUpdated={() => {
+                      onUpdated?.();
+                      // Refetch detail after update
+                      api.memory(node.id).then(setDetail).catch(() => { /* ignore */ });
+                    }}
+                    onClose={onClose}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-24 text-xs text-gray-600">
+                    Loading…
+                  </div>
+                )}
+              </>
             )}
-            <button
-              onClick={onClose}
-              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors mt-0.5"
-              aria-label="Close"
-            >
-              ×
-            </button>
           </div>
         </div>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {isProject && <ProjectPanel node={node as ProjectNode} />}
-        {isContext && <ContextPanel node={node as ContextNode} />}
-        {isMemory && (
-          <>
-            {showReasoning && reasoning ? (
-              <ReasoningPanel result={reasoning} onNodeClick={onRelationClick} />
-            ) : detail ? (
-              <MemoryPanel node={detail} onRelationClick={onRelationClick} nodeLabelById={nodeLabelById} />
-            ) : (
-              <div className="flex items-center justify-center h-24 text-xs text-gray-600">
-                Loading…
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      )}
     </div>
   );
 }

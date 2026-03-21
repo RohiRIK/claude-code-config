@@ -89,6 +89,10 @@ export const api = {
     post(`/memory/${id}/approve`),
   deleteMemory: (id: number): Promise<{ ok: boolean }> =>
     del(`/memory/${id}`),
+  deleteContextItem: (id: number): Promise<{ ok: boolean }> =>
+    del(`/context-item/${id}`),
+  updateMemory: (id: number, patch: { content?: string; tags?: string[]; importance?: number }): Promise<{ ok: boolean }> =>
+    put(`/memory/${id}`, patch),
   supersedeMemory: (newId: number, oldId: number): Promise<{ ok: boolean }> =>
     post(`/memory/${newId}/supersedes/${oldId}`),
   mergeMemories: (

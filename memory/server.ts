@@ -546,13 +546,15 @@ function maybeScheduleRecompute(): void {
 }
 
 // Watch DB for changes and broadcast refresh
-// WAL writes go to ltm.db-wal, not ltm.db — watch the WAL file (or dir as fallback)
+// WAL writes go to ltm.db-wal, not ltm.db — watch the WAL file (or dir as fallback).
+// Debounce at 3s so that rapid hook writes (EvaluateSession, PreCompact, etc.)
+// coalesce into a single refresh instead of one per write.
 let watchDebounce: ReturnType<typeof setTimeout> | null = null;
 if (existsSync(DB_PATH)) {
   const watchTarget = existsSync(DB_PATH + "-wal") ? DB_PATH + "-wal" : dirname(DB_PATH);
   watch(watchTarget, { recursive: false }, () => {
     if (watchDebounce) clearTimeout(watchDebounce);
-    watchDebounce = setTimeout(() => broadcast({ type: "refresh" }), 300);
+    watchDebounce = setTimeout(() => broadcast({ type: "refresh" }), 3000);
   });
 }
 
@@ -590,6 +592,17 @@ Bun.serve({
 
     const ctxMatch = p.match(/^\/api\/context\/(.+)$/);
     if (ctxMatch?.[1]) return Response.json(getProjectContext(decodeURIComponent(ctxMatch[1])));
+
+    // DELETE /api/context-item/:id — delete a single context item by id
+    const ctxItemDelMatch = p.match(/^\/api\/context-item\/(\d+)$/);
+    if (ctxItemDelMatch?.[1] && req.method === "DELETE") {
+      const id = parseInt(ctxItemDelMatch[1], 10);
+      const row = queryOne<{ id: number }>("SELECT id FROM context_items WHERE id=?", [id]);
+      if (!row) return new Response("Not found", { status: 404 });
+      db.run("DELETE FROM context_items WHERE id=?", [id]);
+      broadcast({ type: "refresh" });
+      return Response.json({ ok: true });
+    }
 
     const memMatch = p.match(/^\/api\/memory\/(\d+)$/);
     if (memMatch?.[1]) {
@@ -748,6 +761,38 @@ Bun.serve({
       }
       broadcast({ type: "refresh" });
       return Response.json({ ok: true, id });
+    }
+
+    // PUT /api/memory/:id — edit content, tags, importance
+    if (deleteMemMatch?.[1] && req.method === "PUT") {
+      const id = Number(deleteMemMatch[1]);
+      const body = await req.json() as { content?: string; tags?: string[]; importance?: number };
+      if (body.content !== undefined && !body.content.trim())
+        return Response.json({ error: "content cannot be empty" }, { status: 400 });
+      if (body.importance !== undefined && (body.importance < 1 || body.importance > 5))
+        return Response.json({ error: "importance must be 1-5" }, { status: 400 });
+      if (body.tags !== undefined && (!Array.isArray(body.tags) || body.tags.some(t => typeof t !== "string")))
+        return Response.json({ error: "tags must be a string array" }, { status: 400 });
+      if (body.content !== undefined) {
+        db.run("UPDATE memories SET content=?, last_confirmed_at=? WHERE id=?",
+          [body.content.trim(), new Date().toISOString(), id]);
+      }
+      if (body.importance !== undefined) {
+        db.run("UPDATE memories SET importance=? WHERE id=?", [body.importance, id]);
+      }
+      if (body.tags !== undefined) {
+        db.run("DELETE FROM memory_tags WHERE memory_id=?", [id]);
+        for (const tag of body.tags) {
+          let tagRow = db.query<{ id: number }, [string]>("SELECT id FROM tags WHERE name=?").get(tag);
+          if (!tagRow) {
+            db.run("INSERT OR IGNORE INTO tags(name) VALUES(?)", [tag]);
+            tagRow = db.query<{ id: number }, [string]>("SELECT id FROM tags WHERE name=?").get(tag)!;
+          }
+          db.run("INSERT OR IGNORE INTO memory_tags(memory_id,tag_id) VALUES(?,?)", [id, tagRow.id]);
+        }
+      }
+      broadcast({ type: "memory_updated", id });
+      return Response.json({ ok: true });
     }
 
     // POST /api/memory/:id/supersedes/:targetId

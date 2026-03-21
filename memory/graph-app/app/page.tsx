@@ -66,10 +66,16 @@ export default function Home() {
     });
   }, []);
 
+  const graphFingerprintRef = useRef<string>("");
   const load = useCallback(async () => {
     const [g, s] = await Promise.all([api.graph(), api.stats()]);
-    setData(g);
-    setStats(s);
+    // Skip re-render if graph shape hasn't changed (prevents flicker from hook writes)
+    const fingerprint = `${g.nodes.length}:${g.links.length}:${s.memories}`;
+    if (fingerprint !== graphFingerprintRef.current) {
+      graphFingerprintRef.current = fingerprint;
+      setData(g);
+      setStats(s);
+    }
   }, []);
 
   // Tags change rarely — fetch once on mount, not on every WS refresh
@@ -252,6 +258,7 @@ export default function Home() {
             onClose={() => setSelected(null)}
             onRelationClick={handleRelationClick}
             nodeLabelById={nodeLabelById}
+            onUpdated={() => void load()}
           />
         )}
       </div>
