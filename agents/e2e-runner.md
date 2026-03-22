@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#00a8ff"
 ---
 
 # E2E Test Runner

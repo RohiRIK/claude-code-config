@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#7bed9f"
 ---
 
 You are a senior code reviewer ensuring high standards of code quality and security.

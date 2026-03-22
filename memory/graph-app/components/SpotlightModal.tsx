@@ -80,11 +80,11 @@ export default function SpotlightModal({ open, onClose, onSelect }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-[#161b22] border border-[#30363d] rounded-xl shadow-2xl overflow-hidden"
+        className="w-full max-w-lg bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#30363d]">
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
+          <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
           </svg>
           <input
@@ -93,9 +93,9 @@ export default function SpotlightModal({ open, onClose, onSelect }: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Jump to memory…"
-            className="flex-1 bg-transparent text-white text-sm outline-none placeholder-gray-500"
+            className="flex-1 bg-transparent text-[var(--text-primary)] text-sm outline-none placeholder-[var(--text-muted)]"
           />
-          <span className="text-gray-600 text-xs">ESC</span>
+          <span className="text-[var(--text-muted)] text-xs">ESC</span>
         </div>
 
         {results.length > 0 && (

@@ -49,13 +49,11 @@ interface EdgeRow {
 }
 
 function getNeighbors(db: Database, id: number): EdgeRow[] {
-  const out = db.query<EdgeRow, [number]>(
-    `SELECT target_memory_id as neighbor_id, relationship_type FROM memory_relations WHERE source_memory_id=?`
-  ).all(id);
-  const inc = db.query<{ neighbor_id: number; relationship_type: RelationshipType }, [number]>(
-    `SELECT source_memory_id as neighbor_id, relationship_type FROM memory_relations WHERE target_memory_id=?`
-  ).all(id);
-  return [...out, ...inc];
+  return db.query<EdgeRow, [number, number]>(
+    `SELECT target_memory_id as neighbor_id, relationship_type FROM memory_relations WHERE source_memory_id=?
+     UNION ALL
+     SELECT source_memory_id as neighbor_id, relationship_type FROM memory_relations WHERE target_memory_id=?`
+  ).all(id, id);
 }
 
 function getMemoryNode(db: Database, id: number): MemoryNode | null {

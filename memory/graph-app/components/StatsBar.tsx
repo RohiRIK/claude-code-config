@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function StatsBar({ stats }: Props) {
-  if (!stats) return <div className="h-8 bg-[#161b22] border-b border-gray-800" />;
+  if (!stats) return <div className="h-8 bg-[var(--bg-secondary)] border-b border-[var(--border)]" />;
 
   const items = [
     { label: "memories", value: stats.memories, color: "text-purple-400" },
@@ -18,8 +18,8 @@ export default function StatsBar({ stats }: Props) {
   ];
 
   return (
-    <div className="h-10 bg-[#161b22] border-b border-gray-800 flex items-center px-4 gap-4 text-xs flex-shrink-0">
-      <span className="text-gray-500 font-medium mr-2">LTM</span>
+    <div className="h-10 bg-[var(--bg-secondary)] border-b border-[var(--border)] flex items-center px-4 gap-4 text-xs flex-shrink-0">
+      <span className="text-[var(--text-muted)] font-medium mr-2">LTM</span>
       {items.map((item, i) => (
         <span key={item.label}>
           {i > 0 && <span className="text-gray-700 mr-4">&middot;</span>}

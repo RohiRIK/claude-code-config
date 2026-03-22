@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#ffa502"
 ---
 
 # Documentation & Codemap Specialist

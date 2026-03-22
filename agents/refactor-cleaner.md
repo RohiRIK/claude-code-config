@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#eccc68"
 ---
 
 # Refactor & Dead Code Cleaner

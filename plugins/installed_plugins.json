@@ -1,44 +1,14 @@
 {
   "version": 2,
   "plugins": {
-    "code-simplifier@claude-plugins-official": [
+    "context-mode@context-mode": [
       {
         "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/code-simplifier/1.0.0",
-        "version": "1.0.0",
-        "installedAt": "2026-01-22T09:20:40.128Z",
-        "lastUpdated": "2026-01-22T09:20:40.128Z",
-        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
-      }
-    ],
-    "typescript-lsp@claude-plugins-official": [
-      {
-        "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
-        "version": "1.0.0",
-        "installedAt": "2026-01-22T09:23:55.934Z",
-        "lastUpdated": "2026-01-22T09:23:55.934Z",
-        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
-      }
-    ],
-    "security-guidance@claude-plugins-official": [
-      {
-        "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-plugins-official/security-guidance/d5c15b861cd2",
-        "version": "d5c15b861cd2",
-        "installedAt": "2026-01-22T09:23:55.983Z",
-        "lastUpdated": "2026-03-14T14:55:23.976Z",
-        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
-      }
-    ],
-    "context-mode@claude-context-mode": [
-      {
-        "scope": "user",
-        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-context-mode/context-mode/1.0.15",
-        "version": "1.0.15",
-        "installedAt": "2026-03-03T08:35:47.521Z",
-        "lastUpdated": "2026-03-16T07:07:53.582Z",
-        "gitCommitSha": "60747430ecde88ed85fe47fc303d2a72d4e0d492"
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/context-mode/context-mode/1.0.49",
+        "version": "1.0.49",
+        "installedAt": "2026-03-22T14:54:03.558Z",
+        "lastUpdated": "2026-03-22T14:58:23.136Z",
+        "gitCommitSha": "ed171679f1651d8827e58ee6ed7462fa278cb319"
       }
     ]
   }

@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#ff7f50"
 ---
 
 # Security Reviewer

@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#2ed573"
 ---
 
 # Build Error Resolver

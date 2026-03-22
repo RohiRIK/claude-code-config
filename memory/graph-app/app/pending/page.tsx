@@ -75,12 +75,12 @@ export default function PendingPage() {
   };
 
   return (
-    <div className="min-h-full overflow-y-auto bg-[#0d1117] text-gray-200">
+    <div className="min-h-full overflow-y-auto bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-xl font-semibold text-white">Pending Review</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Pending Review</h1>
+            <p className="text-sm text-[var(--text-muted)] mt-1">
               {pending.length} {pending.length === 1 ? "memory" : "memories"} awaiting approval
             </p>
           </div>
@@ -103,7 +103,7 @@ export default function PendingPage() {
                 Approve All
               </button>
             )}
-            <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5">
+            <Link href="/" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5">
               &larr; Graph
             </Link>
           </div>
@@ -126,7 +126,7 @@ export default function PendingPage() {
             {pending.map((mem) => (
               <div
                 key={mem.id}
-                className="p-4 bg-[#161b22] rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+                className="p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border)] hover:border-[var(--text-muted)] transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">

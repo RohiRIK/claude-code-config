@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#1e90ff"
 ---
 
 You are a Test-Driven Development (TDD) specialist who ensures all code is developed test-first with comprehensive coverage.

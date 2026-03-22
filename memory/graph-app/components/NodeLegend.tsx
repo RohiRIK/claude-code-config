@@ -16,7 +16,7 @@ export default function NodeLegend() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="absolute bottom-3 left-3 bg-[#161b22] border border-[#30363d] rounded-lg text-xs text-gray-400 select-none">
+    <div className="absolute bottom-3 left-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-muted)] select-none">
       <button
         onClick={() => setCollapsed(c => !c)}
         className="flex items-center gap-2 px-2.5 py-1.5 w-full hover:text-gray-200 transition-colors"

@@ -103,7 +103,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-full overflow-y-auto bg-[#0d1117] text-gray-200">
+    <div className="min-h-full overflow-y-auto bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-xl font-semibold text-white">Settings</h1>
@@ -123,7 +123,7 @@ export default function SettingsPage() {
 
         {/* Graph Reasoning Controls */}
         {claudeConfig && (
-          <div className="mt-6 p-4 bg-[#161b22] rounded-lg border border-gray-800">
+          <div className="mt-6 p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border)]">
             <h3 className="text-sm font-medium text-white mb-1">Graph Reasoning</h3>
             <p className="text-xs text-gray-500 mb-4">
               Controls written to <code className="text-gray-400">~/.claude/config.json</code>.

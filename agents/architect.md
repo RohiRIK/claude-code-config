@@ -6,6 +6,7 @@ tools:
   grep: true
   glob: true
 model: opus
+color: "#5352ed"
 ---
 
 You are a senior software architect specializing in scalable, maintainable system design.

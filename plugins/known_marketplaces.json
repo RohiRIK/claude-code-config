@@ -1,26 +1,10 @@
 {
-  "claude-plugins-official": {
+  "context-mode": {
     "source": {
       "source": "github",
-      "repo": "anthropics/claude-plugins-official"
+      "repo": "mksglu/context-mode"
     },
-    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-03-16T07:07:54.356Z"
-  },
-  "ui-ux-pro-max-skill": {
-    "source": {
-      "source": "github",
-      "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
-    },
-    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/ui-ux-pro-max-skill",
-    "lastUpdated": "2026-03-02T09:55:54.666Z"
-  },
-  "claude-context-mode": {
-    "source": {
-      "source": "github",
-      "repo": "mksglu/claude-context-mode"
-    },
-    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/claude-context-mode",
-    "lastUpdated": "2026-03-03T08:35:26.365Z"
+    "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/context-mode",
+    "lastUpdated": "2026-03-22T14:54:00.117Z"
   }
 }

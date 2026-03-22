@@ -41,21 +41,21 @@ export default function ProjectList({
   const [tagsOpen, setTagsOpen] = useState(true);
 
   return (
-    <div className="w-48 min-w-[176px] bg-[#161b22] border-r border-[#30363d] flex flex-col overflow-hidden">
+    <div className="w-48 min-w-[176px] bg-[var(--bg-secondary)] border-r border-[var(--border)] flex flex-col overflow-hidden">
 
       {/* ── Projects ── */}
       <button
         onClick={() => setProjectsOpen(o => !o)}
-        className="flex items-center justify-between px-3 py-2 border-b border-[#30363d] hover:bg-[#21262d] transition-colors"
+        className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors"
       >
-        <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Projects</span>
-        <span className="text-gray-600"><ChevronIcon open={projectsOpen} /></span>
+        <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-semibold">Projects</span>
+        <span className="text-[var(--text-muted)]"><ChevronIcon open={projectsOpen} /></span>
       </button>
       {projectsOpen && (
-        <div className="flex flex-col border-b border-[#30363d]">
+        <div className="flex flex-col border-b border-[var(--border)]">
           <button
             onClick={() => onSelect(null)}
-            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[#21262d] transition-colors ${!activeProject ? "text-white font-medium bg-[#21262d]" : "text-gray-400"}`}
+            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--bg-tertiary)] transition-colors ${!activeProject ? "text-[var(--text-primary)] font-medium bg-[var(--bg-tertiary)]" : "text-[var(--text-muted)]"}`}
           >
             All projects
           </button>
@@ -65,11 +65,11 @@ export default function ProjectList({
             return (
               <div
                 key={p.id}
-                className={`group flex items-center gap-1 pr-1 hover:bg-[#21262d] transition-colors ${hidden ? "opacity-40" : count === 0 ? "opacity-50" : ""}`}
+                className={`group flex items-center gap-1 pr-1 hover:bg-[var(--bg-tertiary)] transition-colors ${hidden ? "opacity-40" : count === 0 ? "opacity-50" : ""}`}
               >
                 <button
                   onClick={() => !hidden && onSelect(activeProject === p.label ? null : p.label)}
-                  className={`flex-1 text-left text-xs px-3 py-1.5 truncate ${activeProject === p.label && !hidden ? "text-sky-400 font-medium" : "text-gray-400"}`}
+                  className={`flex-1 text-left text-xs px-3 py-1.5 truncate ${activeProject === p.label && !hidden ? "text-sky-400 font-medium" : "text-[var(--text-muted)]"}`}
                   title={p.label}
                 >
                   {p.label.split("/").pop() || p.label}
@@ -100,12 +100,12 @@ export default function ProjectList({
       )}
 
       {/* ── Tags ── */}
-      <div className="flex items-center border-b border-[#30363d]">
+      <div className="flex items-center border-b border-[var(--border)]">
         <button
           onClick={() => setTagsOpen(o => !o)}
-          className="flex-1 flex items-center justify-between px-3 py-2 hover:bg-[#21262d] transition-colors"
+          className="flex-1 flex items-center justify-between px-3 py-2 hover:bg-[var(--bg-tertiary)] transition-colors"
         >
-          <span className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+          <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-semibold">
             Tags
             {activeTags.size > 0 && (
               <span className="text-[9px] text-sky-400 bg-sky-900/30 border border-sky-800/40 rounded px-1 py-0.5 normal-case tracking-normal font-normal">
@@ -113,7 +113,7 @@ export default function ProjectList({
               </span>
             )}
           </span>
-          <span className="text-gray-600"><ChevronIcon open={tagsOpen} /></span>
+          <span className="text-[var(--text-muted)]"><ChevronIcon open={tagsOpen} /></span>
         </button>
         {activeTags.size > 0 && (
           <button
@@ -132,7 +132,7 @@ export default function ProjectList({
               <button
                 key={tag.id}
                 onClick={() => onToggleTag(tag.name)}
-                className={`w-full flex items-center justify-between text-left text-xs px-3 py-1.5 hover:bg-[#21262d] transition-colors ${active ? "text-sky-400" : "text-gray-400"}`}
+                className={`w-full flex items-center justify-between text-left text-xs px-3 py-1.5 hover:bg-[var(--bg-tertiary)] transition-colors ${active ? "text-sky-400" : "text-[var(--text-muted)]"}`}
               >
                 <span className="truncate">{tag.name}</span>
                 <span className={`ml-2 shrink-0 text-[10px] tabular-nums ${active ? "text-sky-500" : "text-gray-600"}`}>

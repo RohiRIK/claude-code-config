@@ -91,7 +91,7 @@ export default function HealthPage() {
   const overallColor = overallScore === null ? "text-gray-400" : scoreTextColor(overallScore);
 
   return (
-    <div className="min-h-full overflow-y-auto bg-[#0d1117] text-gray-200">
+    <div className="min-h-full overflow-y-auto bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {loading ? (
           <div className="text-center text-gray-500 py-12">Loading...</div>
@@ -100,7 +100,7 @@ export default function HealthPage() {
         ) : (
           <>
             {/* ── Section 1: Global Health Banner ── */}
-            <div className="bg-[#161b22] rounded-xl border border-gray-800 p-6">
+            <div className="bg-[var(--bg-secondary)] rounded-xl border border-[var(--border)] p-6">
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">LTM Health</p>
@@ -151,7 +151,7 @@ export default function HealthPage() {
                 Action Items
               </h2>
               {!hasActions ? (
-                <div className="bg-[#161b22] rounded-lg border border-green-900/30 p-4 text-center text-sm text-green-700">
+                <div className="bg-[var(--bg-secondary)] rounded-lg border border-green-900/30 p-4 text-center text-sm text-green-700">
                   ✓ Nothing needs attention — memory health is excellent
                 </div>
               ) : (
@@ -160,7 +160,7 @@ export default function HealthPage() {
                   {actionProjects.map((p) => (
                     <div
                       key={p.project}
-                      className="bg-[#161b22] rounded-lg border border-gray-800 p-4 flex items-center gap-4"
+                      className="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border)] p-4 flex items-center gap-4"
                     >
                       <span className="text-base">{statusIcon(p.status)}</span>
                       <div className="flex-1 min-w-0">
@@ -192,7 +192,7 @@ export default function HealthPage() {
                   {health && health.atRisk.map((m) => (
                     <div
                       key={m.id}
-                      className="bg-[#161b22] rounded-lg border border-orange-900/30 p-4 flex items-start gap-4"
+                      className="bg-[var(--bg-secondary)] rounded-lg border border-orange-900/30 p-4 flex items-start gap-4"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -218,7 +218,7 @@ export default function HealthPage() {
 
                   {/* Superseded memories */}
                   {superseded && superseded.length > 0 && (
-                    <div className="bg-[#161b22] rounded-lg border border-gray-800 overflow-hidden">
+                    <div className="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border)] overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">
                         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                           Superseded Memories

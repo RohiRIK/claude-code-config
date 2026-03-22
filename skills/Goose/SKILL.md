@@ -3,6 +3,8 @@ name: Goose
 description: "USE WHEN spawning parallel autonomous agents for development tasks."
 context: fork
 agent: general-purpose
+user-invocable: false
+version: 1.0.0
 ---
 
 # Goose
@@ -21,6 +23,7 @@ If this directory exists, load and apply any PREFERENCES.md, configurations, or 
 **When executing a workflow, do BOTH:**
 
 1. **Send voice notification**:
+
    ```bash
    curl -s -X POST http://localhost:8888/notify \
      -H "Content-Type: application/json" \
@@ -29,6 +32,7 @@ If this directory exists, load and apply any PREFERENCES.md, configurations, or 
    ```
 
 2. **Output text notification**:
+
    ```
    Running the **WorkflowName** workflow from the **Goose** skill...
    ```
@@ -45,6 +49,7 @@ If this directory exists, load and apply any PREFERENCES.md, configurations, or 
 ## Examples
 
 **Example 1: Spawn parallel code review agents**
+
 ```
 User: "Review my code for quality and security issues"
 -> Invokes SpawnAgent workflow
@@ -54,6 +59,7 @@ User: "Review my code for quality and security issues"
 ```
 
 **Example 2: Check agent status and collect results**
+
 ```
 User: "Get results from the code review"
 -> Invokes CollectResults workflow
@@ -62,6 +68,7 @@ User: "Get results from the code review"
 ```
 
 **Example 3: Find best recipe for a task**
+
 ```
 User: "What recipe should I use to fix build errors?"
 -> Invokes MatchRecipe workflow
@@ -71,24 +78,28 @@ User: "What recipe should I use to fix build errors?"
 ## Quick Reference
 
 **Spawn agents:**
+
 ```bash
 bun ~/.claude/skills/Goose/Tools/SpawnAgent.ts code-reviewer --params user_input="Review src/"
 bun ~/.claude/skills/Goose/Tools/SpawnAgent.ts security-reviewer --params user_input="Audit auth/"
 ```
 
 **Check status:**
+
 ```bash
 bun ~/.claude/skills/Goose/Tools/AgentStatus.ts --list
 bun ~/.claude/skills/Goose/Tools/AgentStatus.ts --id <agent-id>
 ```
 
 **Get results:**
+
 ```bash
 bun ~/.claude/skills/Goose/Tools/CollectResults.ts --id <agent-id>
 bun ~/.claude/skills/Goose/Tools/CollectResults.ts --recent 5
 ```
 
 **Match recipe:**
+
 ```bash
 bun ~/.claude/skills/Goose/Tools/MatchRecipe.ts "review code for security"
 bun ~/.claude/skills/Goose/Tools/MatchRecipe.ts --list
