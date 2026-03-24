@@ -4,6 +4,28 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-24 — Swift CodingStandards skill
+
+### skills/CodingStandards/Swift.md (new)
+- Full Swift standards reference for macOS app development
+- Naming: UpperCamelCase types, lowerCamelCase vars, acronym casing rules, boolean prefixes
+- Types: prefer `struct` (value semantics), `class` only for identity/ObjC interop, `final class` default
+- Memory: `weak var delegate` always, `[weak self]` in closures, avoid `unowned`
+- Error handling: typed `LocalizedError` enums, `do/catch` everywhere, never `try!`
+- Concurrency: `async/await` + `@MainActor` + `actor` for shared state; no raw `DispatchQueue` in new code
+- macOS AppKit gotchas: `.app` bundle required (not `swift script.swift`), `applicationDidFinishLaunching` for window setup, `NSApp.terminate` needs 0.5s asyncAfter delay, `UInt8` key for associated objects
+- SwiftUI: `@StateObject`/`@ObservedObject`/`@EnvironmentObject`, `.task {}`, `WindowGroup` + `Settings` templates
+- Anti-patterns table with fixes; 4 ready-to-use templates
+
+### skills/CodingStandards/SKILL.md
+- Added Swift row to auto-trigger routing table
+- Updated skill description to include Swift
+
+### rules/coding-style.md
+- Added Swift row to language standards table
+
+---
+
 ## 2026-03-20 — Supercharged code-simplifier + skill improvements
 
 ### agents/code-simplifier.md (new)

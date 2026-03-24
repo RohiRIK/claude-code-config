@@ -22,6 +22,7 @@ Before writing code, load the relevant CodingStandards file via the Skill tool:
 | Python | `CodingStandards` → Python.md |
 | Bash | `CodingStandards` → Bash.md |
 | PowerShell | `CodingStandards` → PowerShell.md |
+| Swift / macOS / SwiftUI / AppKit | `CodingStandards` → Swift.md |
 
 ## Memory Integration
 

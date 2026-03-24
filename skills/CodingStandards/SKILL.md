@@ -1,12 +1,29 @@
 ---
 name: CodingStandards
-description: "Reference for TypeScript, Python, PowerShell, and Bash code style."
+description: "USE WHEN writing new code, functions, scripts, or classes in TypeScript, Python, PowerShell, Bash, or Swift. Loads language-specific style rules before implementation begins."
 user-invocable: false
 ---
 
 # CodingStandards
 
 Full-stack coding standards with detailed context per language. Each language file is a self-contained SOP.
+
+## Auto-Trigger Conditions
+
+Load this skill automatically when:
+- User asks to write, create, implement, or add code in any supported language
+- Task involves writing a new function, class, script, or module
+- Before any implementation phase begins
+
+Then load the specific language file based on detected language:
+
+| Language detected | Load |
+|-------------------|------|
+| TypeScript / JS / Bun / Hono | `TypeScript.md` |
+| Python / uv / pydantic | `Python.md` |
+| PowerShell / Azure / Entra / Graph | `PowerShell.md` |
+| Bash / shell / CI | `Bash.md` |
+| Swift / AppKit / SwiftUI / macOS | `Swift.md` |
 
 ## Workflow Routing
 
@@ -28,6 +45,7 @@ Running the **WorkflowName** workflow from the **CodingStandards** skill...
 | **Python** | Writing Python, using uv, pydantic, data science | `Python.md` |
 | **PowerShell** | Azure automation, Entra ID, Graph API | `PowerShell.md` |
 | **Bash** | Shell scripts, glue scripts, CI steps | `Bash.md` |
+| **Swift** | macOS apps, SwiftUI, AppKit, system utilities | `Swift.md` |
 
 ## Quick Reference
 
