@@ -280,11 +280,34 @@ export function mergeMemories(
       [keepId, supersededId],
     );
 
-    // Repoint any relations targeting the superseded memory
+    // Repoint any relations targeting the superseded memory.
+    // Delete rows that would collide on the unique constraint before updating.
+    db.run(
+      `DELETE FROM memory_relations
+       WHERE target_memory_id = ? AND source_memory_id != ?
+         AND EXISTS (
+           SELECT 1 FROM memory_relations r2
+           WHERE r2.target_memory_id = ?
+             AND r2.source_memory_id = memory_relations.source_memory_id
+             AND r2.relationship_type = memory_relations.relationship_type
+         )`,
+      [supersededId, keepId, keepId],
+    );
     db.run(
       `UPDATE memory_relations SET target_memory_id = ?
        WHERE target_memory_id = ? AND source_memory_id != ?`,
       [keepId, supersededId, keepId],
+    );
+    db.run(
+      `DELETE FROM memory_relations
+       WHERE source_memory_id = ? AND target_memory_id != ?
+         AND EXISTS (
+           SELECT 1 FROM memory_relations r2
+           WHERE r2.source_memory_id = ?
+             AND r2.target_memory_id = memory_relations.target_memory_id
+             AND r2.relationship_type = memory_relations.relationship_type
+         )`,
+      [supersededId, keepId, keepId],
     );
     db.run(
       `UPDATE memory_relations SET source_memory_id = ?
