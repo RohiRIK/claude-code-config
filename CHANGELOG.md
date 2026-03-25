@@ -4,6 +4,58 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-03-25 — CodingStandards skill — Rust, StarterTemplates, M365Admin
+
+### skills/CodingStandards/Rust.md (new)
+- Full Rust 2024 edition standards: `Result<T,E>` + `?` everywhere, never `.unwrap()` in production
+- Error handling: `thiserror` for libraries, `anyhow` for applications
+- Async: `tokio` runtime, `#[tokio::main]`, `tokio::sync::Mutex` not `std::sync::Mutex`
+- Safety: every `unsafe` block requires `// SAFETY:` comment
+- Linting: `cargo clippy -- -D warnings` mandatory, `cargo nextest` preferred test runner
+- Anti-patterns table: `.unwrap()`, `Box<dyn Error>` in libs, `std::thread::sleep` in async, mutable globals
+
+### skills/CodingStandards/StarterTemplates/ (new folder — 6 files)
+- `TypeScript.md` — 4 templates: Bun CLI, Hono REST API, full-stack monorepo, library
+- `Python.md` — 4 templates: modern CLI (uv), FastAPI, FastAPI workspace, library
+- `Swift.md` — 3 templates: SwiftUI macOS app, menu bar, SwiftUI resources
+- `Rust.md` — 5 templates: CLI, Axum API, library crate, WASM, embedded (ARM Cortex-M)
+- `PowerShell.md` — 5 templates: Plaster module, PS module scaffold, Azure runbook, Entra automation, Entra admin
+- `Bash.md` — 3 templates: nicowillis, ralish, inline canonical scaffold
+
+### skills/CodingStandards/M365Admin.md (new)
+- Full M365 admin PowerShell reference for Microsoft.Graph SDK, Graph REST API, Exchange Online v3, Teams PS, PnP PowerShell
+- Graph SDK: `Connect-MgGraph`, pagination patterns, throttling, boolean colon syntax gotcha, least-privilege scopes table
+- Exchange Online v3: `Get-EXO*` preferred over `Get-*`, `-ResultSize Unlimited`, app-only cert auth
+- PnP: documented Sept 2024 breaking change — custom Entra app registration now mandatory
+- Cross-module pattern: bulk user ops combining Graph + EXO
+
+### skills/CodingStandards/SKILL.md
+- Slimmed from 83 → ~45 lines (removed redundant Examples block)
+- Rust row added to language routing table
+- StarterTemplates and M365Admin auto-load triggers added
+- Frontmatter description updated to include Rust and scaffold triggers
+
+### rules/coding-style.md
+- Rust row added to language routing table
+
+---
+
+## 2026-03-25 — claude-ltm-plugin v1.3.0 — DB path migration fix
+
+### hooks/lib/resolveProject.ts
+- `getDbPath()` now includes `CLAUDE_PLUGIN_DATA` tier (was missing — only had `LTM_DB_PATH` and legacy path)
+- Auto-migrates `~/.claude/memory/ltm.db` → `$CLAUDE_PLUGIN_DATA/ltm.db` on first call if target missing
+- Priority order: `LTM_DB_PATH` > `CLAUDE_PLUGIN_DATA/ltm.db` > `~/.claude/memory/ltm.db`
+
+### scripts/migrate-db.ts (new)
+- Standalone script that detects install type (marketplace vs dev), checks both DB paths, and migrates if needed
+- Prints clear status with sizes and next steps
+
+### commands/migrate-db.md (new)
+- `/ltm:migrate-db` command — run to check and fix DB path after plugin update or fresh marketplace install
+
+---
+
 ## 2026-03-24 — Swift CodingStandards skill
 
 ### skills/CodingStandards/Swift.md (new)

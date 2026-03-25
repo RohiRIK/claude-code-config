@@ -1,29 +1,28 @@
 ---
 name: CodingStandards
-description: "USE WHEN writing new code, functions, scripts, or classes in TypeScript, Python, PowerShell, Bash, or Swift. Loads language-specific style rules before implementation begins."
+description: "USE WHEN writing, implementing, reviewing, or scaffolding code in TypeScript, Python, Bash, PowerShell, Swift, or Rust."
 user-invocable: false
 ---
 
 # CodingStandards
 
-Full-stack coding standards with detailed context per language. Each language file is a self-contained SOP.
+USE WHEN writing, implementing, reviewing, or scaffolding code in TypeScript, Python, Bash, PowerShell, Swift, or Rust.
 
-## Auto-Trigger Conditions
+## Language Standards
 
-Load this skill automatically when:
-- User asks to write, create, implement, or add code in any supported language
-- Task involves writing a new function, class, script, or module
-- Before any implementation phase begins
+Load the language file first, then implement:
 
-Then load the specific language file based on detected language:
+| Language detected | Standards | Starter Template |
+|-------------------|-----------|-----------------|
+| TypeScript / JS / Bun / Hono | `TypeScript.md` | `StarterTemplates/TypeScript.md` |
+| Python / uv / pydantic | `Python.md` | `StarterTemplates/Python.md` |
+| PowerShell / Azure / Entra / Graph | `PowerShell.md` | `StarterTemplates/PowerShell.md` |
+| Bash / shell / CI | `Bash.md` | `StarterTemplates/Bash.md` |
+| Swift / AppKit / SwiftUI / macOS | `Swift.md` | `StarterTemplates/Swift.md` |
+| Rust / Cargo / Tokio / Axum | `Rust.md` | `StarterTemplates/Rust.md` |
 
-| Language detected | Load |
-|-------------------|------|
-| TypeScript / JS / Bun / Hono | `TypeScript.md` |
-| Python / uv / pydantic | `Python.md` |
-| PowerShell / Azure / Entra / Graph | `PowerShell.md` |
-| Bash / shell / CI | `Bash.md` |
-| Swift / AppKit / SwiftUI / macOS | `Swift.md` |
+**Load StarterTemplates when:** user says "new project", "scaffold", "starting a project", or asks which template to use.
+**Load M365Admin.md when:** user mentions Graph API, Exchange Online, Entra ID, Teams admin, SharePoint, PnP, or M365 admin tasks.
 
 ## Workflow Routing
 
@@ -37,46 +36,15 @@ Running the **WorkflowName** workflow from the **CodingStandards** skill...
 |----------|---------|------|
 | **Review** | "review my code", "check this code", "code review" | `Workflows/Review.md` |
 
-## Language Standards (Load On Demand)
-
-| Language | When to Load | File |
-|----------|-------------|------|
-| **TypeScript** | Writing TS/JS, Bun, Hono, Drizzle, Cloudflare Workers | `TypeScript.md` |
-| **Python** | Writing Python, using uv, pydantic, data science | `Python.md` |
-| **PowerShell** | Azure automation, Entra ID, Graph API | `PowerShell.md` |
-| **Bash** | Shell scripts, glue scripts, CI steps | `Bash.md` |
-| **Swift** | macOS apps, SwiftUI, AppKit, system utilities | `Swift.md` |
-
 ## Quick Reference
 
-- **Primary language:** TypeScript (Bun runtime)
-- **Python packages:** `uv` always — never `pip`
-- **PowerShell:** `[CmdletBinding()]` + `$ErrorActionPreference = 'Stop'` on every script
-- **Bash:** `set -euo pipefail` always — last resort only (~50 line limit)
-- **context7:** Always use `use context7` before looking up any external library API
+| Language | Key rule |
+|----------|---------|
+| TypeScript | Bun runtime · named exports · discriminated unions · `Promise.all` |
+| Python | `uv` always — never `pip` · pydantic at boundaries · ruff |
+| PowerShell | `[CmdletBinding()]` + `$ErrorActionPreference = 'Stop'` · `-Param:$false` syntax |
+| Bash | `set -euo pipefail` · last resort only · 50-line limit |
+| Swift | `.app` bundle for GUI · `@MainActor` for UI · `struct` by default |
+| Rust | `Result<T,E>` + `?` everywhere · `thiserror` libs · `anyhow` apps · no `.unwrap()` |
 
-## Examples
-
-**Example 1: TypeScript task**
-```
-User: "Write a Hono route that validates with Zod"
-→ Load TypeScript.md for TS patterns
-→ use context7 for Hono/Zod APIs
-→ Apply named exports, explicit return types, async/await rules
-```
-
-**Example 2: Python task**
-```
-User: "Write a script to process CSV files"
-→ Load Python.md for Python patterns
-→ Use pathlib.Path, type hints, uv run
-→ Never pip install
-```
-
-**Example 3: PowerShell task**
-```
-User: "Write a script to disable inactive Entra ID users"
-→ Load PowerShell.md for PS patterns
-→ Apply [CmdletBinding()], $ErrorActionPreference = 'Stop'
-→ Return objects not strings, no Write-Host
-```
+**context7:** Always prepend `use context7` before writing code against any external library.
