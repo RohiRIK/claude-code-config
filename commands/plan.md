@@ -9,10 +9,11 @@ This command invokes the **planner** agent to create a comprehensive implementat
 
 ## What This Command Does
 
-1. **Restate Requirements** - Clarify what needs to be built
-2. **Identify Risks** - Surface potential issues and blockers
-3. **Create Step Plan** - Break down implementation into phases
-4. **Wait for Confirmation** - MUST receive user approval before proceeding
+1. **Observe Codebase** — Auto-runs deep observation if none exists (codebase scan + LTM pull via `PrePlan` hook)
+2. **Restate Requirements** - Clarify what needs to be built
+3. **Identify Risks** - Surface potential issues and blockers (informed by observation)
+4. **Create Step Plan** - Break down implementation into phases
+5. **Wait for Confirmation** - MUST receive user approval before proceeding
 
 ## When to Use
 
@@ -102,6 +103,9 @@ If you want changes, respond with:
 - "skip phase 2 and do phase 3 first"
 
 ## Integration with Other Commands
+
+Before planning:
+- `/observe` auto-runs via `PrePlan` hook (deep) or run manually for focused observation
 
 After planning:
 - Use `/tdd` to implement with test-driven development

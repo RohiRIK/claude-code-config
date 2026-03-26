@@ -65,6 +65,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bun /Users/rohirikman/.claude/hooks/PrePlan/PrePlan.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bun /Users/rohirikman/.claude/hooks/SessionAutoName/SessionAutoName.ts"
           }
         ]

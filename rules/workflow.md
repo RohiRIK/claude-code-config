@@ -50,6 +50,37 @@ Then restart Claude Code (or wait for auto-reconnect) to pick up the new bundle.
 - `/context-mode:stats` — token savings breakdown per tool
 - `/context-mode:doctor` — runtime health check, confirms tool registration
 
+## Observe-Before-Plan
+
+The observation system gathers codebase intelligence **deterministically** (no LLM calls) before planning. It reads from git, SQLite, and the filesystem.
+
+### Auto-Triggers
+
+| Event | Level | Mechanism |
+|-------|-------|-----------|
+| Session start | `--quick` | `SessionStart` hook (always) |
+| Before `/plan` (if no observation in session) | `--deep` | `PrePlan` hook (`UserPromptSubmit`) |
+| Manual invocation | configurable | `/observe` command |
+
+### Manual Use
+
+```
+/observe              → deep scan (default)
+/observe --quick      → fast refresh
+/observe --deep       → full scan
+/observe --focused src/payments  → scoped to a path
+```
+
+### What It Gathers
+
+- **Quick**: git status, LTM recalls (globals + project), project context items, risk flags
+- **Deep**: everything in quick + recent 10 commits + file tree (depth 3) + dependency counts
+- **Focused**: everything in quick + recent 10 commits + file tree scoped to focus path
+
+### Persistence
+
+Results are stored in LTM (`category=observation`, `importance=2`) and a session flag is written to `~/.claude/tmp/observation-done.txt`. The flag expires after **4 hours**, after which the `PrePlan` hook will auto-re-observe before the next `/plan`.
+
 ## Writing Prompts or Instructions
 
 When writing system prompts, rule files, instruction sets, or Claude skill content:

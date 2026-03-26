@@ -3,11 +3,12 @@
 Global config applying to ALL projects. Rules in `rules/` have full detail.
 
 ## Workflow
-`/plan → implement → /capture → /simplify → /verify → /commit-push-pr`
+`/observe → /plan → implement → /capture → /simplify → /verify → /commit-push-pr`
 
 ## Commands
 | Command | When |
 |---------|------|
+| `/observe` | Auto at session start; manual for deep/focused scan |
 | `/plan` | Before any non-trivial change |
 | `/capture` | After implement — save context + learn |
 | `/simplify` | After implementation |
@@ -46,7 +47,7 @@ Skip for trivial/one-liner requests. Use judgment — the goal is automatic know
 not calling recall before every sentence.
 
 ## Hooks
-SessionStart · PreCompact · EvaluateSession · Cleanup · SuggestCompact · PostToolUse · PreToolUse
+SessionStart (+ observe) · PrePlan · PreCompact · EvaluateSession · Cleanup · SuggestCompact · PostToolUse · PreToolUse
 
 ## Context-Mode MCP
 Sandbox execution to prevent context bloat. Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. `/context-mode:ctx-stats` · `/context-mode:ctx-doctor` · `/context-mode:ctx-upgrade`

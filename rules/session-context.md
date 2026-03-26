@@ -23,8 +23,9 @@ The `SessionStart` hook:
 2. Regenerates `context-summary.md` from DB
 3. Injects up to 60 lines of context into your session
 4. If DB has LTM memories: also injects importance-5 globals + top-15 project memories
+5. **Runs quick observation** — git status + LTM recalls + context items → injected as `## 🔭 Observation Report [quick]`
 
-You'll see `## Restored Project Context` at session start when this fires. Acknowledge it briefly and confirm you're ready to continue.
+You'll see `## Restored Project Context` and `## 🔭 Observation Report` at session start when this fires. Acknowledge them briefly and confirm you're ready to continue.
 
 ## LTM Commands (store and search learned insights)
 
@@ -79,3 +80,6 @@ These appear in the `memories` table and inject into every session regardless of
 - Use `/recall` before starting non-trivial tasks
 - Use `/init-context` to seed a new project goal (not to create .md files)
 - If context wasn't injected at session start, run `/check-context` to diagnose
+- Observation auto-runs on session start (quick) and before `/plan` (deep)
+- Do not manually create observation reports — the hook handles it
+- Use `/observe --focused <path>` for targeted deep dives into a specific area

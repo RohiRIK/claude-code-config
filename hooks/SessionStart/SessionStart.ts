@@ -170,9 +170,23 @@ async function main(): Promise<void> {
   const sessionContext = summaryText.slice(0, 500).trim() || undefined;
   const ltmSection = await buildLtmSection(name, sessionContext);
 
-  const output = ltmSection
+  let output = ltmSection
     ? `${injected}\n\n${ltmSection}\n${LTM_REMINDER}`
     : `${injected}\n${LTM_REMINDER}`;
+
+  // Quick observation: deterministic codebase scan injected after context
+  try {
+    const { buildReport, persistObservation, markObservationDone } = await import(
+      join(CLAUDE_DIR, "hooks/Observe/Observe.js")
+    );
+    const observeReport: string = await buildReport({ cwd, level: "quick" });
+    await persistObservation(name, observeReport);
+    markObservationDone();
+    output += `\n\n${observeReport}`;
+    logHook("SessionStart", "info", "Quick observation injected");
+  } catch (err) {
+    process.stderr.write(`[SessionStart] Observation skipped: ${err}\n`);
+  }
 
   process.stdout.write(output);
   logHook("SessionStart", "info", `Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);

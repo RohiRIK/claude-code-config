@@ -21,9 +21,20 @@ You are an expert planning specialist focused on creating comprehensive, actiona
 
 ## Planning Process
 
-### 0. Graph Memory Check (run first, before analysis)
+### 0. Observation + Memory Check (run first, before analysis)
 
-Query the LTM reasoning API for insights relevant to this planning topic:
+**Step 0a — Check for observation report**
+
+Look for `## 🔭 Observation Report` in the current session context.
+
+- **If present**: use its LTM recalls in `## Memory Insights`, reference git state and file structure in the plan, and note any risk flags (uncommitted changes, LTM gotchas) as plan risks.
+- **If absent**: run the observer and wait for the report before proceeding:
+
+```bash
+bun ~/.claude/hooks/Observe/Observe.ts --deep --cwd $(pwd)
+```
+
+**Step 0b — Query the LTM reasoning API**
 
 ```bash
 curl -s "http://localhost:7331/api/reasoning/search?q=<TOPIC>&depth=2"
@@ -33,11 +44,11 @@ Replace `<TOPIC>` with 2-4 keywords from the user's request (e.g. "auth system",
 
 If the server is not running or returns an error, include `## Memory Insights` with: `> ⚠ LTM server not reachable — start it with /ltm-server`
 
-**Always include a `## Memory Insights` section** with one of these outcomes:
+**Always include a `## Memory Insights` section** combining observation LTM recalls + graph reasoning results. Use one of these outcomes:
 
-- **Relevant insights found**: list `[Chain]`, `[Conflict]`, `[Reinforcement]` entries
+- **Relevant insights found**: list `[Chain]`, `[Conflict]`, `[Reinforcement]` entries (from graph) and `[global]`/`[project]` entries (from observation)
 - **No relevant memories**: `> No memories found for this topic yet. Run /capture after implementing to build up context.`
-- **Insights found but unrelated** (e.g. returned memories about unrelated topics): `> LTM returned memories about [X] — not relevant to this plan. No prior decisions found for [TOPIC].`
+- **Insights found but unrelated**: `> LTM returned memories about [X] — not relevant to this plan. No prior decisions found for [TOPIC].`
 - **Server unreachable**: `> ⚠ LTM server not reachable — start it with /ltm-server`
 
 Never silently omit this section — always report what the lookup found (or didn't).
