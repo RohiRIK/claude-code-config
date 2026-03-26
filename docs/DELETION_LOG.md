@@ -1,5 +1,11 @@
 # Code Deletion Log
 
+> This log tracks significant code removal sessions in `RohiRIK/claude-code-config`.
+> It covers agents, skills, hooks, and config in this repo only.
+> LTM-related deletions (memory/, graph-app/, janitor/) are tracked in [`RohiRIK/claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin).
+
+---
+
 ## [2026-01-24] Refactor Session
 
 ### Duplicate Code Consolidated

@@ -50,10 +50,10 @@ Switch to auto-accept (Shift+Tab×1 or the accept-all toggle). Hooks fire on eve
 After implementation, run `/capture` to snapshot what just happened — saves context and fires `/learn` in a single step. Use this instead of running `/update-context` and `/learn` separately when you want to lock in both progress and any patterns discovered.
 
 ### `/update-context` — Log to LTM
-After implementation, capture what was done. Run `/update-context progress "✓ did X"` or `/update-context decision "chose Y because Z"`. These persist to SQLite LTM and survive compaction. The `EvaluateSession` hook does this automatically at session end — run it mid-session for important milestones.
+After implementation, capture what was done. Run `/update-context progress "✓ did X"` or `/update-context decision "chose Y because Z"`. These persist to the LTM MCP server (see [`RohiRIK/claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin)) and survive compaction. The `EvaluateSession` hook does this automatically at session end — run it mid-session for important milestones.
 
 ### `/simplify` — Remove Complexity
-After implementation, run `/simplify`. It reviews the changed code for unnecessary abstraction, deep nesting, and premature generalization, then fixes what it finds.
+After implementation, run `/simplify`. It invokes the `code-simplifier` agent to review changed code for unnecessary abstraction, deep nesting, and premature generalization, then fixes what it finds.
 
 ### `/verify` — Gate Before Commit
 Runs: tsc → lint → tests → build → security check → git diff review. If anything fails, fix it here.
@@ -96,6 +96,7 @@ Located in `~/.claude/agents/`.
 | `architect` | System design decisions |
 | `tdd-guide` | New features, bug fixes — enforces tests-first |
 | `code-reviewer` | After writing/modifying code |
+| `code-simplifier` | `/simplify` — remove complexity, flatten nesting |
 | `security-reviewer` | Auth, API endpoints, user input |
 | `database-reviewer` | SQL, migrations, schema design, Supabase RLS |
 | `python-reviewer` | Any Python code changes |

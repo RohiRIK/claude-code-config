@@ -1,4 +1,12 @@
-# Long-Term Memory (LTM) — Architecture & Process Guide
+# Long-Term Memory (LTM) — Historical Reference
+
+> ⚠️ **MOVED** — The LTM implementation now lives in **[RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)**.
+> This document is preserved as historical context. For current implementation details, setup guides, and troubleshooting, see the plugin repo.
+> For the integration boundary between this repo and the LTM plugin, see [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
+
+---
+
+# Long-Term Memory (LTM) — Architecture & Process Guide (Historical)
 
 > How the SQLite-backed LTM system works, what each piece does, and why it was designed this way.
 >
