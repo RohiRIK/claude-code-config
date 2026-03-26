@@ -90,7 +90,7 @@ Trigger at session events.
 
 ## Context Storage
 
-**Primary:** SQLite DB managed by the LTM plugin at `~/.claude/memory/ltm.db` — see [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin) for DB internals. The hooks in this repo interact with it via the LTM MCP server.
+**Primary:** SQLite DB managed by the LTM plugin — see [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin) for the DB path and internals. The hooks in this repo interact with it via the LTM MCP server.
 
 | Table | Purpose | Managed by |
 |-------|---------|-----------|
