@@ -1,4 +1,12 @@
-# LTM Recall — How It Works
+# LTM Recall — Historical Reference
+
+> ⚠️ **MOVED** — The LTM recall implementation now lives in **[RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)**.
+> This document is preserved as historical context. For current recall flow details and FTS5/semantic fallback internals, see the plugin repo.
+> For the integration boundary, see [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
+
+---
+
+# LTM Recall — How It Works (Historical)
 
 > Status: FTS5 keyword search + semantic fallback via `getSimilarMemories` (implemented 2026-03-20).
 

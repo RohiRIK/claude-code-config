@@ -1,10 +1,21 @@
 # Agent Architecture
 
-> Claude Code global configuration architecture. Last updated: 2026-02-25
+> Claude Code global configuration architecture. Last updated: 2026-03-26
+
+## Ownership Boundary
+
+| This repo (`claude-code-config`) | External repo (`claude-ltm-plugin`) |
+|----------------------------------|--------------------------------------|
+| Agents, skills, hooks, commands, rules | LTM DB, MCP server, REST API, Graph UI |
+| Context file management (`context-*.md`) | Janitor pipeline, provider system |
+| Hook → LTM integration | Recall / embedding logic |
+| Workflow & architecture docs | LTM settings keys reference |
+
+> **LTM internals have moved** → see [`RohiRIK/claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin) and [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
 
 ## Overview
 
-This document describes the architecture of the Claude Code agent system - how agents, skills, hooks, and the auditor work together to provide an intelligent, self-maintaining development environment.
+This document describes the architecture of the Claude Code agent system — how agents, skills, hooks, and the auditor work together to provide an intelligent, self-maintaining development environment. It covers only what lives in this repository.
 
 ---
 
@@ -73,6 +84,7 @@ Specialized AI specialists invoked for specific tasks. Each agent has a focused 
 | `architect` | System design decisions | opus |
 | `build-error-resolver` | Fix TypeScript/build errors | opus |
 | `code-reviewer` | Code quality review | opus |
+| `code-simplifier` | Remove unnecessary complexity | opus |
 | `database-reviewer` | PostgreSQL/Supabase review | sonnet |
 | `doc-updater` | Documentation generation | opus |
 | `e2e-runner` | Playwright E2E tests | opus |
@@ -91,18 +103,24 @@ Modular tool systems that provide capabilities. Skills contain workflows and too
 | Skill | Purpose |
 |-------|---------|
 | `Art` | Visual content generation (diagrams, illustrations) |
-| `Goose` | Parallel agent orchestration |
-| `Prompting` | Prompt engineering templates |
-| `agent-browser` | Browser automation |
-| `TddWorkflow` | Test-driven development orchestration |
-| `SecurityReview` | Security audit checklists |
-| `ContinuousLearning` | Memory persistence |
-| `StrategicCompact` | Context management |
-| `FrontendDesign` | React/UI patterns |
-| `BackendDesign` | API/database patterns |
-| `CreateSkill` | Skill creation framework |
-| `docker-patterns` | Docker best practices |
+| `Blogging` | Blog post creation and formatting |
+| `CodingStandards` | Language-specific coding standards (TS, Python, Bash, PS, Swift, Rust) |
 | `ContentWriter` | Blog/LinkedIn/X content |
+| `ContinuousLearning` | Memory persistence |
+| `CreateSkill` | Skill creation framework |
+| `BackendDesign` | API/database patterns |
+| `FrontendDesign` | React/UI patterns |
+| `Goose` | Parallel agent orchestration |
+| `Learned` | Captured patterns and gotchas |
+| `LtmServer` | LTM server integration helpers |
+| `M365AgentsToolkit` | Microsoft 365 agents development |
+| `Prompting` | Prompt engineering templates |
+| `SecurityReview` | Security audit checklists |
+| `Simplify` | Code simplification workflows |
+| `StrategicCompact` | Context management |
+| `TddWorkflow` | Test-driven development orchestration |
+| `agent-browser` | Browser automation |
+| `docker-patterns` | Docker best practices |
 
 **Invocation:** Skills are invoked via the Skill tool when user requests match skill triggers.
 
@@ -219,15 +237,17 @@ Executes skill tools, generates image
 
 ```
 ~/.claude/
-├── agents/                    # 11 agent definitions
+├── agents/                    # Agent definitions (see agents/ folder for full list)
 │   ├── planner.md
 │   ├── architect.md
+│   ├── code-simplifier.md
 │   └── ...
-├── skills/                    # 13 skills
+├── skills/                    # Skill definitions (see skills/ folder for full list)
 │   ├── Art/
 │   │   ├── SKILL.md
 │   │   ├── Workflows/
 │   │   └── Tools/
+│   ├── CodingStandards/
 │   ├── Goose/
 │   └── ...
 ├── hooks/                    # Lifecycle hooks
@@ -245,6 +265,7 @@ Executes skill tools, generates image
 ├── settings.json             # Hooks configuration
 └── docs/                    # This documentation
     ├── AGENT_ARCHITECTURE.md
+    ├── LTM_MIGRATION.md      # LTM ownership / migration
     ├── agents/
     ├── skills/
     ├── hooks/
@@ -272,6 +293,7 @@ The context system persists knowledge across sessions:
 
 ## Related Documentation
 
+- [LTM Migration](LTM_MIGRATION.md) - Ownership boundary and what moved to `claude-ltm-plugin`
 - [Agents](agents/) - Detailed agent documentation
 - [Skills](skills/) - Skill reference and workflows
 - [Hooks](hooks/) - Lifecycle hook documentation

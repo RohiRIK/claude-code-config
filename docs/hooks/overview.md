@@ -90,7 +90,7 @@ Trigger at session events.
 
 ## Context Storage
 
-**Primary:** SQLite DB at `~/.claude/memory/ltm.db` — two tables:
+**Primary:** SQLite DB managed by the LTM plugin — see [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin) for the DB path and internals. The hooks in this repo interact with it via the LTM MCP server.
 
 | Table | Purpose | Managed by |
 |-------|---------|-----------|
@@ -131,4 +131,4 @@ Use `/register-project` to add entries. Use `/check-context` to verify.
 
 ---
 
-*Documentation derived from `hooks/README.md` - Last updated: 2026-02-25*
+*Documentation derived from `hooks/README.md` - Last updated: 2026-03-26*
