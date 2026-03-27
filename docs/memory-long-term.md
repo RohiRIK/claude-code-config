@@ -312,29 +312,15 @@ Pages: `/` (D3 force graph + sidebar), `/project/[name]` (drill-down), `/setting
 
 ## Starting the System
 
-```bash
-# API server (port 7331)
-bun ~/.claude/memory/server.ts &
+> ⚠️ **Paths moved** — The LTM system now lives in [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin). Server source is at `<plugin-root>/memory/server.ts` and `<plugin-root>/memory/graph-app/`. For current startup commands, see the plugin repo.
 
-# Next.js graph UI (port 7332, HMR)
-cd ~/.claude/memory/graph-app
-NEXT_PUBLIC_WS_URL=ws://localhost:7331 bun dev --port 7332
-```
-
-Or use `/ltm-server start` in Claude Code — opens both in tmux automatically.
+Use `/ltm-server start` in Claude Code — opens both the API server (:7331) and the Next.js graph UI (:7332) in tmux automatically.
 
 ### MCP Server (for external clients)
 
-The `ltm` MCP server is registered in `settings.json` and starts automatically when Claude Code opens. For external clients (Cursor, Windsurf, Claude Desktop), add this to their MCP config:
+The `ltm` MCP server is installed via `claude plugin marketplace add ltm` and starts automatically when Claude Code opens. Registration is managed by the plugin — no manual `settings.json` entry needed.
 
-```json
-{
-  "ltm": {
-    "command": "bun",
-    "args": ["run", "/Users/rohirikman/.claude/memory/mcp-server.ts"]
-  }
-}
-```
+For external clients (Cursor, Windsurf, Claude Desktop), refer to the plugin repo for the current server command path.
 
 **Available tools:** `ltm_recall` · `ltm_learn` · `ltm_relate` · `ltm_forget` · `ltm_context` · `ltm_graph` · `ltm_context_items`
 

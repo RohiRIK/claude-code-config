@@ -1,28 +1,79 @@
 # SessionStart Hook
 
-**File:** `hooks/SessionStart/SessionStart.ts`
+**File:** `hooks/src/SessionStart.ts` in [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)
 
 **Trigger:** Session begins
 
-**Purpose:** Inject project context into Claude's prompt
+**Purpose:** Inject project LTM context + quick git state into Claude's prompt
 
 ---
 
 ## Overview
 
-The SessionStart hook runs when a new Claude Code session begins. It reads the project's context summary and injects it into Claude's context.
+The SessionStart hook fires when a new Claude Code session opens. It reads the project's LTM context from `ltm.db` and injects it as `additionalContext`, giving Claude immediate awareness of the project goal, past decisions, recent progress, and known gotchas — without waiting for `/recall`.
+
+It also runs `buildQuickBriefing()` from the Lean Observe System to inject a one-line uncommitted change summary when dirty files are present.
+
+---
 
 ## Logic Flow
 
 ```
-1. Read stdin input (JSON with cwd)
-2. Resolve project name via registry.json (exact → prefix → slug fallback)
-3. Check for context-summary.md in ~/.claude/projects/<name>/
-4. If exists and not stale (<30 days):
-   → Inject into Claude's prompt
-5. If new project (isNew=true):
-   → Auto-register with folder name, prompt Claude to create context files
+1. Read stdin (JSON with cwd, session_id)
+2. resolveProject(cwd) → registry.json → project name
+3. Read ltm.db via LTM plugin helpers:
+   - getContextMerge(project):
+       globals   (importance≥4, status=active, sorted by decayScore DESC)
+       scoped    (importance≥3, status=active, LIMIT 15, sorted by decayScore DESC)
+       updateLastUsed() called on all returned IDs
+   - getItems(project, 'goal')
+   - getItems(project, 'decision')
+   - getItems(project, 'progress', 3)   ← last 3 entries
+   - getItems(project, 'gotcha')
+4. buildQuickBriefing(cwd):
+   - git status --porcelain
+   - git diff --stat HEAD
+   - Returns one-line summary or "" if clean
+5. stdout → Claude Code injects as additionalContext
 ```
+
+---
+
+## Role in the Lean Observe System
+
+SessionStart is the **quick briefing** half of the Lean Observe System (Option B split):
+
+| Part | Hook | Scope | Data |
+|------|------|-------|------|
+| Quick briefing | **SessionStart** | Broad | LTM context + uncommitted file count + diff summary |
+| Deep briefing | PrePlan | Topic-scoped | Git diff, recent commits, LTM recalls, file snippets |
+
+SessionStart runs once at session open — fast, no LLM call. PrePlan fires on every `/plan` prompt and adds depth for the specific planning topic.
+
+---
+
+## Output Format
+
+```
+## Restored Project Context
+
+**Goal:** <goal>
+
+**Decisions:** …
+
+**Progress (last 3):** …
+
+**Gotchas:** …
+
+**LTM Globals:** …
+
+---
+*Context restored from previous session.*
+
+**Uncommitted:** 5 file(s) — 3 insertions(+), 1 deletion(-)
+```
+
+---
 
 ## Input
 
@@ -30,14 +81,14 @@ The SessionStart hook runs when a new Claude Code session begins. It reads the p
 {
   "cwd": "/Users/roh/projects/myapp",
   "session": {
-    "cwd": "/Users/roh/projects/myapp"
+    "session_id": "abc123"
   }
 }
 ```
 
 ## Project Resolution
 
-Uses `resolveProject(cwd)` from `hooks/lib/resolveProject.ts`:
+Uses `resolveProject(cwd)` from `hooks/lib/resolveProject.ts` (shared lib in this repo):
 
 ```
 1. Exact match in registry.json  → use registered name
@@ -47,45 +98,23 @@ Uses `resolveProject(cwd)` from `hooks/lib/resolveProject.ts`:
 
 Registry: `~/.claude/projects/registry.json` → `{ "/abs/path": "friendly-name" }`
 
-## Behavior
-
-### Context Exists + Fresh
-```
-Injects:
-## Restored Project Context
-
-[context-summary.md content]
-
 ---
-*Context restored from previous session.*
-```
-
-### Context Not Found
-Prompts Claude to ask user:
-```
-No context files found for this project.
-Should I create them so your work is saved across sessions? (yes/no)
-```
-
-### Context Stale (>30 days)
-Skips injection silently.
 
 ## Configuration
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | MAX_INJECT_LINES | 60 | Max lines to inject |
-| MAX_AGE_DAYS | 30 | Staleness threshold |
-
-## Files
-
-- **Reads:** `~/.claude/projects/<name>/context-summary.md` (name from registry)
-- **Writes:** Resets tool counter at `~/.claude/tmp/session-tool-count.txt`
-
-## Related
-
-- **See also:** [PreCompact](pre-compact.md), [Context System Overview](../AGENT_ARCHITECTURE.md)
+| LTM_DB_PATH | `$CLAUDE_PLUGIN_DATA/ltm.db` | Resolved by plugin |
 
 ---
 
-*Documentation generated from `hooks/SessionStart/SessionStart.ts` - Last updated: 2026-02-25*
+## Related
+
+- [PrePlan](pre-plan.md) — deep briefing partner (Lean Observe System)
+- [PreCompact](pre-compact.md) — writes context-summary.md fallback before compaction
+- [Hooks Overview](overview.md) — full hook inventory
+
+---
+
+*Updated for Lean Observe System + LTM plugin migration — Last updated: 2026-03-27*

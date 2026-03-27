@@ -65,28 +65,48 @@ Trigger before a tool is used.
 
 | Hook | Trigger | Action | Blocking? |
 |------|---------|--------|-----------|
+| `SkillGuard` | Skill tool invocation | Validate skill calls | Yes |
 | `tmux reminder` | bun run dev | Block dev servers | Yes |
-| `git push` | git push | Open Zed + confirm | Yes |
+| `build tools` | bun install/test, cargo, etc. | Suggest tmux | No |
 | `Write` guard | .md/.txt (non-standard) | Block creation | Yes |
+| `SuggestCompact` | Edit or Write | Suggest /compact at 50 tool calls | No |
+
+### UserPromptSubmit Hooks
+Trigger on every user prompt before Claude responds.
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| `SessionAutoName` | First prompt | Sets Ghostty tab title |
+| `PrePlan` | `/plan` prompt | Injects Pre-Plan Context briefing |
 
 ### PostToolUse Hooks
 Trigger after a tool is used.
 
 | Hook | Trigger | Action |
 |------|---------|--------|
-| `Prettier` | Edit .ts/.tsx/.js/.jsx | Format code |
-| `tsc check` | Edit .ts/.tsx | Type check |
-| `console.log` | Any edit | Warn debug logs |
+| `Biome` | Edit .ts/.tsx/.js/.jsx | Auto-format with `bunx biome check --write` |
+| `tsc check` | Edit .ts/.tsx | Run `tsc --noEmit` filtered to edited file |
+| `console.log` | Edit .ts/.tsx/.js/.jsx | Warn about debug logs |
+| `PR creation` | Bash `gh pr create` | Log PR URL + Actions status hint |
+| `Goose` | Bash SpawnAgent.ts | Trigger agent summarization |
+
+### Stop Hooks
+Trigger when Claude's response ends (session end / stop signal).
+
+| Hook | Action |
+|------|--------|
+| `console.log check` | Scan git-modified files for stray `console.log` |
+| `Cleanup` | Run `decayMemories()`, trim stale data |
+| `UpdateContext` | Write session progress entry to ltm.db (LTM plugin) |
+| `EvaluateSession` | Extract patterns/progress at session end (LTM plugin) |
 
 ### Lifecycle Hooks
 Trigger at session events.
 
 | Hook | When | Purpose |
 |------|------|---------|
-| `SessionStart` | Session begins | Inject context |
-| `PreCompact` | Before compaction | Assemble summary |
-| `EvaluateSession` | Session ends | Extract patterns |
-| `Cleanup` | Session ends | Trim data |
+| `SessionStart` | Session begins | Inject LTM context + quick git briefing |
+| `PreCompact` | Before compaction | Assemble context-summary.md fallback |
 
 ## Context Storage
 
@@ -118,17 +138,29 @@ Registry at `~/.claude/projects/registry.json` maps paths → friendly names.
 
 Use `/register-project` to add entries. Use `/check-context` to verify.
 
+## Lean Observe System
+
+Two-part briefing system that gives Claude codebase awareness without API calls:
+
+| Part | Hook | What it provides |
+|------|------|-----------------|
+| Quick briefing | `SessionStart` | Uncommitted file count + diff summary at session open |
+| Deep briefing | `PrePlan` | Topic-scoped git diff, recent commits, LTM recalls, file snippets — injected on `/plan` |
+
+No overlap: PrePlan does not repeat what SessionStart already injected. Claude interprets both in-session — no external LLM call.
+
 ## Detailed Documentation
 
-- [SessionStart](hooks/session-start.md) - Context injection
+- [SessionStart](hooks/session-start.md) - LTM context injection + quick git briefing
+- [PrePlan](hooks/pre-plan.md) - Lean Observe deep briefing for /plan
 - [PreCompact](hooks/pre-compact.md) - Summary assembly
 - [EvaluateSession](hooks/evaluate-session.md) - Pattern extraction
 - [Cleanup](hooks/cleanup.md) - Data trimming
 - [SuggestCompact](hooks/suggest-compact.md) - Compaction suggestions
 - [SessionAutoName](hooks/session-auto-name.md) - Tab naming
 - [SkillGuard](hooks/skill-guard.md) - False trigger prevention
-- [UpdateContext](hooks/update-context.md) - Progress updates
+- [UpdateContext](hooks/update-context.md) - Progress updates (runs via LTM plugin)
 
 ---
 
-*Documentation derived from `hooks/README.md` - Last updated: 2026-03-26*
+*Last updated: 2026-03-27*

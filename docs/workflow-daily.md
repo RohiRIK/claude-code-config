@@ -15,7 +15,7 @@ The Boris Cherny pattern — creator of Claude Code's recommended task loop.
 ║      │         Refine until solid → confirm "yes"                    ║
 ║      ↓                                                               ║
 ║    IMPLEMENT → auto-accept mode                                      ║
-║      │         [PostToolUse] Prettier + tsc on every edit            ║
+║      │         [PostToolUse] Biome + tsc on every edit              ║
 ║      │         [PostToolUse] warns on console.log                    ║
 ║      ↓                                                               ║
 ║    /capture  → save context + learn in one shot                      ║
@@ -42,7 +42,7 @@ Enter Plan Mode (Shift+Tab×2). Describe the task clearly. Refine the plan until
 
 ### `IMPLEMENT` — Auto-Accept Mode
 Switch to auto-accept (Shift+Tab×1 or the accept-all toggle). Hooks fire on every edit:
-- **Prettier** auto-formats JS/TS
+- **Biome** auto-formats JS/TS (`bunx biome check --write`)
 - **tsc check** runs `tsc --noEmit` after every `.ts` edit
 - **console.log guard** warns if debug logging sneaks in
 
@@ -111,12 +111,12 @@ Located in `~/.claude/agents/`.
 
 | Hook | Trigger | What It Does |
 |------|---------|-------------|
-| `SessionStart` | Session open | Injects saved project context (60 lines) |
+| `SessionStart` | Session open | Injects LTM context + uncommitted file summary |
 | `SessionAutoName` | First prompt | Sets Ghostty tab title |
+| `PrePlan` | `/plan` prompt | Injects Pre-Plan Context briefing (Lean Observe) |
 | `SuggestCompact` | Every edit | Suggests /compact at 50 tool calls |
 | `SkillGuard` | Skill invocation | Blocks false-positive triggers |
-| `Prettier` | After JS/TS edit | Auto-formats code |
+| `Biome` | After JS/TS edit | Auto-formats code (`bunx biome check --write`) |
 | `tsc check` | After .ts edit | Runs tsc --noEmit |
 | `console.log guard` | After any edit | Warns about debug logging |
 | `tmux reminder` | `bun run dev` | Blocks — must use tmux for dev servers |
-| `PreToolUse` | Before git push | Opens Zed for review |

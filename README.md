@@ -1,12 +1,29 @@
 # ~/.claude — Claude Code Global Config
 
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
-> Last updated: 2026-03-15
+> Last updated: 2026-03-27
 >
 > Inspired by [danielmiessler/Personal\_AI\_Infrastructure](https://github.com/danielmiessler/Personal_AI_Infrastructure), [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code),
 > and [Google Always-On Memory Agent](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/agents/always-on-memory-agent).
 
 ![Claude Config Header](assets/claude-config-header.png)
+
+---
+
+## Philosophy
+
+This project is three things at once:
+
+**1. A living system for Claude Code**
+A continuously improved setup — skills, hooks, commands, and flows — built and refined session by session. Not a one-time config. A system that gets smarter the more I use it.
+
+**2. Giving Claude a real brain**
+I wanted Claude to remember. Not just within a session, but across weeks and projects. That meant building a long-term memory layer (SQLite LTM, now [`claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin)) and pairing it with a short-term execution memory ([`context-mode`](https://github.com/mksglu/context-mode) — genuinely awesome plugin). Together they give Claude the context awareness a real collaborator would have.
+
+**3. Learning in public**
+Everything here — the decisions, the gotchas, the things that broke and got fixed — is visible in the LTM graph and the git history. This repo is my process as much as it is a product. If it helps someone else build something better, even better.
+
+> The LTM is the brain. The hooks are the reflexes. The workflow is the discipline.
 
 ---
 
@@ -43,7 +60,7 @@
 
 ## Long-Term Memory System
 
-SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of this config.
+SQLite-backed memory managed by [`claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin) — the flagship feature of this config.
 
 **What it stores:**
 - Per-project context: `goal`, `decision`, `progress`, `gotcha` (4 types, survive compaction)
@@ -64,7 +81,7 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 - `/pending` — review memories awaiting confirmation
 
 **MCP Server** — Any MCP-compatible client (Cursor, Windsurf, Claude Desktop) can access LTM directly:
-- Registered as `ltm` in `settings.json` — starts automatically with Claude Code
+- Installed via `claude plugin marketplace add ltm` — starts automatically with Claude Code
 - Toggle with `mcp.enabled` in `config.json`
 - 7 tools: `ltm_recall` · `ltm_learn` · `ltm_relate` · `ltm_forget` · `ltm_context` · `ltm_graph` · `ltm_context_items`
 - 4 resources: `memory://globals` · `memory://recent` · `memory://tags` · `memory://project/{name}`
@@ -81,10 +98,46 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 | `/decay-report` | Show memory relevance score distribution and at-risk memories |
 
 **Hook integration:**
-- `SessionStart` — injects top project memories + importance-5 globals at session open
+- `SessionStart` — injects top project memories + importance-5 globals + quick git state at session open
 - `PreCompact` — saves context-summary.md before compaction fires
 - `EvaluateSession` — extracts patterns and progress at session end
 - `Cleanup` — runs `decayMemories()` at session end; deprecated memories excluded from next injection
+- `PrePlan` — injects topic-scoped Pre-Plan Context on every `/plan` command (see Lean Observe System)
+
+---
+
+## Lean Observe System
+
+Two-part briefing system that gives Claude codebase awareness before every planning session — no API calls, no LLM, Claude interprets in-session.
+
+```
+Session opens
+    │
+    ▼
+SessionStart (quick briefing)
+    │  buildQuickBriefing(cwd)
+    │  → uncommitted file count + diff summary
+    │  → injected once at session open
+    ▼
+User types /plan <topic>
+    │
+    ▼
+PrePlan (deep briefing)       [Option B — no overlap with SessionStart]
+    │  buildDeepBriefing(cwd, project, topic)
+    │  → git diff --stat + recent commits
+    │  → topic-scoped LTM recalls (keyword match)
+    │  → target file snippets (files mentioned in topic)
+    │  → injected as ### Pre-Plan Context block
+    ▼
+Plan mode receives full context
+```
+
+**Design principles:**
+- No overlap: PrePlan does not repeat what SessionStart already injected
+- No external calls: all data gathered from git + ltm.db; Claude interprets it
+- Non-fatal: if briefing fails, `/plan` continues normally
+
+See [`docs/hooks/pre-plan.md`](docs/hooks/pre-plan.md) for full implementation details.
 
 ---
 
@@ -104,7 +157,7 @@ SQLite-backed memory at `~/.claude/memory/ltm.db` — the flagship feature of th
 | `/learn` | Store a pattern or insight in LTM |
 | `/recall` | Search long-term memory before starting work |
 | `/decay-report` | Show memory relevance score distribution and at-risk memories |
-| `/hook-doctor` | Diagnose hook health — error counts, missing files |
+| `/hook-doctor` | Diagnose hook health — check all registered hooks |
 | `/ltm-server` | Start/stop/status the LTM graph UI |
 | `/goose` | Spawn parallel autonomous agents |
 
