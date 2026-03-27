@@ -5,6 +5,7 @@ import { homedir } from "os";
 import { resolveProject, registerPath, PROJECTS_DIR } from "../lib/resolveProject.js";
 import { readStdin, parseHookInput, trimToLines } from "../lib/hookUtils.js";
 import { logHook } from "../lib/hookLogger.js";
+import { buildQuickBriefing } from "../lib/observe-briefing.js";
 
 const CLAUDE_DIR   = join(homedir(), ".claude");
 const TMP_DIR      = join(CLAUDE_DIR, "tmp");
@@ -170,9 +171,18 @@ async function main(): Promise<void> {
   const sessionContext = summaryText.slice(0, 500).trim() || undefined;
   const ltmSection = await buildLtmSection(name, sessionContext);
 
-  const output = ltmSection
+  let gitBriefing = "";
+  try {
+    gitBriefing = await buildQuickBriefing(cwd);
+  } catch (e) {
+    logHook("SessionStart", "warn", `Quick briefing skipped: ${e}`);
+  }
+
+  const base = ltmSection
     ? `${injected}\n\n${ltmSection}\n${LTM_REMINDER}`
     : `${injected}\n${LTM_REMINDER}`;
+
+  const output = gitBriefing ? `${base}\n\n${gitBriefing}` : base;
 
   process.stdout.write(output);
   logHook("SessionStart", "info", `Injected context for "${name}" (${registeredPath ? "registry" : "slug fallback"})`);
