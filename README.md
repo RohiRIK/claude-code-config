@@ -56,53 +56,17 @@ Everything here — the decisions, the gotchas, the things that broke and got fi
 
 ---
 
-## Long-Term Memory System
+## What's Inside
 
-SQLite-backed memory managed by [`claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin) — the flagship feature of this config.
+**Workflow** — The Boris Cherny task loop: `/plan → implement → /capture → /simplify → /verify → /commit-push-pr`. Plan first, always. Claude typically 1-shots implementation from a solid plan.
 
-**What it stores:**
-- Per-project context: `goal`, `decision`, `progress`, `gotcha` (4 types, survive compaction)
-- Global memories: reusable patterns, preferences, gotchas — tagged and importance-ranked
+**Short-Term Memory** — [`context-mode`](https://github.com/mksglu/context-mode) plugin. Every command runs in a sandbox subprocess, BM25-indexed, summarized. No context bloat.
 
-**Memory Keeper pipeline** (runs on schedule via janitor):
-1. **Embed** — new memories vectorized for semantic search
-2. **Decay** — importance scores drift down over time if not confirmed
-3. **Promote** — frequently-accessed memories rise in importance
-4. **Dedup** — LLM compares similar memories, merges or supersedes stale ones
+**Long-Term Memory** — [`claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin). SQLite-backed memory that survives compaction. Stores goals, decisions, gotchas, and patterns — per project and globally. Decays unused memories, promotes important ones, deduplicates with LLM. Visualized as a force-directed graph on `:7332`.
 
-**Decay also runs at session end** via Cleanup hook — no need to wait for janitor schedule.
+**Lean Observe System** — Before every `/plan`, hooks auto-inject codebase context: git state, recent commits, relevant LTM memories, and target file snippets. No API calls. Claude interprets it in-session.
 
-**Graph UI** — Next.js on `:7332`:
-- `/` — force-directed graph of all memory nodes (filter by tag, project, type)
-- `/project/[name]` — drill-down with Graph / Table / Board view switcher
-- `/settings` — configure embedding model, dedup thresholds, janitor schedule
-- `/pending` — review memories awaiting confirmation
-
-**MCP Server** — Any MCP-compatible client (Cursor, Windsurf, Claude Desktop) can access LTM directly:
-- Installed via `claude plugin marketplace add ltm` — starts automatically with Claude Code
-- Toggle with `mcp.enabled` in `config.json`
-- 7 tools: `ltm_recall` · `ltm_learn` · `ltm_relate` · `ltm_forget` · `ltm_context` · `ltm_graph` · `ltm_context_items`
-- 4 resources: `memory://globals` · `memory://recent` · `memory://tags` · `memory://project/{name}`
-- 3 prompts: `recall_before_task` · `learn_after_session` · `graph_reason`
-
-**Key commands:**
-
-| Command | Purpose |
-|---------|---------|
-| `/learn` | Store a pattern or insight in LTM |
-| `/recall` | Search long-term memory before starting work |
-| `/update-context` | Mid-session — log progress/decisions/gotchas |
-| `/ltm-server` | Start/stop/status the graph UI |
-| `/decay-report` | Show memory relevance score distribution and at-risk memories |
-
-**Hook integration:**
-- `SessionStart` — injects top project memories + importance-5 globals + quick git state at session open
-- `PreCompact` — saves context-summary.md before compaction fires
-- `EvaluateSession` — extracts patterns and progress at session end
-- `Cleanup` — runs `decayMemories()` at session end; deprecated memories excluded from next injection
-- `PrePlan` — injects topic-scoped Pre-Plan Context on every `/plan` command (see Lean Observe System)
-
----
+**Skills & Agents** — Coding standards, prompting guides, and specialized agents (`planner`, `code-reviewer`, `tdd-guide`, and more) that trigger automatically when relevant.
 
 ---
 
