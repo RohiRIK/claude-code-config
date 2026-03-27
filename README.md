@@ -44,22 +44,12 @@ Everything here — the decisions, the gotchas, the things that broke and got fi
   └──────┬──────┘   └──────┬──────┘   └───────┬─────────┘
          │                  │                  │
          ▼                  ▼                  ▼
-  /plan → implement   cmd → subprocess   ltm.db (SQLite)
-  → /capture          → BM25 index       → PreCompact
-  → /simplify         → summaries        → SessionStart
-  → /verify           → context          → /learn /recall
-  → /commit-push-pr                      → graph UI :7332
-         │
-         ▼
-  ┌─────────────────────────────────────────┐
-  │         LEAN OBSERVE SYSTEM             │
-  │                                         │
-  │  SessionStart ──▶ quick git briefing    │
-  │       +                                 │
-  │  PrePlan ──▶ /plan topic deep context   │
-  │  (git · LTM recalls · file snippets)    │
-  │  No API calls — Claude interprets       │
-  └─────────────────────────────────────────┘
+  [observe] auto       cmd → subprocess   ltm.db (SQLite)
+  /plan → implement   → BM25 index       → PreCompact
+  → /capture          → summaries        → SessionStart
+  → /simplify         → context          → /learn /recall
+  → /verify                              → graph UI :7332
+  → /commit-push-pr
 ```
 
 > "A good plan is really important. Claude typically 1-shots implementation from a well-formed plan." — Boris Cherny
