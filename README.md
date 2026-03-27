@@ -138,6 +138,7 @@ SQLite-backed memory managed by [`claude-ltm-plugin`](https://github.com/RohiRIK
 | [docs/AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md) | Multi-agent system design and orchestration patterns |
 | [docs/hooks/pre-plan.md](docs/hooks/pre-plan.md) | Lean Observe System — how PrePlan + SessionStart briefing works |
 | [docs/hooks/overview.md](docs/hooks/overview.md) | Full hook inventory |
+| [CHANGELOG.md](CHANGELOG.md) | What changed and when |
 
 ---
 
