@@ -56,6 +56,27 @@ Everything here — the decisions, the gotchas, the things that broke and got fi
 
 ---
 
+## Quick Start
+
+**Prerequisites:** [Claude Code](https://claude.ai/code), [Bun](https://bun.sh)
+
+```bash
+# 1. Clone to your Claude config directory
+git clone https://github.com/RohiRIK/claude-code-config.git ~/.claude
+
+# 2. Install plugins
+claude plugin marketplace add context-mode
+claude plugin marketplace add ltm
+
+# 3. Register your first project (run inside any project directory)
+/register-project
+
+# 4. Optional — start the LTM graph UI
+/ltm-server start
+```
+
+---
+
 ## What's Inside
 
 **Workflow** — The Boris Cherny task loop: `/plan → implement → /capture → /simplify → /verify → /commit-push-pr`. Plan first, always. Claude typically 1-shots implementation from a solid plan.
