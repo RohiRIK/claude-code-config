@@ -23,6 +23,10 @@ Use `/plan` when:
 - Multiple files/components will be affected
 - Requirements are unclear or ambiguous
 
+## Pre-Plan Context
+
+If a `### Pre-Plan Context` block is present in your context (injected by the PrePlan hook), you MUST include it verbatim in the planner agent's prompt. This gives the planner access to git state, recent commits, and topic-relevant LTM memories that it cannot see otherwise — subagents do not inherit system-reminder context.
+
 ## How It Works
 
 The planner agent will:
