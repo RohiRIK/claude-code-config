@@ -104,8 +104,6 @@ SQLite-backed memory managed by [`claude-ltm-plugin`](https://github.com/RohiRIK
 
 ---
 
-See [`docs/hooks/pre-plan.md`](docs/hooks/pre-plan.md) for how the Lean Observe System works.
-
 ---
 
 ## Quick-Reference Commands
@@ -130,18 +128,6 @@ See [`docs/hooks/pre-plan.md`](docs/hooks/pre-plan.md) for how the Lean Observe 
 
 ---
 
-## Non-Negotiables
-
-- **bun** not npm/yarn · **uv** not pip
-- Immutability: spread operators, never mutate objects
-- No hardcoded secrets — env vars only
-- 80% test coverage minimum
-- Conventional commits: `feat|fix|refactor|docs|chore: description`
-- No `console.log` in committed code
-- Long-running commands → tmux
-
----
-
 ## Docs
 
 | Doc | What it covers |
@@ -150,6 +136,8 @@ See [`docs/hooks/pre-plan.md`](docs/hooks/pre-plan.md) for how the Lean Observe 
 | [docs/memory-short-term.md](docs/memory-short-term.md) | Layer 2: context-mode MCP — execution memory, tool guide |
 | [docs/memory-long-term.md](docs/memory-long-term.md) | Layer 3: SQLite LTM — graph visualizer, commands, hooks |
 | [docs/AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md) | Multi-agent system design and orchestration patterns |
+| [docs/hooks/pre-plan.md](docs/hooks/pre-plan.md) | Lean Observe System — how PrePlan + SessionStart briefing works |
+| [docs/hooks/overview.md](docs/hooks/overview.md) | Full hook inventory |
 
 ---
 
