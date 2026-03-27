@@ -39,8 +39,8 @@ Everything here — the decisions, the gotchas, the things that broke and got fi
   │   LAYER 1   │   │   LAYER 2   │   │    LAYER 3      │
   │   WORKFLOW  │   │  SHORT-TERM │   │   LONG-TERM     │
   │             │   │   MEMORY    │   │    MEMORY       │
-  │ Boris Cherny│   │context-mode │   │ SQLite LTM DB   │
-  │  task loop  │   │    MCP      │   │ + graph UI      │
+  │ Boris Cherny│   │context-mode │   │ claude-ltm-     │
+  │  task loop  │   │   plugin    │   │    plugin       │
   └──────┬──────┘   └──────┬──────┘   └───────┬─────────┘
          │                  │                  │
          ▼                  ▼                  ▼
@@ -49,9 +49,17 @@ Everything here — the decisions, the gotchas, the things that broke and got fi
   → /simplify         → summaries        → SessionStart
   → /verify           → context          → /learn /recall
   → /commit-push-pr                      → graph UI :7332
-         │                  │                  │
-         ▼                  ▼                  ▼
-  workflow-daily.md  memory-short-term.md  memory-long-term.md
+         │
+         ▼
+  ┌─────────────────────────────────────────┐
+  │         LEAN OBSERVE SYSTEM             │
+  │                                         │
+  │  SessionStart ──▶ quick git briefing    │
+  │       +                                 │
+  │  PrePlan ──▶ /plan topic deep context   │
+  │  (git · LTM recalls · file snippets)    │
+  │  No API calls — Claude interprets       │
+  └─────────────────────────────────────────┘
 ```
 
 > "A good plan is really important. Claude typically 1-shots implementation from a well-formed plan." — Boris Cherny
