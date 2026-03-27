@@ -48,17 +48,6 @@
         ]
       }
     ],
-    "PreCompact": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun /Users/rohirikman/.claude/hooks/PreCompact/PreCompact.ts"
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "matcher": "*",
@@ -68,29 +57,18 @@
             "command": "bun /Users/rohirikman/.claude/hooks/SessionAutoName/SessionAutoName.ts"
           }
         ]
-      }
-    ],
-    "SessionStart": [
+      },
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bun /Users/rohirikman/.claude/hooks/SessionStart/SessionStart.ts"
+            "command": "bun /Users/rohirikman/.claude/hooks/PrePlan/PrePlan.ts"
           }
         ]
       }
     ],
     "PostToolUse": [
-      {
-        "matcher": "tool == \"Edit\" || tool == \"Write\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun /Users/rohirikman/.claude/hooks/NotifyLtmServer/NotifyLtmServer.ts"
-          }
-        ]
-      },
       {
         "matcher": "tool == \"Bash\"",
         "hooks": [
@@ -152,15 +130,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun /Users/rohirikman/.claude/hooks/EvaluateSession/EvaluateSession.ts"
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
             "command": "bun /Users/rohirikman/.claude/hooks/Cleanup/Cleanup.ts"
           }
         ]
@@ -170,14 +139,47 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun /Users/rohirikman/.claude/hooks/UpdateContext/UpdateContext.ts"
+            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/UpdateContext.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/EvaluateSession.ts"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/SessionStart.ts"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/PreCompact.ts"
           }
         ]
       }
     ]
   },
   "enabledPlugins": {
-    "context-mode@context-mode": true
+    "context-mode@context-mode": true,
+    "ltm@ltm": true,
+    "plugin-dev@claude-code-plugins": true
   },
   "extraKnownMarketplaces": {
     "context-mode": {
@@ -185,9 +187,21 @@
         "source": "github",
         "repo": "mksglu/context-mode"
       }
+    },
+    "ltm": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/RohiRIK/claude-ltm-plugin.git"
+      }
+    },
+    "claude-code-plugins": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/anthropics/claude-code.git"
+      }
     }
   },
-  "effortLevel": "low",
+  "syntaxHighlightingDisabled": false,
   "voiceEnabled": true,
   "mcpServers": {
     "filesystem": {
@@ -203,5 +217,6 @@
         "/Users/rohirikman/.claude/memory/mcp-server.ts"
       ]
     }
-  }
+  },
+  "model": "opus"
 }
