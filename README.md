@@ -104,38 +104,7 @@ SQLite-backed memory managed by [`claude-ltm-plugin`](https://github.com/RohiRIK
 
 ---
 
-## Lean Observe System
-
-Two-part briefing system that gives Claude codebase awareness before every planning session — no API calls, no LLM, Claude interprets in-session.
-
-```
-Session opens
-    │
-    ▼
-SessionStart (quick briefing)
-    │  buildQuickBriefing(cwd)
-    │  → uncommitted file count + diff summary
-    │  → injected once at session open
-    ▼
-User types /plan <topic>
-    │
-    ▼
-PrePlan (deep briefing)       [Option B — no overlap with SessionStart]
-    │  buildDeepBriefing(cwd, project, topic)
-    │  → git diff --stat + recent commits
-    │  → topic-scoped LTM recalls (keyword match)
-    │  → target file snippets (files mentioned in topic)
-    │  → injected as ### Pre-Plan Context block
-    ▼
-Plan mode receives full context
-```
-
-**Design principles:**
-- No overlap: PrePlan does not repeat what SessionStart already injected
-- No external calls: all data gathered from git + ltm.db; Claude interprets it
-- Non-fatal: if briefing fails, `/plan` continues normally
-
-See [`docs/hooks/pre-plan.md`](docs/hooks/pre-plan.md) for full implementation details.
+See [`docs/hooks/pre-plan.md`](docs/hooks/pre-plan.md) for how the Lean Observe System works.
 
 ---
 
