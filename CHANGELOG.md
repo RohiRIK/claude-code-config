@@ -4,6 +4,35 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-04-10 — Dev workflow: /spec, /build, /dev, /test commands + skills + docs
+
+Ported and adapted the plan-aware build loop from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills), combined with the existing `/tdd` workflow and LTM recall.
+
+### commands/ (new)
+- `spec.md` — LTM recall + codebase explore before writing acceptance criteria
+- `build.md` — per-task TDD → compile gate → commit loop (plan-aware)
+- `test.md` — auto-routes to FeatureTdd (new feature) or ProveIt (bug fix)
+- `dev.md` — full automation: build loop + final test sweep
+
+### skills/ (new — all `user-invocable: false`)
+- `Spec/SKILL.md` + `Workflows/ExploreAndSpec.md` — ltm_recall + Explore agent → spec file
+- `Build/SKILL.md` + `Workflows/IncrementalBuild.md` — per-task TDD, compile gate, commit
+- `Test/SKILL.md` + `Workflows/FeatureTdd.md` + `Workflows/ProveIt.md` — RED→GREEN→REFACTOR and Prove-It bug pattern
+
+### docs/workflow-dev.md (new)
+- Full doc for the dev build loop, mirroring `workflow-daily.md` structure
+- Sections: Flow (ASCII) → Step by Step → /build vs /dev vs /test decision table → Skills invoked → Relation to daily workflow
+
+### README.md
+- Added `## Development Workflow` section with ASCII flowchart and decision table
+- Added `docs/workflow-dev.md` to docs table
+- Link from Development Workflow section to full doc
+
+### assets/Arcaived/graph-app (archived)
+- Moved `memory/graph-app/` to `assets/Arcaived/graph-app` — canonical app now lives in `plugins/marketplaces/ltm/graph-app/`
+
+---
+
 ## 2026-03-25 — CodingStandards skill — Rust, StarterTemplates, M365Admin
 
 ### skills/CodingStandards/Rust.md (new)

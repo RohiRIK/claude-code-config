@@ -7,8 +7,28 @@
         "installPath": "/Users/rohirikman/.claude/plugins/cache/context-mode/context-mode/1.0.49",
         "version": "1.0.49",
         "installedAt": "2026-03-22T14:54:03.558Z",
-        "lastUpdated": "2026-03-22T14:58:23.136Z",
+        "lastUpdated": "2026-04-10T07:10:39.574Z",
         "gitCommitSha": "ed171679f1651d8827e58ee6ed7462fa278cb319"
+      }
+    ],
+    "ltm@ltm": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/ltm/ltm/1.3.9",
+        "version": "1.3.9",
+        "installedAt": "2026-04-01T07:20:56.402Z",
+        "lastUpdated": "2026-04-05T13:02:41.763Z",
+        "gitCommitSha": "7c481bc37e1ba51ec8de8e62121862a92d2df959"
+      }
+    ],
+    "plugin-dev@claude-code-plugins": [
+      {
+        "scope": "user",
+        "installPath": "/Users/rohirikman/.claude/plugins/cache/claude-code-plugins/plugin-dev/0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-03-26T07:06:54.366Z",
+        "lastUpdated": "2026-03-26T07:06:54.366Z",
+        "gitCommitSha": "a0d9b87038e72d8a523b61c152ec53299ac6fe94"
       }
     ]
   }

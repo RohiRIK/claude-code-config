@@ -1,7 +1,7 @@
 {
   "$schema": "./.config.schema.json",
   "ltm": {
-    "dbPath": "~/.claude/memory/ltm.db",
+    "dbPath": "~/.claude/plugins/data/ltm-ltm/ltm.db",
     "decayEnabled": true,
     "injectTopN": 15,
     "graphReasoning": true,

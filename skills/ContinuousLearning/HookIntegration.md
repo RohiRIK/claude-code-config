@@ -1,6 +1,6 @@
 # HookIntegration — How Hooks Connect to ltm.db
 
-The four hooks that interact with `~/.claude/memory/ltm.db`:
+The four hooks that interact with `~/.claude/plugins/data/ltm-ltm/ltm.db`:
 
 ## Hook → DB Action Table
 

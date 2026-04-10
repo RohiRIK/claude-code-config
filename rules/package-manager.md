@@ -65,6 +65,37 @@ ALWAYS use `uv` instead of `pip`, `pipx`, `pip3`, `python -m pip`, or `poetry`:
 - Drop-in pip replacement
 - Written in Rust
 
+## JSON Reading
+
+NEVER use `python3 -c "import json..."` for JSON parsing.
+
+| Instead of | Use |
+|------------|-----|
+| `python3 -c "import json,sys; ..."` (shell) | `jq` |
+| `python3 -c "import json,sys; ..."` (TS/Bun) | `Bun.file("f.json").json()` |
+
+Shell example:
+
+```bash
+# Query JSON in a pipe
+cat data.json | jq '.[] | select(.active) | .name'
+
+# Read a key directly
+jq -r '.version' package.json
+```
+
+Bun/TS example:
+
+```ts
+const data = await Bun.file("data.json").json()
+```
+
+## Why not python3?
+
+- ~100ms startup penalty per invocation
+- Verbose syntax for simple queries
+- `jq` and Bun are already available everywhere in this config
+
 ## Python MCP Servers
 
 When configuring Python-based MCP servers, prefer:

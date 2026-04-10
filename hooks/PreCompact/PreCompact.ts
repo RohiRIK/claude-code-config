@@ -6,7 +6,7 @@ import { resolveProject } from "../lib/resolveProject.js";
 import { readStdin, parseHookInput, readFileSafe, budgetSection } from "../lib/hookUtils.js";
 import { logHook } from "../lib/hookLogger.js";
 
-const DB_PATH = join(homedir(), ".claude", "memory", "ltm.db");
+const DB_PATH = join(homedir(), ".claude", "plugins", "data", "ltm-ltm", "ltm.db");
 
 async function buildSummaryFromDb(name: string, cwd: string): Promise<string | null> {
   try {

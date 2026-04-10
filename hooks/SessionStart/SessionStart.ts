@@ -10,7 +10,7 @@ import { buildQuickBriefing } from "../lib/observe-briefing.js";
 const CLAUDE_DIR   = join(homedir(), ".claude");
 const TMP_DIR      = join(CLAUDE_DIR, "tmp");
 const COUNTER_FILE = join(TMP_DIR, "session-tool-count.txt");
-const DB_PATH      = join(CLAUDE_DIR, "memory", "ltm.db");
+const DB_PATH      = join(CLAUDE_DIR, "plugins", "data", "ltm-ltm", "ltm.db");
 const MAX_INJECT_LINES = 60;
 const MAX_LTM_LINES    = 30;
 const MAX_AGE_MS       = 30 * 24 * 60 * 60 * 1000;

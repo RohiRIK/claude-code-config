@@ -27,7 +27,7 @@ The PreCompact hook runs automatically before Claude compacts the context window
 
 ## DB-First Behavior
 
-`PreCompact` checks `existsSync(DB_PATH)` before importing DB modules. The DB path is `~/.claude/memory/ltm.db`.
+`PreCompact` checks `existsSync(DB_PATH)` before importing DB modules. The DB path is `~/.claude/plugins/data/ltm-ltm/ltm.db`.
 
 - **DB available:** calls `exportContextMarkdown(project)` which queries all 4 `context_items` types and assembles via `budgetSection()` utility (imported from `hooks/lib/hookUtils.ts`)
 - **DB absent:** reads `.md` files directly as fallback (legacy behavior)

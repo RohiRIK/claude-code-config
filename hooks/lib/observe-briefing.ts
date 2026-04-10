@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 
 const CLAUDE_DIR = join(homedir(), ".claude");
-const DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
+const DB_PATH = join(CLAUDE_DIR, "plugins", "data", "ltm-ltm", "ltm.db");
 
 // Cached dynamic import — re-imported only once per process lifetime
 let dbModule: { getContextMerge: (project: string) => unknown } | null = null;

@@ -176,7 +176,6 @@ function deepMerge(base: Record<string, unknown>, patch: Record<string, unknown>
   return out;
 }
 const SCHEMA_PATH = join(CLAUDE_DIR, "memory", "schema.sql");
-const UI_PATH = join(CLAUDE_DIR, "memory", "graph-ui", "index.html");
 const PID_PATH = join(CLAUDE_DIR, "tmp", "ltm-server.pid");
 const PORT = 7331;
 
@@ -788,7 +787,7 @@ Bun.serve({
     const url = new URL(req.url);
     const p = url.pathname;
 
-    if (p === "/")                     return new Response(Bun.file(UI_PATH), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    if (p === "/")                     return new Response(null, { status: 302, headers: { Location: "http://localhost:7332" } });
     if (p === "/api/graph")            return Response.json(getGraphData());
     if (p === "/api/stats")            return Response.json(getStats());
     if (p === "/api/tags")             return Response.json(getTags());

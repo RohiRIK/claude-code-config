@@ -28,7 +28,7 @@ planner · architect · tdd-guide · code-reviewer · security-reviewer · build
 - 80% test coverage · Conventional commits · Long-running commands → tmux
 
 ## Context System
-SQLite LTM at `~/.claude/memory/ltm.db`. Hooks auto-manage context.
+SQLite LTM at `~/.claude/plugins/data/ltm-ltm/ltm.db`. Hooks auto-manage context.
 Registry: `~/.claude/projects/registry.json` — `/register-project` to onboard.
 
 ## LTM MCP Auto-Use

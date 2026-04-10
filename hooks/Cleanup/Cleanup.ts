@@ -13,7 +13,7 @@ import { logHook } from "../lib/hookLogger.js";
 // Never touches context-decisions or context-gotchas (permanent).
 const STALE_DAYS = 14;
 const MAX_PROGRESS_ITEMS = 20;
-const DB_PATH = join(homedir(), ".claude", "memory", "ltm.db");
+const DB_PATH = join(homedir(), ".claude", "plugins", "data", "ltm-ltm", "ltm.db");
 
 function isStaleDir(dirPath: string): boolean {
   try {

@@ -17,7 +17,7 @@
         "dbPath": {
           "type": "string",
           "description": "Path to the SQLite LTM database",
-          "default": "~/.claude/memory/ltm.db"
+          "default": "~/.claude/plugins/data/ltm-ltm/ltm.db"
         },
         "decayEnabled": {
           "type": "boolean",

@@ -9,7 +9,7 @@ import { logHook } from "../lib/hookLogger.js";
 const TOOL_NAMES = new Set(["Write", "Edit", "MultiEdit"]);
 const MAX_PROGRESS_LINES = 20;
 const MAX_DISPLAY_FILES = 5;
-const DB_PATH = join(homedir(), ".claude", "memory", "ltm.db");
+const DB_PATH = join(homedir(), ".claude", "plugins", "data", "ltm-ltm", "ltm.db");
 
 function findTranscriptPath(
   transcriptPath: string | undefined,

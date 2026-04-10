@@ -91,6 +91,58 @@ claude plugin marketplace add ltm
 
 ---
 
+## Development Workflow
+
+Two workflows in one system — feature development from a plan, and standalone bug fixing.
+
+```
+  ┌─────────┐   ┌─────────┐
+  │  /spec  │──▶│  /plan  │
+  └─────────┘   └────┬────┘
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+          ▼                     ▼
+  [Single task / manual]  [Full automation]
+     ┌─────────┐             ┌───────┐
+     │ /build  │             │ /dev  │
+     │per-task │             │ loop  │
+     │TDD+build│             │+sweep │
+     │+commit  │             └───┬───┘
+     └────┬────┘                 │
+          └──────────┬───────────┘
+                     │
+                     ▼
+               ┌───────────┐   ◀── Bug fix? Enter here
+               │   /test   │       (Prove-It: failing
+               │FeatureTdd │        test first, then fix)
+               │ or ProveIt│
+               └─────┬─────┘
+                     │
+               ┌─────▼─────┐
+               │ /simplify │
+               └─────┬─────┘
+                     │
+               ┌─────▼─────┐
+               │ /capture  │
+               └─────┬─────┘
+                     │
+               ┌─────▼──────────┐
+               │/commit-push-pr │
+               └────────────────┘
+```
+
+| Command | Role |
+|---------|------|
+| `/spec` | Define what to build and acceptance criteria before planning |
+| `/build` | Implement one task at a time — TDD → compile gate → commit |
+| `/dev` | Full automation — runs `/build` loop then `/test` sweep |
+| `/test` | Standalone TDD (`FeatureTdd`) or bug fix (`ProveIt` pattern) |
+
+→ [Full doc: docs/workflow-dev.md](docs/workflow-dev.md)
+
+---
+
 ## Quick-Reference Commands
 
 | Command | When to Use |
@@ -118,6 +170,7 @@ claude plugin marketplace add ltm
 | Doc | What it covers |
 |-----|---------------|
 | [docs/workflow-daily.md](docs/workflow-daily.md) | Layer 1: Boris Cherny task loop, commands, agents, hooks |
+| [docs/workflow-dev.md](docs/workflow-dev.md) | Dev build loop — /spec, /build, /dev, /test and backing skills |
 | [docs/memory-short-term.md](docs/memory-short-term.md) | Layer 2: context-mode MCP — execution memory, tool guide |
 | [docs/memory-long-term.md](docs/memory-long-term.md) | Layer 3: SQLite LTM — graph visualizer, commands, hooks |
 | [docs/AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md) | Multi-agent system design and orchestration patterns |

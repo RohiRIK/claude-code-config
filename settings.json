@@ -136,43 +136,23 @@
       },
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/UpdateContext.ts"
-          }
-        ]
+        "hooks": []
       },
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/EvaluateSession.ts"
-          }
-        ]
+        "hooks": []
       }
     ],
     "SessionStart": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/SessionStart.ts"
-          }
-        ]
+        "hooks": []
       }
     ],
     "PreCompact": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "LTM_DB_PATH=/Users/rohirikman/Projects/claude-ltm-plugin/data/ltm.db CLAUDE_PLUGIN_ROOT=/Users/rohirikman/Projects/claude-ltm-plugin bun run /Users/rohirikman/Projects/claude-ltm-plugin/hooks/src/PreCompact.ts"
-          }
-        ]
+        "hooks": []
       }
     ]
   },
@@ -192,7 +172,8 @@
       "source": {
         "source": "git",
         "url": "https://github.com/RohiRIK/claude-ltm-plugin.git"
-      }
+      },
+      "autoUpdate": true
     },
     "claude-code-plugins": {
       "source": {
@@ -209,14 +190,6 @@
       "args": [
         "/Users/rohirikman/.claude/projects"
       ]
-    },
-    "ltm": {
-      "command": "/opt/homebrew/bin/bun",
-      "args": [
-        "run",
-        "/Users/rohirikman/.claude/memory/mcp-server.ts"
-      ]
     }
-  },
-  "model": "opus"
+  }
 }
