@@ -3,7 +3,7 @@
 > A 4-layer system that gives Claude persistent memory, structured workflows, and automatic context — so sessions can resume with full context of past decisions and progress.
 
 > Personal Claude Code setup by [Rohi Rikman](https://github.com/RohiRIK). Applies to all projects.
-> Last updated: 2026-03-27
+> Last updated: 2026-04-15
 
 ![Claude Config Header](assets/claude-config-header.png)
 
