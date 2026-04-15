@@ -1,4 +1,4 @@
-# Layer 2: Short-Term Memory (context-mode MCP)
+# Layer 3 — Short-Term Memory (context-mode MCP)
 
 The context-mode MCP server prevents large command outputs from bloating the context window. Commands run in an isolated subprocess; only summaries enter context.
 

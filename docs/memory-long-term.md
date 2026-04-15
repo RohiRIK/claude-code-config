@@ -1,4 +1,4 @@
-# Long-Term Memory (LTM) — Historical Reference
+# Layer 4 — Long-Term Memory (LTM) — Historical Reference
 
 > ⚠️ **MOVED** — The LTM implementation now lives in **[RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)**.
 > This document is preserved as historical context. For current implementation details, setup guides, and troubleshooting, see the plugin repo.

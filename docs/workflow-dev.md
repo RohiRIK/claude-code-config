@@ -1,4 +1,4 @@
-# Dev Workflow
+# Layer 2 — Dev Workflow
 
 The plan-aware build loop. Spec first, build in slices, gate on tests.
 
