@@ -10,7 +10,7 @@
  *   5. Context_items: match on (project_name, type, content). Insert only new ones.
  *      Skip memory_id FK since old memory IDs don't map 1:1.
  *
- * Run: bun /Users/rohirikman/.claude/scripts/merge-ltm-dbs.ts
+ * Run: bun ~/.claude/scripts/merge-ltm-dbs.ts
  */
 
 import { Database } from "bun:sqlite";

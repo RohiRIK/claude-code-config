@@ -52,10 +52,8 @@ memory/
 # Context-mode (plugin runtime data)
 context-mode/
 
-# Plugin data & marketplace caches
-plugins/data/
-plugins/marketplaces/
-plugins/install-counts-cache.json
+# Plugins (runtime-managed, contains absolute paths)
+plugins/
 
 # Migrations (managed by LTM plugin)
 migrations/

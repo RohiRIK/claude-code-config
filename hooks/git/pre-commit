@@ -7,3 +7,34 @@ if command -v bunx >/dev/null 2>&1; then
     exit 1
   fi
 fi
+
+# Scan staged files for hardcoded paths and personal info
+# Allowlist: settings.json (requires absolute paths), .gitignore, hooks/git/, rules/pre-commit-sanitize.md
+LEAKS=$(git diff --cached --name-only \
+  | grep -v '^settings\.json$' \
+  | grep -v '^\.gitignore$' \
+  | grep -v '^hooks/git/' \
+  | grep -v '^rules/pre-commit-sanitize\.md$' \
+  | grep -v '^plugins/' \
+  | xargs grep -n '/Users/\|/home/\|C:\\Users\\' 2>/dev/null)
+
+if [ -n "$LEAKS" ]; then
+  echo "[pre-commit] Hardcoded home paths found in staged files:" >&2
+  echo "$LEAKS" >&2
+  echo "[pre-commit] Replace with ~/.claude/ before committing" >&2
+  exit 1
+fi
+
+# Scan for email addresses (except README.md, rules, hooks/git)
+EMAIL_LEAKS=$(git diff --cached --name-only \
+  | grep -v '^README\.md$' \
+  | grep -v '^rules/' \
+  | grep -v '^hooks/git/' \
+  | xargs grep -nE '[a-zA-Z0-9._%+-]+@(gmail|hotmail|outlook|yahoo|icloud)\.[a-z]+' 2>/dev/null)
+
+if [ -n "$EMAIL_LEAKS" ]; then
+  echo "[pre-commit] Personal email addresses found in staged files:" >&2
+  echo "$EMAIL_LEAKS" >&2
+  echo "[pre-commit] Remove or replace with user@example.com" >&2
+  exit 1
+fi

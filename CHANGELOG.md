@@ -622,7 +622,7 @@ context_items: + memory_id (INT FK), status (TEXT)
 - **`CLAUDE.md`** — updated Context System section from `<slug>` to `<name>` with pointer to `/register-project`
 
 ### Context migration
-- Merged stale context entries from old slug dir (`-Users-rohirikman--claude/`) into `claude-config/` — context `.md` files deleted; `.jsonl` transcripts kept
+- Merged stale context entries from old slug dir (legacy path) into `claude-config/` — context `.md` files deleted; `.jsonl` transcripts kept
 
 ### Learned patterns saved
 - `hook-shared-lib-checklist.md` — always check hookUtils + resolveProject before writing local utilities
@@ -645,7 +645,7 @@ context_items: + memory_id (INT FK), status (TEXT)
 ## 2026-02-26 (latest)
 
 ### Fixes
-- **Filesystem MCP allow list** — added `/Users/rohirikman/.claude/projects` so context system can read/write project files via MCP tools
+- **Filesystem MCP allow list** — added `~/.claude/projects` so context system can read/write project files via MCP tools
 
 ---
 
@@ -666,7 +666,7 @@ context_items: + memory_id (INT FK), status (TEXT)
 - **`/register-project`** — register or rename a project with conflict detection and migration offer
 
 ### Migrations
-- Context files migrated from slug folder (`-Users-rohirikman--claude/`) → `claude-config/`
+- Context files migrated from legacy slug folder → `claude-config/`
 
 ### Chores
 - Cleaned up stale entries from `registry.json` after test run
