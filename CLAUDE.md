@@ -58,10 +58,13 @@ not calling recall before every sentence.
 ## Context-Mode MCP
 Sandbox execution to prevent context bloat. Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. `/context-mode:ctx-stats` · `/context-mode:ctx-doctor` · `/context-mode:ctx-upgrade`
 
-## Secrets
+## Secrets & .gitignore
 `.env` is gitignored. `.env.schema` (committed) defines expected vars with varlock decorators.
 Pre-commit hook runs `bunx varlock scan --staged` to block leaked secrets.
 To validate: `bunx varlock load` · To add a new secret: add to `.env.schema` with `@sensitive` decorator, then set value in `.env`.
+
+**Gitignored (never commit):** `.env`, `*.db`, `memory/`, `plans/`, `specs/`, `projects/`, `sessions/`, `contexts/`, `tasks/`, `telemetry/`, `statsig/`, `transcripts/`, `tmp/`, `shell-snapshots/`, `file-history/`, `plugins/data/`, `plugins/marketplaces/`, `security_warnings_state_*`, `cache/`, `logs/`, `history.jsonl`.
+If a new runtime directory appears, add it to `.gitignore` before committing anything else.
 
 ## Rules
 coding-style · git-workflow · workflow-guide · testing · security · agents · session-context · patterns · package-manager
