@@ -26,3 +26,6 @@ backups/
 
 # Session data
 history.jsonl
+
+# Specs (local working docs, not source of truth)
+specs/
