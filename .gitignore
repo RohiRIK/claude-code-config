@@ -49,6 +49,9 @@ specs/
 # LTM standalone (migrated to plugin)
 memory/
 
+# Context-mode (plugin runtime data)
+context-mode/
+
 # Plugin data & marketplace caches
 plugins/data/
 plugins/marketplaces/
