@@ -3,7 +3,14 @@
 Global config applying to ALL projects. Rules in `rules/` have full detail.
 
 ## Workflow
-`/plan → implement → /capture → /simplify → /verify → /commit-push-pr`
+
+**Bug fix:** `/test` → `/simplify` → `/capture` → `/commit-push-pr`
+
+**Small feature:** `/plan` → `/build` → `/simplify` → `/capture` → `/commit-push-pr`
+
+**Non-trivial feature:** `/spec` → `/plan` → `/dev` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr`
+
+Full decision guide: `rules/workflow-guide.md`
 
 ## Commands
 | Command | When |
@@ -13,11 +20,10 @@ Global config applying to ALL projects. Rules in `rules/` have full detail.
 | `/simplify` | After implementation |
 | `/verify` | Before committing |
 | `/commit-push-pr` | Final step |
-| `/init-context` | New project |
-| `/learn` | Store pattern/insight in LTM |
-| `/recall` | Before starting work on a topic |
-| `/decay-report` | Memory health check |
-| `/hook-doctor` | Diagnose hook errors |
+| `/ltm:memory learn` | Store pattern/insight in LTM |
+| `/ltm:memory recall` | Before starting work on a topic |
+| `/ltm:health` | Memory health check |
+| `/ltm:doctor` | Diagnose hook/plugin errors |
 
 ## Agents
 planner · architect · tdd-guide · code-reviewer · security-reviewer · build-error-resolver · e2e-runner · refactor-cleaner · doc-updater
@@ -29,7 +35,7 @@ planner · architect · tdd-guide · code-reviewer · security-reviewer · build
 
 ## Context System
 SQLite LTM at `~/.claude/plugins/data/ltm-ltm/ltm.db`. Hooks auto-manage context.
-Registry: `~/.claude/projects/registry.json` — `/register-project` to onboard.
+Registry: `~/.claude/projects/registry.json` — auto-registered by LTM plugin hooks.
 
 ## LTM MCP Auto-Use
 
@@ -46,10 +52,16 @@ Skip for trivial/one-liner requests. Use judgment — the goal is automatic know
 not calling recall before every sentence.
 
 ## Hooks
-SessionStart · PreCompact · EvaluateSession · Cleanup · SuggestCompact · PostToolUse · PreToolUse
+**settings.json:** SkillGuard · SuggestCompact · SessionAutoName · PrePlan · PostEditCheck · Cleanup
+**LTM plugin:** SessionStart · PreCompact · EvaluateSession · UpdateContext (managed via plugin hooks.json)
 
 ## Context-Mode MCP
 Sandbox execution to prevent context bloat. Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. `/context-mode:ctx-stats` · `/context-mode:ctx-doctor` · `/context-mode:ctx-upgrade`
 
+## Secrets
+`.env` is gitignored. `.env.schema` (committed) defines expected vars with varlock decorators.
+Pre-commit hook runs `bunx varlock scan --staged` to block leaked secrets.
+To validate: `bunx varlock load` · To add a new secret: add to `.env.schema` with `@sensitive` decorator, then set value in `.env`.
+
 ## Rules
-coding-style · git-workflow · testing · security · performance · agents · hooks · session-context · patterns · package-manager
+coding-style · git-workflow · workflow-guide · testing · security · agents · session-context · patterns · package-manager

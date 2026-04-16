@@ -7,6 +7,7 @@
     "graphReasoning": true,
     "autoRelate": true,
     "evaluateSessionLlm": false,
+    "gitLearnEnabled": true,
     "semanticFallback": true
   },
   "server": {

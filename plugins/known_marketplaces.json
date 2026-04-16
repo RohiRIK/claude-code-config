@@ -5,15 +5,15 @@
       "repo": "mksglu/context-mode"
     },
     "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/context-mode",
-    "lastUpdated": "2026-03-22T14:54:00.117Z"
+    "lastUpdated": "2026-04-15T06:45:31.138Z"
   },
   "ltm": {
     "source": {
-      "source": "git",
-      "url": "https://github.com/RohiRIK/claude-ltm-plugin.git"
+      "source": "github",
+      "repo": "RohiRIK/claude-ltm-plugin"
     },
     "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/ltm",
-    "lastUpdated": "2026-04-10T12:32:52.066Z"
+    "lastUpdated": "2026-04-16T16:49:17.622Z"
   },
   "claude-code-plugins": {
     "source": {
@@ -21,6 +21,6 @@
       "url": "https://github.com/anthropics/claude-code.git"
     },
     "installLocation": "/Users/rohirikman/.claude/plugins/marketplaces/claude-code-plugins",
-    "lastUpdated": "2026-04-10T12:32:52.800Z"
+    "lastUpdated": "2026-04-16T16:48:02.268Z"
   }
 }

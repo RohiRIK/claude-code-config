@@ -1,0 +1,9 @@
+#!/bin/bash
+# Scan staged files for leaked secrets using varlock
+if command -v bunx >/dev/null 2>&1; then
+  bunx varlock scan --staged 2>&1
+  if [ $? -ne 0 ]; then
+    echo "[pre-commit] varlock scan found leaked secrets — commit blocked" >&2
+    exit 1
+  fi
+fi

@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+!.env.schema
+
+# OS
+.DS_Store
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# Caches & temp
+cache/
+debug/
+logs/
+node-compile-cache/
+bunx-*/
+paste-cache/
+mcp-needs-auth-cache.json
+
+# Runtime
+node_modules/
+backups/
+
+# Session data
+history.jsonl
