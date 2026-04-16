@@ -19,13 +19,40 @@ node-compile-cache/
 bunx-*/
 paste-cache/
 mcp-needs-auth-cache.json
+stats-cache.json
+settings.json.bak
 
 # Runtime
 node_modules/
 backups/
+package-lock.json
 
-# Session data
+# Claude Code internal (session/runtime data)
 history.jsonl
+projects/
+sessions/
+contexts/
+tasks/
+todos/
+transcripts/
+telemetry/
+statsig/
+tmp/
+shell-snapshots/
+file-history/
+security_warnings_state_*.json
 
-# Specs (local working docs, not source of truth)
+# Plans & specs (local working docs)
+plans/
 specs/
+
+# LTM standalone (migrated to plugin)
+memory/
+
+# Plugin data & marketplace caches
+plugins/data/
+plugins/marketplaces/
+plugins/install-counts-cache.json
+
+# Migrations (managed by LTM plugin)
+migrations/
