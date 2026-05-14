@@ -4,6 +4,42 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-05-14 — Config upgrade: fix broken layers, scrub dead weight, extract hooks
+
+### Epic 1 — Fix broken layer wiring
+- `CLAUDE.md`: corrected LTM MCP tool names (`mcp__ltm__*` → `mcp__plugin_ltm_ltm__*`) — Layer 4 was silently broken every session
+- `rules/workflow.md`: corrected context-mode tool names (`mcp__context_mode__*` → `mcp__plugin_context-mode_context-mode__ctx_*`) — Layer 3 was silently broken
+- `rules/workflow-guide.md`: replaced Path A/B/C with Layer 1/Layer 2 matching README 4-layer architecture
+- `CLAUDE.md`: added auto-accept mode (Shift+Tab×2) to Layer 1, `/verify` to all paths, `/fast` to commands table
+- `rules/workflow-guide.md`: removed "Claude Behavior Rule" / forced Next step footer (suggestions were never accurate)
+
+### Epic 2 — Remove dead weight
+- Deleted `skills/Goose/` (280KB) + `commands/goose.md` — dead feature with live hook causing latency every session
+- Removed Goose PostToolUse hook from `settings.json`
+- Deleted `skills/ContinuousLearning/` + `skills/Archived/Learned/` — LTM plugin owns all learning automatically
+- Scrubbed `/goose` from README and `docs/workflow-daily.md`
+
+### Epic 3 — Git hygiene
+- `hooks/git/post-commit`: hardcoded home path → `$HOME` (path sanitization)
+- `.gitignore`: added `assets/Arcaived/`, `.dev-team/`, `.last-cleanup`, `docs/memory-long-term-dump.md`
+- Deleted `assets/Arcaived/graph-app/` (655MB Next.js build artifacts)
+- Committed all git drift: ~50 deleted tracked files + ~100 reorganized untracked files
+
+### Epic 4 — Extract inline bash from settings.json
+- `hooks/DevServerBlocker/DevServerBlocker.ts` — blocks dev server outside tmux
+- `hooks/TmuxSuggest/TmuxSuggest.ts` — suggests tmux for long-running commands
+- `hooks/WriteBlocker/WriteBlocker.ts` — blocks unnecessary .md/.txt file creation
+- `hooks/PRDetect/PRDetect.ts` — logs PR URL and review command after `gh pr create`
+- `settings.json`: all 4 inline bash blocks replaced with `bun` calls; file shrunk from ~6KB to 3.8KB
+
+### Epic 5 — New capabilities
+- `settings.json`: `effortLevel: "xhigh"` → `"high"` (Opus 4.7 adaptive thinking)
+- `skills/Spec/Workflows/ExploreAndSpec.md`: interleaved tool use during thinking (not sequential gather-then-reason)
+- `rules/agents.md`: documented `isolation: "worktree"` as explicit opt-in; added `code-simplifier` to agents table
+- `rules/coding-style.md`: added prompt caching guidance (stable content at top, volatile at bottom)
+
+---
+
 ## 2026-04-10 — Dev workflow: /spec, /build, /dev, /test commands + skills + docs
 
 Ported and adapted the plan-aware build loop from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills), combined with the existing `/tdd` workflow and LTM recall.

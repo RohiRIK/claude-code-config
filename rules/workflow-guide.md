@@ -2,19 +2,6 @@
 
 Quick reference for picking the right path. Full detail: `docs/workflow-daily.md` · `docs/workflow-dev.md`
 
-## Claude Behavior Rule
-
-After completing any workflow step, always end your response with:
-
-> **Next step:** `/<command>` — one-line description of what it does
-
-If the current step was the last one, say:
-> **Done.** Workflow complete.
-
-Never skip this. It keeps the user oriented without them having to remember the chain.
-
----
-
 ## Which path?
 
 **Do you know exactly what to build?** → Layer 2 (`/spec`)
