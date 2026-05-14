@@ -1,6 +1,6 @@
 ---
 name: TddWorkflow
-description: Test-Driven Development orchestration.
+description: "USE WHEN writing features test-first or fixing bugs with TDD."
 ---
 
 # TddWorkflow

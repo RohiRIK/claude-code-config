@@ -57,3 +57,11 @@ plugins/
 
 # Migrations (managed by LTM plugin)
 migrations/
+
+# Build artifacts
+assets/Arcaived/
+
+# Dev infrastructure (local only)
+.dev-team/
+.last-cleanup
+docs/memory-long-term-dump.md

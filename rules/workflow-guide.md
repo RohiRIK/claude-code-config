@@ -17,48 +17,44 @@ Never skip this. It keeps the user oriented without them having to remember the 
 
 ## Which path?
 
-| Situation | Path |
-|-----------|------|
+**Do you know exactly what to build?** → Layer 2 (`/spec`)
+**Figuring it out or moving fast?** → Layer 1 (`/plan`)
+
+| Situation | Layer |
+|-----------|-------|
 | Trivial one-liner | Just implement — no commands needed |
-| Bug fix | `/test` (ProveIt) → `/simplify` → `/capture` → `/commit-push-pr` |
-| Small feature (clear scope) | `/plan` → `/build` → `/simplify` → `/capture` → `/commit-push-pr` |
-| Non-trivial feature | `/spec` → `/plan` → `/dev` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
+| Bug fix | Layer 1: `/test` (ProveIt) → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
+| Small feature (clear scope) | Layer 1: `/plan` → `/build` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
+| Non-trivial feature | Layer 2: `/spec` → `/plan` → `/dev` → `/test` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
 
 ---
 
-## Path A — Bug Fix
+## Layer 1 — Daily Workflow
+
+Entry: `/plan`. You have a task and want to move.
 
 ```
-/test  →  /simplify  →  /capture  →  /commit-push-pr
+[observe auto-fires] → /plan → IMPLEMENT (auto-accept: Shift+Tab×2) → /capture → /simplify → /verify → /commit-push-pr
 ```
 
-- `/test` routes to **ProveIt**: write a failing test that proves the bug → fix → pass
-- Skip `/spec` and `/plan` — bug defines the scope
+- `[observe]` is automatic — PrePlan hook fires when `/plan` is typed, injecting git state + topic-scoped LTM recalls
+- After `/plan` confirms → switch to **auto-accept mode** (Shift+Tab×2) for implementation
+- `/test` replaces the whole chain for bug fixes (ProveIt: write failing test → fix → pass)
 
 ---
 
-## Path B — Small Feature
+## Layer 2 — Dev Workflow
+
+Entry: `/spec` (or `/test` for bugs). You know what to build and want it spec-driven.
 
 ```
-/plan  →  /build  →  /simplify  →  /capture  →  /commit-push-pr
-```
-
-- `/plan` — enter Plan Mode, confirm before any code
-- `/build` — task by task: TDD → compile gate → commit
-- Use this when scope is clear and you want manual control between tasks
-
----
-
-## Path C — Non-trivial Feature
-
-```
-/spec  →  /plan  →  /dev  →  /simplify  →  /capture  →  /verify  →  /commit-push-pr
+/spec → /plan → /build (or /dev) → /test → /simplify → /capture → /verify → /commit-push-pr
 ```
 
 - `/spec` — recalls LTM + explores codebase → writes grounded spec with testable criteria
 - `/plan` — each task maps to one acceptance criterion from the spec
-- `/dev` — fully automated: runs all build tasks + final regression sweep
-- Use `/dev` for end-to-end automation, `/build` if you want manual task control
+- `/build` = task-by-task manual control · `/dev` = full automation
+- `/test` — final regression sweep across all changed files
 
 ---
 

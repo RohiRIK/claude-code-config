@@ -1,6 +1,6 @@
 ---
 name: Simplify
-description: Post-implementation cleanup skill. Invokes the code-simplifier agent for 3-phase cleanup: static dead-code analysis, micro-simplification, and verification. USE WHEN running /simplify after implementation.
+description: "USE WHEN running /simplify for post-implementation dead-code cleanup."
 disable-model-invocation: true
 user-invocable: false
 ---

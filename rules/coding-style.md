@@ -25,6 +25,10 @@ Before writing code, load the relevant CodingStandards file via the Skill tool:
 | Swift / macOS / SwiftUI / AppKit | `CodingStandards` → Swift.md |
 | Rust / Cargo / Tokio / Axum | `CodingStandards` → Rust.md |
 
+## Prompt Caching
+
+When calling the Anthropic API directly from hooks or skills, put stable content (system prompt, tool definitions, reference docs) at the top and volatile content (user input, session state) at the bottom. Anthropic caches from the beginning of the prompt — any volatile content inserted early invalidates the entire cache prefix below it, negating up to 90% cost savings. In-session context injection via SessionStart stdout is cached automatically.
+
 ## Memory Integration
 
 Before starting: `/recall [language] patterns` — surface past gotchas and conventions for this stack.

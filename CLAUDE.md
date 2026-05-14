@@ -4,11 +4,17 @@ Global config applying to ALL projects. Rules in `rules/` have full detail.
 
 ## Workflow
 
-**Bug fix:** `/test` → `/simplify` → `/capture` → `/commit-push-pr`
+**Layer 1 — Daily** (figuring it out or moving fast):
+`[observe] → /plan → IMPLEMENT (auto-accept: Shift+Tab×2) → /capture → /simplify → /verify → /commit-push-pr`
 
-**Small feature:** `/plan` → `/build` → `/simplify` → `/capture` → `/commit-push-pr`
+**Layer 2 — Dev** (know exactly what to build):
+`/spec → /plan → /build or /dev → /test → /simplify → /capture → /verify → /commit-push-pr`
 
-**Non-trivial feature:** `/spec` → `/plan` → `/dev` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr`
+| Task | Path |
+|------|------|
+| Bug fix | `/test` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
+| Small feature | `/plan` → `/build` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
+| Non-trivial | `/spec` → `/plan` → `/dev` → `/test` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
 
 Full decision guide: `rules/workflow-guide.md`
 
@@ -24,6 +30,7 @@ Full decision guide: `rules/workflow-guide.md`
 | `/ltm:memory recall` | Before starting work on a topic |
 | `/ltm:health` | Memory health check |
 | `/ltm:doctor` | Diagnose hook/plugin errors |
+| `/fast` | Toggle fast mode (Opus, faster output) |
 
 ## Agents
 planner · architect · tdd-guide · code-reviewer · security-reviewer · build-error-resolver · e2e-runner · refactor-cleaner · doc-updater
@@ -41,9 +48,9 @@ Registry: `~/.claude/projects/registry.json` — auto-registered by LTM plugin h
 
 The `ltm` MCP server is always available. Use it proactively — do NOT wait for `/recall` or `/learn`:
 
-- **Before any non-trivial task**: call `mcp__ltm__ltm_recall` with the topic as `query`
-- **After discovering a non-obvious pattern or gotcha**: call `mcp__ltm__ltm_learn`
-- **When making an architectural decision**: call `mcp__ltm__ltm_learn` with `category=architecture`
+- **Before any non-trivial task**: call `mcp__plugin_ltm_ltm__ltm_recall` with the topic as `query`
+- **After discovering a non-obvious pattern or gotcha**: call `mcp__plugin_ltm_ltm__ltm_learn`
+- **When making an architectural decision**: call `mcp__plugin_ltm_ltm__ltm_learn` with `category=architecture`
 
 `recall` uses **FTS5 + semantic fallback** — use natural language queries, not just keywords.
 Good: `"how we handle async errors in hooks"` · Bad: `"async errors"`

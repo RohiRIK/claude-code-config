@@ -1,6 +1,6 @@
 ---
 description: "Create a step-by-step implementation plan before writing code."
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 # Plan Command

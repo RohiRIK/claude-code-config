@@ -50,6 +50,16 @@ For complex problems, use split role sub-agents:
 - Consistency reviewer
 - Redundancy checker
 
+## Isolation Modes
+
+By default, agents share the working tree. Use `isolation: "worktree"` on an Agent tool call only when you explicitly want a subagent to work on an isolated git branch (parallel writes, destructive edits, experimental scaffolding).
+
+```
+Agent({ isolation: "worktree", ... })
+```
+
+The worktree is auto-cleaned if the agent makes no changes; otherwise the branch path is returned. Do NOT apply by default — it costs an extra git branch and breaks the fast 1-2 agent pattern that is standard here.
+
 ## Memory Integration
 
 Before a complex multi-agent task: `/recall [domain] agent patterns` — check for orchestration patterns that worked.

@@ -77,7 +77,6 @@ Pre-computes the full git context (log, diff, branch), writes a conventional com
 | `/e2e` | Critical user flows — Playwright tests |
 | `/build-fix` | When build fails |
 | `/refactor-clean` | Remove dead code |
-| `/goose` | Spawn parallel autonomous agents |
 | `/learn` | End of session — extract reusable patterns |
 | `/init-context` | New project — creates 4 context files |
 | `/check-context` | Start of session — verify context |

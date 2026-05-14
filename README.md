@@ -114,7 +114,6 @@ The LTM stays private — but the process is open. How I work, how I think throu
 | `/refactor-clean` | Remove dead code and unused exports |
 | `/e2e` | Generate or run Playwright E2E tests |
 | `/audit` | Security and quality audit |
-| `/goose` | Spawn parallel autonomous agents |
 
 **LTM plugin commands** (`/learn`, `/recall`, `/decay-report`, `/ltm-server`) live in [claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin).
 
