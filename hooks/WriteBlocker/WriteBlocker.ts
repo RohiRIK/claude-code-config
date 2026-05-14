@@ -7,7 +7,9 @@ const filePath: string = input?.tool_input?.file_path ?? "";
 const isDocFile = /\.(md|txt)$/.test(filePath);
 const isAllowed =
   /(README|CLAUDE|AGENTS|CONTRIBUTING)\.md$/.test(filePath) ||
-  /context-.*\.md$/.test(filePath);
+  /context-.*\.md$/.test(filePath) ||
+  /\/docs\//.test(filePath) ||
+  /CHANGELOG\.md$/.test(filePath);
 
 if (isDocFile && !isAllowed) {
   process.stderr.write("[Hook] BLOCKED: Unnecessary documentation file creation\n");
