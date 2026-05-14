@@ -1,2 +1,0 @@
-#!/bin/sh
-CLAUDE_PLUGIN_ROOT=$HOME/Projects/claude-ltm-plugin bun run $HOME/Projects/claude-ltm-plugin/hooks/src/GitCommit.ts "$@"
