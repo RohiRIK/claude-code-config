@@ -140,6 +140,8 @@
   },
   "syntaxHighlightingDisabled": false,
   "effortLevel": "high",
+  "awaySummaryEnabled": false,
   "theme": "dark-ansi",
+  "agentPushNotifEnabled": true,
   "voiceEnabled": true
 }
