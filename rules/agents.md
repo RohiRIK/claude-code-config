@@ -17,6 +17,7 @@ Located in `~/.claude/agents/`:
 | doc-updater | Documentation | Updating docs |
 | database-reviewer | PostgreSQL/schema review | SQL, migrations, DB design |
 | python-reviewer | Python code review | All Python changes |
+| code-simplifier | Post-impl cleanup | After implementation, via `/simplify` |
 
 ## Immediate Agent Usage
 
