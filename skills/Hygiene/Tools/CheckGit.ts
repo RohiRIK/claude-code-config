@@ -11,6 +11,7 @@ export async function check(): Promise<Issue[]> {
     checkTrackedSymlinks(issues),
     checkTrackedRuntimeDirs(issues),
     checkHardcodedPaths(issues),
+    checkReportsGitignored(issues),
   ])
 
   return issues
@@ -52,6 +53,20 @@ async function checkTrackedRuntimeDirs(issues: Issue[]) {
         break
       }
     }
+  }
+}
+
+async function checkReportsGitignored(issues: Issue[]) {
+  const reportsDir = join(REPO_ROOT, "reports")
+  const gitignorePath = join(REPO_ROOT, ".gitignore")
+
+  const exists = await Bun.file(reportsDir).exists().catch(() => false)
+  if (!exists) return
+
+  const gitignore = await Bun.file(gitignorePath).text().catch(() => "")
+  const lines = new Set(gitignore.split("\n").map((l) => l.trim()))
+  if (!lines.has("reports/") && !lines.has("reports")) {
+    issues.push(mkIssue("ERROR", "reports/", "reports/ exists but is not in .gitignore — generated output should never be committed", { autofix: "gitignore" }))
   }
 }
 
