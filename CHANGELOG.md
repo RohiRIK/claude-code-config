@@ -26,6 +26,7 @@ New `/hygiene` skill that audits the entire `~/.claude` repo across 4 dimensions
 
 ### Changes
 - `.gitignore`: added `reports/` section; removed `skills/data-report-builder` (symlink deleted)
+- `CheckGit.ts`: auto-detects when `reports/` exists but is missing from `.gitignore` — flags ERROR with `autofix: gitignore` so `--fix` adds it automatically
 - `SecurityScan/Tools/Invoke-SecurityScan.ps1`: reports now written to `reports/security-scan/` (was `.security-scan/`)
 - `docs/hooks/*.md`, `hooks/README.md`: sanitized hardcoded example paths to `~/projects/myapp`
 - `rules/pre-commit-sanitize.md`: exempted from hardcoded-path hygiene check (intentional doc examples)
