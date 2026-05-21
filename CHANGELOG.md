@@ -4,6 +4,34 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-05-21 — Hygiene skill: automated ~/.claude audit with markdown reports
+
+New `/hygiene` skill that audits the entire `~/.claude` repo across 4 dimensions and auto-fixes safe problems. Triggered via `/hygiene` (report) or `/hygiene --fix` (apply safe auto-fixes and commit).
+
+### New: `skills/Hygiene/`
+
+**Tools (TypeScript/Bun):**
+- `Tools/CheckGit.ts` — uncommitted files, unpushed commits, tracked symlinks/runtime dirs, hardcoded home paths
+- `Tools/CheckSkills.ts` — symlinks not in `.gitignore`, broken internal markdown links, missing SKILL.md, bad frontmatter, `npx` without `bunx`, orphaned skills
+- `Tools/CheckCode.ts` — `console.log`, `:any`, `npm`/`pip`, file size (WARN >400, ERROR >800 lines)
+- `Tools/CheckRules.ts` — CLAUDE.md ↔ rules/ drift, commands referencing missing agents
+- `Tools/Report.ts` — aggregates all 4 checks, ANSI terminal output, saves dated `.md` to `reports/hygiene/`, appends fix history to `reports/hygiene/history.md`
+- `Tools/Types.ts` — shared `Issue` type, `mkIssue`, `sh` helper, `REPO_ROOT`, `PATH_EXEMPT`, `RUNTIME_DIRS`
+
+**Workflows:**
+- `Workflows/RunHygiene.md` — full audit orchestration
+- `Workflows/AutoFix.md` — `--fix` mode: gitignore + `git rm --cached` + commit
+
+**Tests:** 21 tests, 410 assertions — all check modules, exit codes, constants
+
+### Changes
+- `.gitignore`: added `reports/` section; removed `skills/data-report-builder` (symlink deleted)
+- `SecurityScan/Tools/Invoke-SecurityScan.ps1`: reports now written to `reports/security-scan/` (was `.security-scan/`)
+- `docs/hooks/*.md`, `hooks/README.md`: sanitized hardcoded example paths to `~/projects/myapp`
+- `rules/pre-commit-sanitize.md`: exempted from hardcoded-path hygiene check (intentional doc examples)
+
+---
+
 ## 2026-05-14 — Config upgrade: fix broken layers, scrub dead weight, extract hooks
 
 ### Epic 1 — Fix broken layer wiring
