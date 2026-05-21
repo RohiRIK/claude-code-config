@@ -29,6 +29,26 @@ Exception: `.gitignore` rules may use relative paths that are fine.
 
 Exception: `README.md` author/contact section may intentionally include social links — confirm before removing.
 
+### Symlinks
+
+**Rule: No symlink inside `~/.claude/` may be committed to git.**
+
+Symlinks are always machine-specific — they point to absolute paths on the local filesystem that don't exist on other machines. Committing them breaks clones and leaks personal paths.
+
+| Action | When |
+|--------|------|
+| Add to `.gitignore` under `# Symlinks` section | When creating any new symlink inside `~/.claude/` |
+| Run `git rm --cached <path>` | If a symlink was accidentally tracked |
+
+The `hooks/git/pre-commit` hook **auto-detects and blocks** staged symlinks (git mode `120000`) and adds them to `.gitignore` automatically. This is a safety net — always add manually first.
+
+**Pattern for `.gitignore`:**
+```
+# Symlinks (local-only, machine-specific — never commit symlinks to shared tools)
+# Rule: ANY symlink inside ~/.claude/ must be listed here.
+skills/MySkilLink
+```
+
 ### Runtime State Files
 
 Files that are managed by Claude Code at runtime and should not be version-controlled:
