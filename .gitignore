@@ -58,6 +58,9 @@ plugins/
 # Migrations (managed by LTM plugin)
 migrations/
 
+# Reports (generated output — never commit)
+reports/
+
 # Build artifacts
 assets/Arcaived/
 
@@ -65,7 +68,6 @@ assets/Arcaived/
 # Rule: ANY symlink inside ~/.claude/ must be listed here. The pre-commit hook
 # auto-detects and adds new ones, but always add manually when creating a symlink.
 skills/SecurityScan
-skills/data-report-builder
 
 # Scheduler / job queue runtime state
 daemon/

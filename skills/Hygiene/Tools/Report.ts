@@ -4,6 +4,7 @@ import { check as checkCode } from "./CheckCode.ts"
 import { check as checkRules } from "./CheckRules.ts"
 import { sh, REPO_ROOT, type Issue, type IssueLevel } from "./Types.ts"
 import { join } from "node:path"
+import { mkdir } from "node:fs/promises"
 
 if (typeof Bun === "undefined") {
   console.error("hygiene requires Bun. Run: bun Tools/Report.ts")
@@ -11,7 +12,11 @@ if (typeof Bun === "undefined") {
 }
 
 const FIX_MODE = process.argv.includes("--fix")
-const DRY_RUN = process.argv.includes("--dry-run")
+const DRY_RUN  = process.argv.includes("--dry-run")
+
+const REPORTS_DIR = join(REPO_ROOT, "reports", "hygiene")
+
+// ─── ANSI helpers ─────────────────────────────────────────────────────────────
 
 const COLOR: Record<IssueLevel, string> = {
   ERROR: "\x1b[31m",
@@ -22,12 +27,14 @@ const RESET = "\x1b[0m"
 const BOLD  = "\x1b[1m"
 const GREEN = "\x1b[32m"
 
-function fmt(issue: Issue): string {
-  const c = COLOR[issue.level]
+function fmtTerminal(issue: Issue): string {
+  const c   = COLOR[issue.level]
   const loc = issue.line ? `:${issue.line}` : ""
   const fix = issue.autofix ? ` \x1b[2m[autofix: ${issue.autofix}]\x1b[0m` : ""
   return `${c}[${issue.level}]${RESET} ${issue.path}${loc} — ${issue.message}${fix}`
 }
+
+// ─── Collect ──────────────────────────────────────────────────────────────────
 
 const [gitIssues, skillIssues, codeIssues, rulesIssues] = await Promise.all([
   checkGit(),
@@ -37,13 +44,23 @@ const [gitIssues, skillIssues, codeIssues, rulesIssues] = await Promise.all([
 ])
 
 const sections: [string, Issue[]][] = [
-  ["Git", gitIssues],
-  ["Skills", skillIssues],
-  ["Code", codeIssues],
+  ["Git",            gitIssues],
+  ["Skills",         skillIssues],
+  ["Code",           codeIssues],
   ["Rules & Commands", rulesIssues],
 ]
 
 let errors = 0, warns = 0, infos = 0, autofixable = 0
+for (const [, issues] of sections) {
+  for (const i of issues) {
+    if (i.level === "ERROR") errors++
+    else if (i.level === "WARN") warns++
+    else infos++
+    if (i.autofix) autofixable++
+  }
+}
+
+// ─── Terminal output ──────────────────────────────────────────────────────────
 
 console.log(`\n${BOLD}~/.claude Hygiene Report${RESET}`)
 console.log("─".repeat(50))
@@ -51,24 +68,30 @@ console.log("─".repeat(50))
 for (const [label, issues] of sections) {
   if (issues.length === 0) continue
   console.log(`\n${BOLD}${label}${RESET}`)
-  for (const issue of issues) {
-    console.log("  " + fmt(issue))
-    if (issue.level === "ERROR") errors++
-    else if (issue.level === "WARN") warns++
-    else infos++
-    if (issue.autofix) autofixable++
-  }
+  for (const issue of issues) console.log("  " + fmtTerminal(issue))
 }
 
 console.log("\n" + "─".repeat(50))
 const statusColor = errors > 0 ? COLOR.ERROR : warns > 0 ? COLOR.WARN : GREEN
 console.log(`${statusColor}${BOLD}${errors} errors, ${warns} warnings, ${infos} info${RESET}`)
 
+// ─── Markdown report ──────────────────────────────────────────────────────────
+
+const now      = new Date()
+const dateStr  = now.toISOString().slice(0, 16).replace("T", " ")
+const fileSlug = now.toISOString().slice(0, 16).replace("T", "-").replace(":", "")
+const reportPath = join(REPORTS_DIR, `${fileSlug}.md`)
+
+await writeMarkdownReport(reportPath, dateStr)
+console.log(`\n📄 Report saved → reports/hygiene/${fileSlug}.md`)
+
+// ─── Auto-fix ─────────────────────────────────────────────────────────────────
+
 if (autofixable > 0) {
   console.log(`\n${autofixable} issue(s) are auto-fixable.`)
-
   if (FIX_MODE) {
-    await applyFixes([...gitIssues, ...skillIssues, ...codeIssues, ...rulesIssues])
+    const fixed = await applyFixes([...gitIssues, ...skillIssues, ...codeIssues, ...rulesIssues])
+    if (fixed.length > 0) await appendHistory(dateStr, errors, warns, infos, fixed)
   } else {
     console.log(`Run with ${BOLD}--fix${RESET} to apply safe auto-fixes.`)
   }
@@ -76,48 +99,93 @@ if (autofixable > 0) {
 
 process.exit(errors > 0 ? 1 : warns > 0 ? 2 : 0)
 
-// ─── Auto-fix ────────────────────────────────────────────────────────────────
+// ─── Markdown writers ─────────────────────────────────────────────────────────
 
-async function applyFixes(issues: Issue[]) {
+async function writeMarkdownReport(path: string, date: string) {
+  await mkdir(REPORTS_DIR, { recursive: true })
+
+  const statusBadge = errors > 0 ? "🔴" : warns > 0 ? "🟡" : "🟢"
+  const lines: string[] = [
+    `# Hygiene Report — ${date}`,
+    "",
+    `${statusBadge} **${errors} errors · ${warns} warnings · ${infos} info**${autofixable > 0 ? ` · ${autofixable} auto-fixable` : ""}`,
+    "",
+    "---",
+  ]
+
+  for (const [label, issues] of sections) {
+    if (issues.length === 0) continue
+    lines.push("", `## ${label}`, "")
+    for (const issue of issues) {
+      const loc    = issue.line ? `:${issue.line}` : ""
+      const badge  = issue.level === "ERROR" ? "🔴" : issue.level === "WARN" ? "🟡" : "🔵"
+      const fix    = issue.autofix ? ` *(autofix: ${issue.autofix})*` : ""
+      lines.push(`- ${badge} \`${issue.path}${loc}\` — ${issue.message}${fix}`)
+    }
+  }
+
+  lines.push("", "---", `*Generated by \`/hygiene\` — ${date}*`, "")
+  await Bun.write(path, lines.join("\n"))
+}
+
+async function appendHistory(
+  date: string,
+  errs: number,
+  wrns: number,
+  inf: number,
+  fixed: string[],
+) {
+  await mkdir(REPORTS_DIR, { recursive: true })
+  const histPath = join(REPORTS_DIR, "history.md")
+
+  const existing = await Bun.file(histPath).text().catch(() => "")
+  const header   = "# Hygiene Fix History\n\n| Date | Errors | Warnings | Info | Fixes Applied |\n|------|--------|----------|------|---------------|\n"
+  const row      = `| ${date} | ${errs} | ${wrns} | ${inf} | ${fixed.join(", ")} |\n`
+
+  if (!existing) {
+    await Bun.write(histPath, header + row)
+  } else {
+    await Bun.write(histPath, existing + row)
+  }
+
+  console.log(`\n📋 History updated → reports/hygiene/history.md`)
+}
+
+// ─── Apply fixes ──────────────────────────────────────────────────────────────
+
+async function applyFixes(issues: Issue[]): Promise<string[]> {
   const fixable = issues.filter((i) => i.autofix)
-  if (fixable.length === 0) return
+  if (fixable.length === 0) return []
 
-  // Safety gate: refuse if working tree is dirty (uncommitted changes that aren't about fixes)
   const { stdout: dirty } = await sh`git status --porcelain`
-  const dirtyFiles = dirty.trim().split("\n").filter(Boolean)
-  const nonGitignore = dirtyFiles.filter((l) => !l.includes(".gitignore"))
+  const nonGitignore = dirty.trim().split("\n").filter((l) => l && !l.includes(".gitignore"))
   if (nonGitignore.length > 0 && !DRY_RUN) {
-    console.error(`\n${COLOR.ERROR}[ERROR]${RESET} Working tree is dirty — commit or stash changes before auto-fix.`)
+    console.error(`\n${COLOR.ERROR}[ERROR]${RESET} Working tree is dirty — commit or stash before auto-fix.`)
     process.exit(1)
   }
 
-  const gitignorePath = join(REPO_ROOT, ".gitignore")
-  const existing = await Bun.file(gitignorePath).text().catch(() => "")
+  const gitignorePath  = join(REPO_ROOT, ".gitignore")
+  const existing       = await Bun.file(gitignorePath).text().catch(() => "")
   const gitignoreLines = new Set(existing.split("\n").map((l) => l.trim()))
-
   const toRmCached: string[] = []
+  const applied: string[]    = []
 
   for (const issue of fixable) {
-    if (issue.autofix === "gitignore" || issue.autofix === "rm-cached") {
-      if (!gitignoreLines.has(issue.path)) {
-        gitignoreLines.add(issue.path)
-        console.log(`  ${GREEN}+gitignore${RESET} ${issue.path}`)
-      }
+    if (!gitignoreLines.has(issue.path)) {
+      gitignoreLines.add(issue.path)
+      console.log(`  ${GREEN}+gitignore${RESET} ${issue.path}`)
     }
-    if (issue.autofix === "rm-cached") {
-      toRmCached.push(issue.path)
-    }
+    if (issue.autofix === "rm-cached") toRmCached.push(issue.path)
+    applied.push(`${issue.path} (${issue.autofix})`)
   }
 
   if (DRY_RUN) {
     console.log("\n[dry-run] No changes written.")
-    return
+    return []
   }
 
-  // Write updated .gitignore
   await Bun.write(gitignorePath, [...gitignoreLines].join("\n") + "\n")
 
-  // Untrack files
   for (const path of toRmCached) {
     const result = await sh`git rm --cached -r ${path}`
     if (result.exitCode === 0)
@@ -126,11 +194,12 @@ async function applyFixes(issues: Issue[]) {
       console.warn(`  ${COLOR.WARN}[WARN]${RESET} Could not rm-cached: ${path}`)
   }
 
-  // Stage .gitignore and commit
   await sh`git add .gitignore`
   const { exitCode } = await sh`git commit -m ${"chore: hygiene auto-fix"}`
   if (exitCode === 0)
     console.log(`\n${GREEN}✓ Committed: chore: hygiene auto-fix${RESET}`)
   else
-    console.log(`\n${COLOR.WARN}[WARN]${RESET} Nothing to commit (already clean).`)
+    console.log(`\n${COLOR.WARN}[WARN]${RESET} Nothing new to commit.`)
+
+  return applied
 }
