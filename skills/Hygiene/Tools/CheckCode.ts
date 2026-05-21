@@ -7,6 +7,11 @@ const EXEMPT_REFS = new Set([
   "skills/Hygiene/Reference/Rules.md",
 ])
 
+// CLI entry points that use console.log intentionally for terminal output
+const CONSOLE_LOG_EXEMPT = new Set([
+  "skills/Hygiene/Tools/Report.ts",
+])
+
 export async function check(): Promise<Issue[]> {
   const issues: Issue[] = []
   const { stdout } = await sh`git ls-files`
@@ -47,7 +52,7 @@ async function checkFile(issues: Issue[], file: string) {
     const loc = { line: i + 1 }
 
     // console.log in TS/JS
-    if (isTs && /\bconsole\.log\b/.test(ln))
+    if (isTs && !CONSOLE_LOG_EXEMPT.has(file) && /\bconsole\.log\b/.test(ln))
       issues.push(mkIssue("WARN", file, "console.log found — remove before commit", loc))
 
     // : any in TypeScript

@@ -2,9 +2,15 @@ import { mkIssue, REPO_ROOT, type Issue } from "./Types.ts"
 import { join, dirname, resolve } from "node:path"
 import { readdir, stat, lstat } from "node:fs/promises"
 
+async function loadGitignore(): Promise<Set<string>> {
+  const text = await Bun.file(join(REPO_ROOT, ".gitignore")).text().catch(() => "")
+  return new Set(text.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")))
+}
+
 export async function check(): Promise<Issue[]> {
   const issues: Issue[] = []
   const skillsDir = join(REPO_ROOT, "skills")
+  const gitignored = await loadGitignore()
 
   let entries: string[]
   try {
@@ -19,7 +25,9 @@ export async function check(): Promise<Issue[]> {
       const s = await lstat(skillPath)
 
       if (s.isSymbolicLink()) {
-        issues.push(mkIssue("ERROR", `skills/${entry}`, "Symlink in skills/ — add to .gitignore", { autofix: "gitignore" }))
+        if (!gitignored.has(`skills/${entry}`)) {
+          issues.push(mkIssue("ERROR", `skills/${entry}`, "Symlink in skills/ — add to .gitignore", { autofix: "gitignore" }))
+        }
         return
       }
 
