@@ -194,7 +194,7 @@ agent-browser -p ios screenshot mobile.png
 agent-browser -p ios close
 ```
 
-**Requirements:** macOS with Xcode, Appium (`npm install -g appium && appium driver install xcuitest`)
+**Requirements:** macOS with Xcode, Appium (`bun add -g appium && appium driver install xcuitest`)
 
 **Real devices:** Works with physical iOS devices if pre-configured. Use `--device "<UDID>"` where UDID is from `xcrun xctrace list devices`.
 
@@ -303,23 +303,23 @@ agent-browser eval -b "$(echo -n 'Array.from(document.querySelectorAll("a")).map
 
 | Reference | When to Use |
 |-----------|-------------|
-| [references/commands.md](references/commands.md) | Full command reference with all options |
-| [references/snapshot-refs.md](references/snapshot-refs.md) | Ref lifecycle, invalidation rules, troubleshooting |
-| [references/session-management.md](references/session-management.md) | Parallel sessions, state persistence, concurrent scraping |
-| [references/authentication.md](references/authentication.md) | Login flows, OAuth, 2FA handling, state reuse |
-| [references/video-recording.md](references/video-recording.md) | Recording workflows for debugging and documentation |
-| [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |
+| [Commands.md](Commands.md) | Full command reference with all options |
+| [SnapshotRefs.md](SnapshotRefs.md) | Ref lifecycle, invalidation rules, troubleshooting |
+| [SessionManagement.md](SessionManagement.md) | Parallel sessions, state persistence, concurrent scraping |
+| [Authentication.md](Authentication.md) | Login flows, OAuth, 2FA handling, state reuse |
+| [VideoRecording.md](VideoRecording.md) | Recording workflows for debugging and documentation |
+| [ProxySupport.md](ProxySupport.md) | Proxy configuration, geo-testing, rotating proxies |
 
 ## Ready-to-Use Templates
 
 | Template | Description |
 |----------|-------------|
-| [templates/form-automation.sh](templates/form-automation.sh) | Form filling with validation |
-| [templates/authenticated-session.sh](templates/authenticated-session.sh) | Login once, reuse state |
-| [templates/capture-workflow.sh](templates/capture-workflow.sh) | Content extraction with screenshots |
+| [Tools/FormAutomation.sh](Tools/FormAutomation.sh) | Form filling with validation |
+| [Tools/AuthenticatedSession.sh](Tools/AuthenticatedSession.sh) | Login once, reuse state |
+| [Tools/CaptureWorkflow.sh](Tools/CaptureWorkflow.sh) | Content extraction with screenshots |
 
 ```bash
-./templates/form-automation.sh https://example.com/form
-./templates/authenticated-session.sh https://app.example.com/login
-./templates/capture-workflow.sh https://example.com ./output
+./Tools/FormAutomation.sh https://example.com/form
+./Tools/AuthenticatedSession.sh https://app.example.com/login
+./Tools/CaptureWorkflow.sh https://example.com ./output
 ```
