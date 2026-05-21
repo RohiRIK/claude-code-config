@@ -61,6 +61,14 @@ migrations/
 # Build artifacts
 assets/Arcaived/
 
+# Symlinks (local-only, machine-specific — never commit symlinks to shared tools)
+skills/SecurityScan
+
+# Scheduler / job queue runtime state
+daemon/
+daemon.log
+jobs/
+
 # Dev infrastructure (local only)
 .dev-team/
 .last-cleanup

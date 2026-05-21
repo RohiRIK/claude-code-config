@@ -1,2 +1,2 @@
 #!/bin/sh
-CLAUDE_PLUGIN_ROOT=~/.claude/plugins/marketplaces/ltm bun run ~/.claude/plugins/marketplaces/ltm/hooks/src/GitCommit.ts "$@"
+CLAUDE_PLUGIN_ROOT=/Users/rohirikman/.claude/plugins/marketplaces/ltm bun /Users/rohirikman/.claude/plugins/marketplaces/ltm/hooks/GitCommit.bundle.mjs "$@"
