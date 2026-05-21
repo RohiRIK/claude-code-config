@@ -73,3 +73,6 @@ jobs/
 .dev-team/
 .last-cleanup
 docs/memory-long-term-dump.md
+
+# Symlink (local-only, auto-blocked by pre-commit)
+hooks/.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc

@@ -25,6 +25,21 @@ if [ -n "$LEAKS" ]; then
   exit 1
 fi
 
+# Auto-gitignore staged symlinks — untrack and add to .gitignore automatically
+STAGED_SYMLINKS=$(git ls-files --stage | awk '$1 == "120000" {print $4}')
+if [ -n "$STAGED_SYMLINKS" ]; then
+  GITIGNORE="$(git rev-parse --show-toplevel)/.gitignore"
+  while IFS= read -r symlink; do
+    echo "[pre-commit] Symlink detected: $symlink — auto-adding to .gitignore" >&2
+    git rm --cached "$symlink" 2>/dev/null
+    if ! grep -qxF "$symlink" "$GITIGNORE" 2>/dev/null; then
+      printf '\n# Symlink (local-only, auto-blocked by pre-commit)\n%s\n' "$symlink" >> "$GITIGNORE"
+    fi
+  done <<< "$STAGED_SYMLINKS"
+  git add "$GITIGNORE"
+  echo "[pre-commit] .gitignore updated — symlinks removed from this commit" >&2
+fi
+
 # Scan for email addresses (except README.md, rules, hooks/git)
 EMAIL_LEAKS=$(git diff --cached --name-only \
   | grep -v '^README\.md$' \
