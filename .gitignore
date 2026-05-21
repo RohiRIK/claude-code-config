@@ -5,12 +5,10 @@
 
 # OS
 .DS_Store
-
 # Databases
 *.db
 *.db-shm
 *.db-wal
-
 # Caches & temp
 cache/
 debug/
@@ -21,12 +19,10 @@ paste-cache/
 mcp-needs-auth-cache.json
 stats-cache.json
 settings.json.bak
-
 # Runtime
 node_modules/
 backups/
 package-lock.json
-
 # Claude Code internal (session/runtime data)
 history.jsonl
 projects/
@@ -41,43 +37,32 @@ tmp/
 shell-snapshots/
 file-history/
 security_warnings_state_*.json
-
 # Plans & specs (local working docs)
 plans/
 specs/
-
 # LTM standalone (migrated to plugin)
 memory/
-
 # Context-mode (plugin runtime data)
 context-mode/
-
 # Plugins (runtime-managed, contains absolute paths)
 plugins/
-
 # Migrations (managed by LTM plugin)
 migrations/
-
 # Reports (generated output — never commit)
 reports/
-
 # Build artifacts
 assets/Arcaived/
-
 # Symlinks (local-only, machine-specific — never commit symlinks to shared tools)
 # Rule: ANY symlink inside ~/.claude/ must be listed here. The pre-commit hook
 # auto-detects and adds new ones, but always add manually when creating a symlink.
 skills/SecurityScan
-
 # Scheduler / job queue runtime state
 daemon/
 daemon.log
 jobs/
-
 # Dev infrastructure (local only)
 .dev-team/
 .last-cleanup
 docs/memory-long-term-dump.md
-
 # Symlink (local-only, auto-blocked by pre-commit)
 hooks/.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc
