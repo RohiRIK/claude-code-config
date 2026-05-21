@@ -131,9 +131,9 @@ Trigger at session events.
 Registry at `~/.claude/projects/registry.json` maps paths → friendly names.
 
 ```
-1. Exact match:  /Users/roh/projects/myapp → "my-app"
-2. Prefix match: /Users/roh/projects/myapp/docs → "my-app" (inherits)
-3. Slug fallback: /Users/roh/projects/myapp → -Users-roh-projects-myapp
+1. Exact match:  ~/projects/myapp → "my-app"
+2. Prefix match: ~/projects/myapp/docs → "my-app" (inherits)
+3. Slug fallback: ~/projects/myapp → -Users-you-projects-myapp
 ```
 
 Use `/register-project` to add entries. Use `/check-context` to verify.

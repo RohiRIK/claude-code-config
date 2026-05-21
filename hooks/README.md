@@ -122,7 +122,7 @@ Per-project context persistence and session management for Claude Code.
 Location: `~/.claude/projects/<slug>/`
 
 Slug derivation: replace all path separators with `-`
-- `/Users/roh/projects/myapp` → `-Users-roh-projects-myapp`
+- `~/projects/myapp` → `-home-you-projects-myapp`
 
 | File | Purpose | TTL | Managed by |
 |------|---------|-----|-----------|

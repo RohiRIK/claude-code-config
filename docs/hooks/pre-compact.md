@@ -36,7 +36,7 @@ The PreCompact hook runs automatically before Claude compacts the context window
 
 ```json
 {
-  "cwd": "/Users/roh/projects/myapp"
+  "cwd": "~/projects/myapp"
 }
 ```
 

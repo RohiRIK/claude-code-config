@@ -79,7 +79,7 @@ SessionStart runs once at session open — fast, no LLM call. PrePlan fires on e
 
 ```json
 {
-  "cwd": "/Users/roh/projects/myapp",
+  "cwd": "~/projects/myapp",
   "session": {
     "session_id": "abc123"
   }

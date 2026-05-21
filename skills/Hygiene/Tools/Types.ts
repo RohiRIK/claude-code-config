@@ -39,6 +39,7 @@ export const PATH_EXEMPT = new Set([
   ".gitignore",
   "hooks/git/pre-commit",
   "hooks/git/post-commit",
+  "rules/pre-commit-sanitize.md",
 ])
 
 /** Runtime dirs that should never be tracked in git */
