@@ -1,6 +1,6 @@
 ---
 name: Build
-description: "USE WHEN implementing plan tasks incrementally with compile and commit gates."
+description: "Implements plan tasks one at a time with compile and commit gates. USE WHEN building from a plan."
 user-invocable: false
 ---
 

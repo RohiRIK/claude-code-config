@@ -20,7 +20,7 @@ SkillSearch('createskill frontmatter')   → loads Frontmatter.md (tier system +
 ```
 
 Understand the current:
-- Description (single-line, ≤15 words, intent-focused)
+- Description (single-line, WHAT + WHEN, ≤30 words)
 - Tier classification (Tier A/B/C/D)
 - Workflow routing table
 - Existing TitleCase naming
@@ -59,9 +59,9 @@ touch ~/.claude/skills/[SkillName]/Workflows/[WorkflowName].md
 
 ### To Update Description/Triggers:
 
-Modify the single-line `description` in YAML frontmatter. Keep ≤15 words, use correct format for tier (see Frontmatter.md):
+Modify the single-line `description` in YAML frontmatter. State WHAT + WHEN, ≤30 words, correct format for tier (see Frontmatter.md):
 ```yaml
-description: "USE WHEN [updated intent triggers]."
+description: "[What it does]. USE WHEN [trigger]."
 ```
 
 ### To Change Tier Classification:
@@ -89,7 +89,7 @@ touch ~/.claude/skills/[SkillName]/Tools/ToolName.help.md
 - [ ] Routing table names match file names exactly
 
 ### Structure
-- [ ] YAML still has single-line description ≤15 words
+- [ ] YAML still has single-line description (WHAT + WHEN, ≤30 words)
 - [ ] Correct tier fields set
 - [ ] No separate `triggers:` or `workflows:` arrays in YAML
 - [ ] All routes point to existing files

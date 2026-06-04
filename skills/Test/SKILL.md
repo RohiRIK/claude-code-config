@@ -1,6 +1,6 @@
 ---
 name: Test
-description: "USE WHEN running TDD for a feature or fixing a bug with tests."
+description: "Runs TDD for features and bug fixes. USE WHEN testing a new feature or fixing a bug with tests."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: CreateSkill
-description: "USE WHEN creating, validating, updating, or canonicalizing a skill."
+description: "Builds and maintains skills in canonical structure. USE WHEN creating, validating, updating, or canonicalizing a skill."
 ---
 
 # CreateSkill
@@ -37,7 +37,7 @@ User: "Create a skill for managing my recipes"
 ```
 User: "The research skill isn't triggering - validate it"
 → Invokes ValidateSkill workflow
-→ Checks SKILL.md frontmatter, tier, description ≤15 words
+→ Checks SKILL.md frontmatter, tier, description (WHAT + WHEN, ≤30 words)
 → Reports compliance issues with fixes
 ```
 

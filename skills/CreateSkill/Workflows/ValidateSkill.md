@@ -42,8 +42,9 @@ ls ~/.claude/skills/[SkillName]/Workflows/
 ## Step 4: Check YAML Frontmatter
 
 ### Description
-- ✓ ≤15 words
-- ✓ Intent-focused: `"USE WHEN..."` (Tier C/D), imperative (Tier B), noun phrase (Tier A)
+- ✓ States WHAT + WHEN, ≤30 words
+- ✓ Correct format for tier: `"[WHAT]. USE WHEN [trigger]."` (Tier C/D), imperative (Tier B), noun phrase (Tier A)
+- ✗ Bare `"USE WHEN..."` with no WHAT clause (Tier C/D) — wrong
 - ✗ Keyword list: `"skill, create, validate"` — wrong
 - ✗ `SkillSearch()` in description — wrong
 - ✗ Multi-line using `|` — wrong
@@ -117,7 +118,7 @@ grep -l "Intent-to-Flag" ~/.claude/skills/[SkillName]/Workflows/*.md
 
 ### YAML Frontmatter
 - [ ] `name:` uses TitleCase
-- [ ] `description:` ≤15 words, correct format for tier
+- [ ] `description:` states WHAT + WHEN, ≤30 words, correct format for tier
 - [ ] Tier correctly classified (user-invocable / disable-model-invocation / fork)
 - [ ] `argument-hint` present if skill takes arguments
 - [ ] No separate `triggers:` or `workflows:` arrays

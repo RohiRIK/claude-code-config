@@ -66,7 +66,7 @@ skills/SkillName/Context/                    # NEVER create Context/ ✗
 ```markdown
 ---
 name: SkillName
-description: "USE WHEN [intent]."
+description: "[What it does]. USE WHEN [trigger]."
 ---
 
 # SkillName
@@ -97,3 +97,14 @@ skills/Art/
 └── Workflows/
     └── Essay.md
 ```
+
+---
+
+## Prompt Authoring
+
+A skill's SKILL.md, workflows, and context files are prompts — author them with the `Prompting` skill (`~/.claude/skills/Prompting/`).
+
+- Start at `Prompting/Core.md` for the universal principles.
+- Pick a structural frame from `Prompting/Frameworks.md` (RISEN fits agentic/workflow skills; COSTAR fits content-style ones).
+- Since these skills run on Claude, apply `Prompting/vendors/Claude.md` — especially **imperative calibration**: reserve `CRITICAL` / `MUST` / `NEVER` for genuine safety or irreversibility gates. Everywhere else use plain declarative phrasing so eager models don't overtrigger.
+- Use XML steering tags where they make structure clearer (Claude parses them well).

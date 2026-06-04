@@ -1,6 +1,6 @@
 ---
 name: Art
-description: "USE WHEN generating images, diagrams, or any visual output."
+description: "Generates images, diagrams, and visual output. USE WHEN producing any visual artifact."
 ---
 
 # Art Skill

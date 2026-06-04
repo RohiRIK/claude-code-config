@@ -22,8 +22,8 @@ SkillSearch('createskill frontmatter')   → loads Frontmatter.md (tier system +
 Identify what's wrong:
 - Multi-line description using `|`?
 - Separate `triggers:` or `workflows:` arrays in YAML? (OLD FORMAT)
-- Missing `USE WHEN` in description (when Tier C/D)?
-- Description >15 words?
+- Missing `USE WHEN` trigger or missing WHAT clause in description (when Tier C/D)?
+- Description >30 words?
 - Tier not correctly classified?
 - Workflow routing missing from markdown body?
 - Workflow files not using TitleCase?
@@ -93,7 +93,7 @@ description: "USE WHEN user mentions X OR user wants A."
 ---
 ```
 
-Check description: ≤15 words, correct format for tier (see Frontmatter.md).
+Check description: states WHAT + WHEN, ≤30 words, correct format for tier (see Frontmatter.md).
 
 ---
 
@@ -157,7 +157,7 @@ If SKILL.md is over 100 lines after canonicalization:
 
 ### YAML Frontmatter
 - [ ] `name:` uses TitleCase
-- [ ] `description:` ≤15 words, correct format for tier
+- [ ] `description:` states WHAT + WHEN, ≤30 words, correct format for tier
 - [ ] Tier correctly classified
 - [ ] No separate `triggers:` or `workflows:` arrays
 

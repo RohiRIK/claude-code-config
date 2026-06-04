@@ -9,6 +9,8 @@ SkillSearch('createskill conventions')   → loads Conventions.md (structure rul
 SkillSearch('createskill frontmatter')   → loads Frontmatter.md (tier system + fields)
 ```
 
+The skill's content is a prompt — author it with the `Prompting` skill (`~/.claude/skills/Prompting/`): universal principles in `Core.md`, a structural frame from `Frameworks.md` (RISEN suits agentic/workflow skills), and Claude-specific calibration in `vendors/Claude.md`. Reserve forceful imperatives (`CRITICAL`/`MUST`/`NEVER`) for genuine safety gates; use plain declarative phrasing elsewhere so eager models don't overtrigger.
+
 ## Step 2: Understand the Request
 
 Ask the user:
@@ -41,7 +43,7 @@ Use minimal template (30-50 lines). Set frontmatter based on tier (see Frontmatt
 ```yaml
 ---
 name: SkillName
-description: "USE WHEN [intent triggers]."
+description: "[What it does]. USE WHEN [trigger]."
 # Add tier-specific fields: disable-model-invocation, user-invocable, context: fork, etc.
 ---
 
@@ -101,7 +103,7 @@ bun ToolName.ts [FLAGS_FROM_INTENT_MAPPING] --required-param "value"
 
 ### YAML Frontmatter
 - [ ] `name:` uses TitleCase
-- [ ] `description:` is ≤15 words, intent-focused
+- [ ] `description:` states WHAT + WHEN, ≤30 words (auto-trigger: `[WHAT]. USE WHEN [trigger].`)
 - [ ] Correct tier fields set (see Frontmatter.md)
 - [ ] `argument-hint` present if skill takes arguments
 

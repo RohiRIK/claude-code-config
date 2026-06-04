@@ -23,7 +23,8 @@ All frontmatter fields and the tier system for classifying skills.
 - Lowercase, hyphens, max 64 chars (e.g. `create-skill`, `tdd-workflow`)
 
 ### `description`
-- ≤15 words, intent-focused (see format rules below)
+- States **WHAT** the skill does **and WHEN** to use it (see format rules below)
+- ≤30 words — long enough for WHAT + WHEN, short enough to stay high-signal
 - This is what Claude uses for routing — make it unambiguous
 
 ### `disable-model-invocation`
@@ -58,16 +59,21 @@ All frontmatter fields and the tier system for classifying skills.
 
 ## Description Format Rules
 
+Every description states **WHAT** the skill does and **WHEN** it applies. How the WHEN is expressed depends on tier:
+
 | Tier | Format | Example |
 |------|--------|---------|
-| A (auto-knowledge) | Plain noun phrase | `"Reference for Docker Compose patterns."` |
-| B (user-command) | Imperative | `"Run E2E tests for the current project."` |
-| C/D (auto-trigger) | `"USE WHEN [user intent]."` | `"USE WHEN creating or validating a skill."` |
+| A (auto-knowledge) | WHAT as a noun phrase (WHEN is implicit — never auto-invoked) | `"Reference for Docker Compose patterns."` |
+| B (user-command) | WHAT as an imperative (WHEN is implicit — only on `/name`) | `"Run E2E tests for the current project."` |
+| C/D (auto-trigger) | `"[WHAT it does]. USE WHEN [trigger]."` | `"Vendor-agnostic prompt-engineering library. USE WHEN authoring a prompt, skill, or agent instruction."` |
+
+For auto-trigger skills the `USE WHEN` clause is load-bearing — it is the signal Claude routes on. Lead with the WHAT so the reader knows the skill's purpose, then the trigger.
 
 **Never:**
 - Keyword lists: `"skill, create, validate, structure"` ✗
 - `SkillSearch()` calls in description ✗
-- More than 15 words ✗
+- More than 30 words ✗
+- A bare `USE WHEN …` with no WHAT clause (auto-trigger) ✗
 
 ---
 

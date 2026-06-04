@@ -1,6 +1,6 @@
 ---
 name: CodingStandards
-description: "USE WHEN writing, implementing, reviewing, or scaffolding code in TypeScript, Python, Bash, PowerShell, Swift, or Rust."
+description: "Language coding standards (TS, Python, Bash, PowerShell, Swift, Rust). USE WHEN writing, reviewing, or scaffolding code."
 user-invocable: false
 ---
 

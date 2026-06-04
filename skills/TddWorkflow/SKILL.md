@@ -1,6 +1,6 @@
 ---
 name: TddWorkflow
-description: "USE WHEN writing features test-first or fixing bugs with TDD."
+description: "Test-first development workflow. USE WHEN writing a feature test-first or fixing a bug with TDD."
 ---
 
 # TddWorkflow

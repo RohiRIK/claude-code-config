@@ -1,6 +1,6 @@
 ---
 name: Spec
-description: "USE WHEN defining what to build before planning — explores code and LTM first."
+description: "Explores code + LTM, then writes acceptance criteria. USE WHEN defining what to build before planning."
 user-invocable: false
 ---
 
