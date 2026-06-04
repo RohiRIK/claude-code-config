@@ -1,6 +1,6 @@
 # Common Patterns
 
-## Memory-First Rule (MANDATORY)
+## Memory-First Rule
 
 Before any architectural decision or pattern choice:
 1. `/recall [topic]` — check for prior decisions on this topic

@@ -2,7 +2,7 @@
 
 ## Universal Rules (Always Apply)
 
-**Immutability (CRITICAL):** Create new objects, never mutate. Use spread (`{...obj, key: val}`).
+**Immutability:** Create new objects rather than mutating. Use spread (`{...obj, key: val}`).
 
 **Error Handling:** Wrap async operations in try/catch with actionable error messages.
 

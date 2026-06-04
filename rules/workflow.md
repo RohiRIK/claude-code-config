@@ -1,6 +1,6 @@
 # Workflow & Execution Rules
 
-## Context-Safe Execution (MANDATORY)
+## Context-Safe Execution
 
 A `context-mode` MCP server is installed. Use it to prevent context window bloat
 from large command outputs. It runs commands in an isolated subprocess and returns
