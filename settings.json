@@ -13,6 +13,15 @@
         ]
       },
       {
+        "matcher": "tool == \"Bash\" && tool_input.command matches \"git \"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun /Users/rohirikman/.claude/hooks/DestructiveGitGuard/DestructiveGitGuard.ts"
+          }
+        ]
+      },
+      {
         "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)\"",
         "hooks": [
           {
@@ -85,6 +94,15 @@
           {
             "type": "command",
             "command": "bun /Users/rohirikman/.claude/hooks/PostEditCheck/PostEditCheck.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "tool == \"Edit\" || tool == \"Write\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun /Users/rohirikman/.claude/hooks/SecretScanOnWrite/SecretScanOnWrite.ts"
           }
         ]
       }

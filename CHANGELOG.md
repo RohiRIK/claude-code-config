@@ -4,6 +4,26 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-06-04 — Two new security hooks: DestructiveGitGuard + SecretScanOnWrite
+
+Added two TypeScript/Bun hooks reinforcing the existing security gates.
+
+### New: `hooks/DestructiveGitGuard/` (PreToolUse, Bash)
+- Matcher fires on git commands; the hook blocks irreversible ones and tells Claude to confirm with the user first
+- Blocks: force-push (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`, `checkout/restore .`, `--no-verify`
+- Anchors patterns on the git subcommand so the same words inside a commit message pass through
+
+### New: `hooks/SecretScanOnWrite/` (PostToolUse, Write|Edit)
+- Greps the just-written file for credential signatures (OpenAI/Anthropic/GitHub/AWS/Google/Slack keys, private-key blocks, hardcoded credential assignments) and warns at write-time
+- Skips gitignored files (e.g. `.env`) — they may legitimately hold secrets
+- Complements the pre-commit varlock scan (backstop)
+
+### Changes
+- `settings.json`: wired both hooks into PreToolUse / PostToolUse
+- `CLAUDE.md`: added both to the hooks inventory
+
+---
+
 ## 2026-06-04 — Prompting-layer modernization (Claude 4.x) + config cleanup
 
 Modernized the prompt-engineering layer for current Anthropic Claude 4 guidance and made it vendor-agnostic (usable for Claude, Copilot/OpenAI, Gemini). Reconciled the skill description format across the repo, softened overtriggering imperatives, split oversized skills, and cleaned up config drift.

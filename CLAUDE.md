@@ -59,7 +59,7 @@ Skip for trivial/one-liner requests. Use judgment — the goal is automatic know
 not calling recall before every sentence.
 
 ## Hooks
-**settings.json:** SkillGuard · SuggestCompact · SessionAutoName · PrePlan · PostEditCheck · Cleanup
+**settings.json:** SkillGuard · DestructiveGitGuard · SecretScanOnWrite · SuggestCompact · SessionAutoName · PrePlan · PostEditCheck · Cleanup
 **LTM plugin:** SessionStart · PreCompact · EvaluateSession · UpdateContext (managed via plugin hooks.json)
 
 ## Context-Mode MCP
