@@ -1,6 +1,6 @@
 ---
 name: Simplify
-description: "USE WHEN running /simplify for post-implementation dead-code cleanup."
+description: "Post-implementation dead-code cleanup. USE WHEN running /simplify after finishing a feature or fix."
 disable-model-invocation: true
 user-invocable: false
 ---
