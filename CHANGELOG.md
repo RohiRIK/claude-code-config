@@ -4,6 +4,40 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-06-04 — Prompting-layer modernization (Claude 4.x) + config cleanup
+
+Modernized the prompt-engineering layer for current Anthropic Claude 4 guidance and made it vendor-agnostic (usable for Claude, Copilot/OpenAI, Gemini). Reconciled the skill description format across the repo, softened overtriggering imperatives, split oversized skills, and cleaned up config drift.
+
+### Prompting skill — vendor-agnostic rebuild
+- Split the 1271-line `Standards.md` into progressively-disclosed files; `Standards.md` is now a redirect index
+- `Core.md` — universal vendor-agnostic principles (Tell-Don't-Forbid, signal-to-noise, anti-patterns)
+- `Frameworks.md` — COSTAR (content) + RISEN (agentic) + RTF (shorthand) with a selection table
+- `Reasoning.md` — few-shot, CoT, ReAct, self-consistency (kept orthogonal to frameworks)
+- `vendors/{Claude,OpenAI,Gemini}.md` — opt-in vendor addenda; Claude addendum flips the obsolete "NO XML tags" stance → XML steering now encouraged
+- `SKILL.md` slimmed to a lean index; description rewritten WHAT+WHEN
+
+### CreateSkill factory + description format
+- Unified the skill description rule → `[WHAT it does]. USE WHEN [trigger].`, 30-word cap (was a bare `USE WHEN` ≤15 words that several skills already violated); bare USE-WHEN now forbidden
+- Enforced across `Frontmatter.md`, `Conventions.md`, `SKILL.md`, and all four workflows (Create/Validate/Update/Canonicalize); added a Prompt Authoring section pointing new skills at the Prompting skill
+- Applied the canonical format to Art, Build, CodingStandards, SecurityReview, Spec, TddWorkflow, Test, Simplify, SecurityScan, CreateSkill
+
+### Imperative softening
+- Removed overtriggering `(MANDATORY)`/`(CRITICAL)` badges from `coding-style.md`, `workflow.md`, `testing.md`, `patterns.md` — underlying rules unchanged
+- Retained genuine substitution rules (bun/uv/jq), severity labels, and safety gates (secrets, destructive git, path/symlink sanitization)
+
+### Skill splits + removals
+- Split `DockerPatterns/SKILL.md` (364 → 50 lines) into `Compose.md`, `Networking.md`, `Security.md`, `Debugging.md`
+- Compressed `AgentBrowser` description (~110 → ~25 words), then removed the AgentBrowser skill entirely
+- Removed the untracked `graphify` skill and its dead CLAUDE.md reference; removed the stale `SecurityScan` symlink (real skill in external storage)
+
+### Config cleanup
+- `hooks/git/pre-commit`: re-enabled the varlock secret scan (was disabled with a stale "MVP" note — repo pushes to public GitHub); kept new false-positive allowlists for framework route segments (e.g. `components/home`) and Cargo.toml/SECURITY.md emails
+- `settings.json`: model=opus, enabled caveman plugin, fullscreen TUI, latest auto-update channel
+- `hooks/context-mode-cache-heal.mjs`: adopted upstream fix (CLAUDE_CONFIG_DIR support + stale version-path normalization)
+- `.gitignore`: added `.last-update-result.json`, `.caveman-active`
+
+---
+
 ## 2026-05-21 — Hygiene skill: automated ~/.claude audit with markdown reports
 
 New `/hygiene` skill that audits the entire `~/.claude` repo across 4 dimensions and auto-fixes safe problems. Triggered via `/hygiene` (report) or `/hygiene --fix` (apply safe auto-fixes and commit).
