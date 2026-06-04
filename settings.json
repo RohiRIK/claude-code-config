@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -113,7 +114,8 @@
   "enabledPlugins": {
     "context-mode@context-mode": true,
     "ltm@ltm": true,
-    "dev-team@rohirikman": false
+    "dev-team@rohirikman": false,
+    "caveman@caveman": true
   },
   "extraKnownMarketplaces": {
     "context-mode": {
@@ -136,11 +138,19 @@
         "repo": "RohiRIK/dev-team"
       },
       "autoUpdate": true
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
     }
   },
   "syntaxHighlightingDisabled": false,
   "effortLevel": "high",
   "awaySummaryEnabled": false,
+  "autoUpdatesChannel": "latest",
+  "tui": "fullscreen",
   "theme": "dark-ansi",
   "agentPushNotifEnabled": true,
   "voiceEnabled": true

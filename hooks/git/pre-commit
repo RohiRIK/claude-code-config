@@ -16,7 +16,9 @@ LEAKS=$(git diff --cached --name-only \
   | grep -v '^hooks/git/' \
   | grep -v '^rules/pre-commit-sanitize\.md$' \
   | grep -v '^plugins/' \
-  | xargs grep -n '/Users/\|/home/\|C:\\Users\\' 2>/dev/null)
+  | xargs grep -n '/Users/\|/home/\|C:\\Users\\' 2>/dev/null \
+  | grep -Ev "/(components|pages|app|src|lib|utils|hooks|styles|public|assets|icons|images)/home/" \
+  | grep -v 'components/home/')
 
 if [ -n "$LEAKS" ]; then
   echo "[pre-commit] Hardcoded home paths found in staged files:" >&2
@@ -40,11 +42,15 @@ if [ -n "$STAGED_SYMLINKS" ]; then
   echo "[pre-commit] .gitignore updated — symlinks removed from this commit" >&2
 fi
 
-# Scan for email addresses (except README.md, rules, hooks/git)
+# Scan for email addresses
+# Allowlist: README.md (author section), rules/, hooks/git/,
+#            Cargo.toml (package author metadata), SECURITY.md (disclosure contact)
 EMAIL_LEAKS=$(git diff --cached --name-only \
   | grep -v '^README\.md$' \
   | grep -v '^rules/' \
   | grep -v '^hooks/git/' \
+  | grep -v '^Cargo\.toml$' \
+  | grep -v 'SECURITY\.md$' \
   | xargs grep -nE '[a-zA-Z0-9._%+-]+@(gmail|hotmail|outlook|yahoo|icloud)\.[a-z]+' 2>/dev/null)
 
 if [ -n "$EMAIL_LEAKS" ]; then

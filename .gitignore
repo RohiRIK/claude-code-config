@@ -63,6 +63,8 @@ jobs/
 # Dev infrastructure (local only)
 .dev-team/
 .last-cleanup
+.last-update-result.json
+.caveman-active
 docs/memory-long-term-dump.md
 # Symlink (local-only, auto-blocked by pre-commit)
 hooks/.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc
