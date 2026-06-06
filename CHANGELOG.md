@@ -4,6 +4,23 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-06-06 — New OpenCode delegation skill
+
+Added a manual-only skill that lets Claude delegate coding work to the [OpenCode](https://opencode.ai) CLI — a provider-agnostic autonomous coding agent — and orchestrate it from the session via `Bash` (foreground or `run_in_background`) plus `BashOutput`/`Monitor`. Adapted from the Hermes-agent OpenCode skill, retargeted from Hermes `terminal()`/`process()` tooling to native Claude Code tools and grounded against the locally installed opencode `1.15.13` flag set.
+
+### New: `skills/OpenCode/`
+- `SKILL.md` — slim routing; Tier B (`disable-model-invocation: true`) so it fires only on `/opencode <task>`, never auto
+- `Reference.md` — flags, install/auth, binary pinning, models, troubleshooting (grounded against opencode 1.15.13)
+- `Workflows/Delegate.md` — implement/refactor/fix: preflight, prompt authoring, foreground vs background, parallel git worktrees, report-back
+- `Workflows/ReviewPR.md` — PR review via `opencode pr <n>` / throwaway clone / local diff, read-only with `--agent plan`
+
+### Safety
+- Never launches the bare TUI (would hang the session); always `opencode run`
+- Review paths use `--agent plan` (read-only); `--dangerously-skip-permissions` documented as throwaway-clone/worktree-only
+- Never auto-commits OpenCode's output — surfaces the diff for user approval
+
+---
+
 ## 2026-06-04 — Two new security hooks: DestructiveGitGuard + SecretScanOnWrite
 
 Added two TypeScript/Bun hooks reinforcing the existing security gates.
