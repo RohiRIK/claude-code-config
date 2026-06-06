@@ -13,7 +13,7 @@ in it. Run the review non-interactively against the checked-out branch:
 opencode pr 1234 --dir /path/to/repo
 
 # 2. Review the diff vs the base branch, read-only
-opencode run 'Review the changes on this branch vs origin/main. Report, by severity: \
+timeout 300 opencode run 'Review the changes on this branch vs origin/main. Report, by severity: \
 correctness bugs, security risks, missing tests, and API/style inconsistencies. \
 Do not modify any files.' \
   --dir /path/to/repo \
@@ -27,7 +27,7 @@ Do not modify any files.' \
 ```bash
 REVIEW=$(mktemp -d)
 git clone <repo-url> "$REVIEW"
-opencode run 'Review this PR vs main. Report bugs, security risks, test gaps, \
+timeout 300 opencode run 'Review this PR vs main. Report bugs, security risks, test gaps, \
 and style issues. Read-only.' \
   --dir "$REVIEW" \
   --agent plan \
@@ -38,7 +38,7 @@ rm -rf "$REVIEW"     # clean up after
 ## Option C — Local diff already in tree
 
 ```bash
-opencode run 'Review the staged and unstaged changes. Report correctness bugs, \
+timeout 300 opencode run 'Review the staged and unstaged changes. Report correctness bugs, \
 security risks, and missing tests by severity. Read-only.' \
   --dir /path/to/repo \
   --agent plan

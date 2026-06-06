@@ -22,12 +22,15 @@ OpenCode acts on the prompt verbatim. Make it self-contained:
 - Attach concrete context with `-f` instead of describing files in prose.
 
 ```bash
-opencode run 'Add retry-with-backoff to all outbound HTTP calls in src/api/. \
+timeout 300 opencode run 'Add retry-with-backoff to all outbound HTTP calls in src/api/. \
 Use the existing logger. Add unit tests and run `bun test` until green.' \
   --dir /path/to/project \
   -f src/api/client.ts \
   --agent build
 ```
+
+Always wrap in `timeout` (see `Reference.md` → Timeouts). If no model is specified,
+add `--model opencode/deepseek-v4-flash-free`.
 
 For a read-only plan first (no edits), use `--agent plan`.
 
@@ -36,7 +39,8 @@ For a read-only plan first (no edits), use `--agent plan`.
 **Bounded task (expected to finish in a couple minutes):** run foreground with
 `Bash` and read the result directly.
 
-**Long or multi-file task:** run with `run_in_background: true`, then watch:
+**Long or multi-file task:** run with `run_in_background: true` (still inside a
+generous `timeout`, e.g. `timeout 900`), then watch:
 
 - `BashOutput` — poll incremental output, decide whether to keep waiting.
 - `Monitor` — block until the process exits when you have nothing else to do.
@@ -44,7 +48,7 @@ For a read-only plan first (no edits), use `--agent plan`.
 If output is large, redirect and tail rather than streaming into context:
 
 ```bash
-opencode run '<prompt>' --dir /path/to/project > /tmp/opencode-run.log 2>&1
+timeout 900 opencode run '<prompt>' --dir /path/to/project > /tmp/opencode-run.log 2>&1
 ```
 
 ## 4. Parallel runs (optional)
@@ -54,9 +58,9 @@ collide, and background each:
 
 ```bash
 git worktree add ../task-a -b task-a
-opencode run '<task A>' --dir ../task-a    # run_in_background: true
+timeout 900 opencode run '<task A>' --dir ../task-a    # run_in_background: true
 git worktree add ../task-b -b task-b
-opencode run '<task B>' --dir ../task-b    # run_in_background: true
+timeout 900 opencode run '<task B>' --dir ../task-b    # run_in_background: true
 ```
 
 Poll each with `BashOutput`. Clean up worktrees when done.

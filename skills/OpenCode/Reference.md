@@ -52,6 +52,25 @@ Pin an explicit path when needed:
 
 List available models per provider: `opencode models [provider]`.
 
+**Default model:** when the task doesn't name one, use `opencode/deepseek-v4-flash-free`
+— a fast zero-cost model that returns promptly. Avoid `opencode/minimax-m3-free` as a
+default: in testing it stalled with no output until the timeout reaped it.
+
+## Timeouts (mandatory)
+
+Every `opencode run` is wrapped in `timeout` so a stalled run self-kills instead of
+hanging the session silently:
+
+```bash
+timeout 200 opencode run '<prompt>' --dir <path>     # bounded one-shot
+timeout 900 opencode run '<prompt>' --dir <path>      # large / multi-file task
+```
+
+A stuck run exits 124 (timeout) or 143/144 (killed). If you hit the cap, report it
+and decide whether to raise the limit or switch to a faster model — do not silently
+re-run with no ceiling. For long tasks, prefer `run_in_background: true` + `BashOutput`
+polling over a large foreground timeout.
+
 ## Permissions (security-sensitive)
 
 `opencode run` may pause for permission prompts on file writes or shell commands.

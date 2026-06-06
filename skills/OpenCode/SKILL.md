@@ -27,6 +27,10 @@ OpenCode runs as a subprocess. Orchestrate it with native tools:
 | Watch a backgrounded run | `BashOutput` (poll) or `Monitor` (block until done) |
 | Working directory | `opencode run … --dir <path>` (preferred over `cd`) |
 
+Always wrap runs in `timeout` (see `Reference.md` → Timeouts) so a stalled run
+self-kills instead of hanging the session. Default model when none is given:
+`opencode/deepseek-v4-flash-free`.
+
 ## Workflow Routing
 
 Read `$ARGUMENTS`, classify intent, load the matching workflow.
