@@ -2,6 +2,8 @@
 
 > Claude Code global configuration architecture. Last updated: 2026-03-26
 
+![A coding agent wired to persistent machine memory](../assets/brain-terminal.jpg)
+
 ## Ownership Boundary
 
 | This repo (`claude-code-config`) | External repo (`claude-ltm-plugin`) |

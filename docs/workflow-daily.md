@@ -2,6 +2,8 @@
 
 The Boris Cherny pattern — creator of Claude Code's recommended task loop.
 
+![Structured workflow pipeline](../assets/workflow-pipeline.jpg)
+
 ---
 
 ## Flow

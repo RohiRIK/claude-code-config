@@ -12,9 +12,9 @@
  * @see ~/.claude/skills/art/README.md
  */
 
-import Replicate from "replicate";
-import OpenAI from "openai";
-import { GoogleGenAI } from "@google/genai";
+// Paid-SDK packages (replicate / openai / @google/genai) are imported lazily
+// inside their own generate functions so the default `agy` path — which needs
+// none of them — never loads them (and can't be broken by their transitive deps).
 import { writeFile, readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
@@ -57,7 +57,7 @@ async function loadEnv(): Promise<void> {
 // Types
 // ============================================================================
 
-type Model = "flux" | "nano-banana" | "nano-banana-pro" | "gpt-image-1";
+type Model = "agy" | "flux" | "nano-banana" | "nano-banana-pro" | "gpt-image-1";
 type ReplicateSize = "1:1" | "16:9" | "3:2" | "2:3" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "21:9";
 type OpenAISize = "1024x1024" | "1536x1024" | "1024x1536";
 type GeminiSize = "1K" | "2K" | "4K";
@@ -82,7 +82,7 @@ interface CLIArgs {
 // ============================================================================
 
 const DEFAULTS = {
-  model: "flux" as Model,
+  model: "agy" as Model,
   size: "16:9" as Size,
   output: `${process.env.HOME}/Downloads/ul-image.png`,
 };
@@ -138,11 +138,13 @@ USAGE:
   generate --model <model> --prompt "<prompt>" [OPTIONS]
 
 REQUIRED:
-  --model <model>      Model to use: flux, nano-banana, nano-banana-pro, gpt-image-1
+  --model <model>      Model to use: agy (default), flux, nano-banana, nano-banana-pro, gpt-image-1
+                       agy = Antigravity CLI sub-agent → Nano Banana via Google OAuth (no API key, no per-image cost)
   --prompt <text>      Image generation prompt (quote if contains spaces)
 
 OPTIONS:
   --size <size>              Image size/aspect ratio (default: 16:9)
+                             agy: size ignored — use --aspect-ratio (Nano Banana takes a natural-language prompt)
                              Replicate (flux, nano-banana): 1:1, 16:9, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 21:9
                              OpenAI (gpt-image-1): 1024x1024, 1536x1024, 1024x1536
                              Gemini (nano-banana-pro): 1K, 2K, 4K (resolution); aspect ratio inferred from context or defaults to 16:9
@@ -168,6 +170,10 @@ OPTIONS:
   --help, -h                 Show this help message
 
 EXAMPLES:
+  # DEFAULT: generate via the agy sub-agent (no API key, Nano Banana over OAuth)
+  generate --prompt "Abstract concept-art header, editorial style" --aspect-ratio 16:9 \\
+    --output ~/Downloads/blog-header.png
+
   # Generate blog header with Nano Banana Pro (16:9, 2K quality)
   generate --model nano-banana-pro --prompt "Abstract UL illustration..." --size 2K --aspect-ratio 16:9
 
@@ -205,6 +211,9 @@ MULTI-REFERENCE LIMITS (Gemini API):
   - Maximum 14 total reference images per request
 
 ENVIRONMENT VARIABLES:
+  (agy)                No API key — uses the agy CLI's cached Google OAuth.
+                       Optional NANOBANANA_MODEL to override the image model
+                       (default: gemini-3-pro-image-preview).
   REPLICATE_API_TOKEN  Required for flux and nano-banana models
   OPENAI_API_KEY       Required for gpt-image-1 model
   GOOGLE_API_KEY       Required for nano-banana-pro model
@@ -275,8 +284,8 @@ function parseArgs(argv: string[]): CLIArgs {
 
     switch (key) {
       case "model":
-        if (value !== "flux" && value !== "nano-banana" && value !== "nano-banana-pro" && value !== "gpt-image-1") {
-          throw new CLIError(`Invalid model: ${value}. Must be: flux, nano-banana, nano-banana-pro, or gpt-image-1`);
+        if (value !== "agy" && value !== "flux" && value !== "nano-banana" && value !== "nano-banana-pro" && value !== "gpt-image-1") {
+          throw new CLIError(`Invalid model: ${value}. Must be: agy, flux, nano-banana, nano-banana-pro, or gpt-image-1`);
         }
         parsed.model = value;
         i++; // Skip next arg (value)
@@ -337,9 +346,9 @@ function parseArgs(argv: string[]): CLIArgs {
     throw new CLIError("Missing required argument: --model");
   }
 
-  // Validate reference-image is only used with nano-banana-pro
-  if (parsed.referenceImages && parsed.referenceImages.length > 0 && parsed.model !== "nano-banana-pro") {
-    throw new CLIError("--reference-image is only supported with --model nano-banana-pro");
+  // Validate reference-image is only used with reference-capable models
+  if (parsed.referenceImages && parsed.referenceImages.length > 0 && parsed.model !== "nano-banana-pro" && parsed.model !== "agy") {
+    throw new CLIError("--reference-image is only supported with --model nano-banana-pro or --model agy");
   }
 
   // Validate reference image count (API limits: 5 human, 6 object, 14 total max)
@@ -348,7 +357,15 @@ function parseArgs(argv: string[]): CLIArgs {
   }
 
   // Validate size based on model
-  if (parsed.model === "gpt-image-1") {
+  if (parsed.model === "agy") {
+    // agy/Nano Banana takes a natural-language prompt; aspect ratio is a hint, no fixed size set.
+    if (parsed.aspectRatio && !GEMINI_ASPECT_RATIOS.includes(parsed.aspectRatio)) {
+      throw new CLIError(`Invalid aspect-ratio for agy: ${parsed.aspectRatio}. Must be: ${GEMINI_ASPECT_RATIOS.join(", ")}`);
+    }
+    if (!parsed.aspectRatio) {
+      parsed.aspectRatio = "16:9";
+    }
+  } else if (parsed.model === "gpt-image-1") {
     if (!OPENAI_SIZES.includes(parsed.size as OpenAISize)) {
       throw new CLIError(`Invalid size for gpt-image-1: ${parsed.size}. Must be: ${OPENAI_SIZES.join(", ")}`);
     }
@@ -449,12 +466,84 @@ async function removeBackground(imagePath: string): Promise<void> {
 // Image Generation
 // ============================================================================
 
+/**
+ * Generate via the Antigravity CLI (`agy`) sub-agent, which drives Nano Banana
+ * (Gemini image models) over the machine's cached Google OAuth — no API key in
+ * `.env` and no per-image Replicate/OpenAI cost. `agy` is an agent, not a
+ * deterministic image API, so we instruct it to save to the exact path and then
+ * verify; if it wrote elsewhere we recover the newest image it produced.
+ */
+async function generateWithAgy(
+  prompt: string,
+  aspectRatio: ReplicateSize,
+  output: string,
+  referenceImages?: string[]
+): Promise<void> {
+  const { stat, readdir, rename } = await import("node:fs/promises");
+  const outDir = resolve(output, "..");
+
+  const refClause =
+    referenceImages && referenceImages.length > 0
+      ? ` Use these reference image(s) for style/character consistency: ${referenceImages.join(", ")}.`
+      : "";
+  const fullPrompt =
+    `Generate an image. ${prompt} Aspect ratio ${aspectRatio}.${refClause} ` +
+    `Save the result to the exact absolute path "${output}" (overwrite if it exists). ` +
+    `Reply with only the saved file path.`;
+
+  // Dirs agy must be allowed to read (refs) and write (output).
+  const addDirs = new Set<string>([outDir]);
+  for (const r of referenceImages ?? []) addDirs.add(resolve(r, ".."));
+  const dirFlags = [...addDirs].flatMap((d) => ["--add-dir", d]);
+
+  // Prefer the higher-fidelity Pro image model unless the caller pinned one.
+  const env = { ...process.env };
+  if (!env.NANOBANANA_MODEL) env.NANOBANANA_MODEL = "gemini-3-pro-image-preview";
+
+  console.log("🍌🛰️  Generating via Antigravity (agy) — Nano Banana over Google OAuth (no API key)...");
+
+  // Hard timeout so a wedged agent run can't hang the caller (124 = timed out).
+  const proc = Bun.spawnSync(["timeout", "300", "agy", "-p", fullPrompt, ...dirFlags], {
+    env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const log = proc.stdout.toString() + proc.stderr.toString();
+  if (proc.exitCode && proc.exitCode !== 0) {
+    const hint = proc.exitCode === 124 ? " (timed out)" : "";
+    throw new CLIError(`agy image generation failed (exit ${proc.exitCode})${hint}: ${log.slice(-600)}`);
+  }
+
+  // Verify the file landed at the requested path.
+  const exists = await stat(output).then(() => true).catch(() => false);
+  if (!exists) {
+    // Recover: pick the newest image agy wrote into outDir during this run.
+    const since = Date.now() - 6 * 60 * 1000;
+    const entries = await readdir(outDir).catch(() => [] as string[]);
+    let newest: { path: string; mtime: number } | undefined;
+    for (const name of entries) {
+      if (!/\.(png|jpg|jpeg|webp)$/i.test(name)) continue;
+      const p = resolve(outDir, name);
+      const s = await stat(p).catch(() => undefined);
+      if (s && s.mtimeMs >= since && (!newest || s.mtimeMs > newest.mtime)) {
+        newest = { path: p, mtime: s.mtimeMs };
+      }
+    }
+    if (!newest) {
+      throw new CLIError(`agy reported success but no image was found at ${output} or in ${outDir}.\n${log.slice(-600)}`);
+    }
+    if (newest.path !== output) await rename(newest.path, output);
+  }
+  console.log(`✅ Image saved to ${output}`);
+}
+
 async function generateWithFlux(prompt: string, size: ReplicateSize, output: string): Promise<void> {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
     throw new CLIError("Missing environment variable: REPLICATE_API_TOKEN");
   }
 
+  const Replicate = (await import("replicate")).default;
   const replicate = new Replicate({ auth: token });
 
   console.log("🎨 Generating with Flux 1.1 Pro...");
@@ -479,6 +568,7 @@ async function generateWithNanoBanana(prompt: string, size: ReplicateSize, outpu
     throw new CLIError("Missing environment variable: REPLICATE_API_TOKEN");
   }
 
+  const Replicate = (await import("replicate")).default;
   const replicate = new Replicate({ auth: token });
 
   console.log("🍌 Generating with Nano Banana...");
@@ -501,6 +591,7 @@ async function generateWithGPTImage(prompt: string, size: OpenAISize, output: st
     throw new CLIError("Missing environment variable: OPENAI_API_KEY");
   }
 
+  const OpenAI = (await import("openai")).default;
   const openai = new OpenAI({ apiKey });
 
   console.log("🤖 Generating with GPT-image-1...");
@@ -534,6 +625,7 @@ async function generateWithNanoBananaPro(
     throw new CLIError("Missing environment variable: GOOGLE_API_KEY");
   }
 
+  const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey });
 
   if (referenceImages && referenceImages.length > 0) {
@@ -651,7 +743,9 @@ async function main(): Promise<void> {
         const varOutput = `${basePath}-v${i}.png`;
         console.log(`Variation ${i}/${args.creativeVariations}: ${varOutput}`);
 
-        if (args.model === "flux") {
+        if (args.model === "agy") {
+          promises.push(generateWithAgy(finalPrompt, args.aspectRatio!, varOutput, args.referenceImages));
+        } else if (args.model === "flux") {
           promises.push(generateWithFlux(finalPrompt, args.size as ReplicateSize, varOutput));
         } else if (args.model === "nano-banana") {
           promises.push(generateWithNanoBanana(finalPrompt, args.size as ReplicateSize, varOutput));
@@ -676,7 +770,9 @@ async function main(): Promise<void> {
     }
 
     // Standard single image generation
-    if (args.model === "flux") {
+    if (args.model === "agy") {
+      await generateWithAgy(finalPrompt, args.aspectRatio!, args.output, args.referenceImages);
+    } else if (args.model === "flux") {
       await generateWithFlux(finalPrompt, args.size as ReplicateSize, args.output);
     } else if (args.model === "nano-banana") {
       await generateWithNanoBanana(finalPrompt, args.size as ReplicateSize, args.output);

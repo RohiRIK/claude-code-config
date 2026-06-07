@@ -128,6 +128,10 @@ The LTM stays private — but the process is open. How I work, how I think throu
 
 ---
 
+![Persistent memory and context spanning every session](assets/readme-banner-network.jpg)
+
+---
+
 ## About
 
 **Rohi Rikman** — Tech Enthusiast · Cloud Security Engineer · Automation Specialist · Based in Tel Aviv.

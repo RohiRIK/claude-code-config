@@ -4,6 +4,29 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-06-07 — Pi + Antigravity delegation skills; Art generates via agy
+
+Two more manual-only CLI-delegation skills modeled on `skills/OpenCode/`, plus a rewire of the Art skill to generate images for free through the Antigravity sub-agent.
+
+### New: `skills/Pi/`
+Delegate coding / refactor / PR-review to the [Pi](https://pi.dev) CLI (earendil-works). Tier B (`/pi <task>`). Grounded against `pi 0.78.0`: print mode `pi -p`, `--mode json|rpc`, `--model provider/id`, trust via `-a/--approve`; no `--dir` (runs from cwd). `SKILL.md` · `Reference.md` · `Workflows/Delegate.md` · `Workflows/ReviewPR.md`.
+
+### New: `skills/Agy/`
+Delegate coding / refactor / PR-review **and image generation** to the [Antigravity CLI](https://antigravity.google) (`agy`). Tier B (`/agy <task>`). Grounded against `agy 1.0.5`: print mode `-p`, `--add-dir` workspace, `-m` model, built-in `--print-timeout` + outer `timeout` backstop. Image generation via Nano Banana (`gemini-3.1-flash-image-preview`, Pro `gemini-3-pro-image-preview`) through the `nanobanana` extension. `SKILL.md` · `Reference.md` · `Workflows/{Delegate,ReviewPR,GenerateImage}.md`.
+
+### Changed: `skills/Art/` now defaults to the agy sub-agent
+- `Tools/Generate.ts`: added `--model agy` (new default) — shells `timeout 300 agy -p '…save to <path>'` over the machine's cached Google OAuth (no API key, no per-image Replicate/OpenAI cost), then verifies/recovers the output file.
+- Made the paid-SDK imports (`replicate`, `openai`, `@google/genai`) **lazy** so the agy path loads none of them — fixes a crash where `@google/genai`'s broken transitive dep (`google-logging-utils`) killed the script at import time.
+- `SKILL.md`: agy documented as default; `nano-banana-pro` / `gpt-image-1` / `flux` / `nano-banana` are API-key fallbacks.
+
+### Docs / assets
+- New README end banner + doc headers generated via the agy path: `assets/readme-banner-network.jpg` (README), `assets/brain-terminal.jpg` (`docs/AGENT_ARCHITECTURE.md`), `assets/workflow-pipeline.jpg` (`docs/workflow-daily.md`).
+
+### Safety
+- Both skills are manual-only; never launch a bare TUI; review paths read-only; `--dangerously-skip-permissions` documented as throwaway/worktree-only; image/coding output never auto-committed.
+
+---
+
 ## 2026-06-06 — New OpenCode delegation skill
 
 Added a manual-only skill that lets Claude delegate coding work to the [OpenCode](https://opencode.ai) CLI — a provider-agnostic autonomous coding agent — and orchestrate it from the session via `Bash` (foreground or `run_in_background`) plus `BashOutput`/`Monitor`. Adapted from the Hermes-agent OpenCode skill, retargeted from Hermes `terminal()`/`process()` tooling to native Claude Code tools and grounded against the locally installed opencode `1.15.13` flag set.

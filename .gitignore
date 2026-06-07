@@ -60,6 +60,8 @@ skills/SecurityScan
 daemon/
 daemon.log
 jobs/
+# Nested runtime state written when cwd is ~/.claude (scheduler lock, local settings)
+.claude/
 # Dev infrastructure (local only)
 .dev-team/
 .last-cleanup

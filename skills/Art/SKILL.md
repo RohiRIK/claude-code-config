@@ -72,8 +72,20 @@ Route to the appropriate workflow based on the request.
 
 ## Image Generation
 
-**Default model:** Check user customization at `SKILLCUSTOMIZATIONS/Art/PREFERENCES.md`
-**Fallback:** nano-banana-pro (Gemini 3 Pro)
+**Default model: `agy`** — the Antigravity CLI sub-agent drives Nano Banana
+(Gemini image models) over the machine's cached Google OAuth. No API key in
+`.env`, no per-image Replicate/OpenAI cost. This is the default in `Generate.ts`.
+
+**Override:** user customization at `SKILLCUSTOMIZATIONS/Art/PREFERENCES.md`.
+**API fallbacks** (need keys in `${PAI_DIR}/.env`): `nano-banana-pro` (GOOGLE_API_KEY),
+`gpt-image-1` (OPENAI_API_KEY), `flux` / `nano-banana` (REPLICATE_API_TOKEN). Use a
+fallback when agy is unavailable, or when you need transparency / reference-image
+features the API path supports.
+
+> Preflight once: `agy --version` and confirm the agy CLI is signed in (its OAuth is
+> cached). agy is an agent, not a deterministic API — `Generate.ts` tells it the exact
+> output path and verifies the file landed (recovering the newest image if it saved
+> elsewhere). Note: Nano Banana returns JPEG bytes even when the output ends in `.png`.
 
 ### 🚨 CRITICAL: Always Output to Downloads First
 
@@ -88,7 +100,13 @@ Never output directly to a project's `public/images/` directory. User needs to r
 4. Create WebP and thumbnail versions at final destination
 
 ```bash
-# CORRECT - Output to Downloads for preview
+# CORRECT - Output to Downloads for preview (default model: agy, no API key)
+bun run ~/.claude/skills/Art/Tools/Generate.ts \
+  --prompt "[PROMPT]" \
+  --aspect-ratio 1:1 \
+  --output ~/Downloads/blog-header-concept.png
+
+# API fallback (needs key in .env): nano-banana-pro with transparency + thumbnail
 bun run ~/.claude/skills/Art/Tools/Generate.ts \
   --model nano-banana-pro \
   --prompt "[PROMPT]" \
