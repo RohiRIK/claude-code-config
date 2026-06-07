@@ -12,6 +12,7 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/RohiRIK/claude-code-config?style=flat)](https://github.com/RohiRIK/claude-code-config/commits/main)
 [![Repo size](https://img.shields.io/github/repo-size/RohiRIK/claude-code-config?style=flat)](https://github.com/RohiRIK/claude-code-config)
 [![Stars](https://img.shields.io/github/stars/RohiRIK/claude-code-config?style=flat)](https://github.com/RohiRIK/claude-code-config/stargazers)
+[![License](https://img.shields.io/github/license/RohiRIK/claude-code-config?color=D97757&style=flat)](LICENSE)
 
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?style=flat&logo=anthropic&logoColor=white)](https://claude.ai/code)
 [![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
