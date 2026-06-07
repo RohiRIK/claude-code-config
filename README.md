@@ -7,6 +7,17 @@
 
 ![Claude Config Header](assets/claude-config-header.png)
 
+[![Version](https://img.shields.io/github/v/tag/RohiRIK/claude-code-config?label=version&color=D97757&style=flat)](https://github.com/RohiRIK/claude-code-config/tags)
+[![Last commit](https://img.shields.io/github/last-commit/RohiRIK/claude-code-config?color=D97757&style=flat)](https://github.com/RohiRIK/claude-code-config/commits/main)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/RohiRIK/claude-code-config?style=flat)](https://github.com/RohiRIK/claude-code-config/commits/main)
+[![Repo size](https://img.shields.io/github/repo-size/RohiRIK/claude-code-config?style=flat)](https://github.com/RohiRIK/claude-code-config)
+[![Stars](https://img.shields.io/github/stars/RohiRIK/claude-code-config?style=flat)](https://github.com/RohiRIK/claude-code-config/stargazers)
+
+[![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?style=flat&logo=anthropic&logoColor=white)](https://claude.ai/code)
+[![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Docs](https://img.shields.io/badge/Docs-Markdown-083FA1?style=flat&logo=markdown&logoColor=white)](docs/README.md)
+
 ---
 
 ## Quick Start
