@@ -56,6 +56,7 @@ assets/Arcaived/
 # Rule: ANY symlink inside ~/.claude/ must be listed here. The pre-commit hook
 # auto-detects and adds new ones, but always add manually when creating a symlink.
 skills/SecurityScan
+skills/DataReportBuilder
 # Scheduler / job queue runtime state
 daemon/
 daemon.log
