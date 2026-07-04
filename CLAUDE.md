@@ -10,13 +10,7 @@ Global config applying to ALL projects. Rules in `rules/` have full detail.
 **Layer 2 — Dev** (know exactly what to build):
 `/spec → /plan → /build or /dev → /test → /simplify → /capture → /verify → /commit-push-pr`
 
-| Task | Path |
-|------|------|
-| Bug fix | `/test` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
-| Small feature | `/plan` → `/build` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
-| Non-trivial | `/spec` → `/plan` → `/dev` → `/test` → `/simplify` → `/capture` → `/verify` → `/commit-push-pr` |
-
-Full decision guide: `rules/workflow-guide.md`
+Per-task decision table + full guide: `rules/workflow-guide.md`
 
 ## Commands
 | Command | When |
@@ -26,10 +20,10 @@ Full decision guide: `rules/workflow-guide.md`
 | `/simplify` | After implementation |
 | `/verify` | Before committing |
 | `/commit-push-pr` | Final step |
-| `/ltm:memory learn` | Store pattern/insight in LTM |
-| `/ltm:memory recall` | Before starting work on a topic |
-| `/ltm:health` | Memory health check |
-| `/ltm:doctor` | Diagnose hook/plugin errors |
+| `/openltm:memory learn` | Store pattern/insight in LTM |
+| `/openltm:memory recall` | Before starting work on a topic |
+| `/openltm:health` | Memory health check |
+| `/openltm:doctor` | Diagnose hook/plugin errors |
 | `/fast` | Toggle fast mode (Opus, faster output) |
 
 ## Agents
@@ -41,16 +35,16 @@ planner · architect · tdd-guide · code-reviewer · security-reviewer · build
 - 80% test coverage · Conventional commits · Long-running commands → tmux
 
 ## Context System
-SQLite LTM at `~/.claude/plugins/data/ltm-ltm/ltm.db`. Hooks auto-manage context.
+SQLite LTM at `~/.claude/plugins/data/OpenLtm-openltm/openltm.db`. Hooks auto-manage context.
 Registry: `~/.claude/projects/registry.json` — auto-registered by LTM plugin hooks.
 
 ## LTM MCP Auto-Use
 
-The `ltm` MCP server is always available. Use it proactively — do NOT wait for `/recall` or `/learn`:
+The `openltm` MCP server is always available. Use it proactively — do NOT wait for `/recall` or `/learn`:
 
-- **Before any non-trivial task**: call `mcp__plugin_ltm_ltm__ltm_recall` with the topic as `query`
-- **After discovering a non-obvious pattern or gotcha**: call `mcp__plugin_ltm_ltm__ltm_learn`
-- **When making an architectural decision**: call `mcp__plugin_ltm_ltm__ltm_learn` with `category=architecture`
+- **Before any non-trivial task**: call `mcp__plugin_openltm_memory__recall` with the topic as `query`
+- **After discovering a non-obvious pattern or gotcha**: call `mcp__plugin_openltm_memory__learn`
+- **When making an architectural decision**: call `mcp__plugin_openltm_memory__learn` with `category=architecture`
 
 `recall` uses **FTS5 + semantic fallback** — use natural language queries, not just keywords.
 Good: `"how we handle async errors in hooks"` · Bad: `"async errors"`
@@ -63,7 +57,7 @@ not calling recall before every sentence.
 **LTM plugin:** SessionStart · PreCompact · EvaluateSession · UpdateContext (managed via plugin hooks.json)
 
 ## Context-Mode MCP
-Sandbox execution to prevent context bloat. Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. `/context-mode:ctx-stats` · `/context-mode:ctx-doctor` · `/context-mode:ctx-upgrade`
+Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. Full guidance + maintenance: `rules/workflow.md`.
 
 ## Secrets & .gitignore
 `.env` is gitignored. `.env.schema` (committed) defines expected vars with varlock decorators.
@@ -74,4 +68,4 @@ To validate: `bunx varlock load` · To add a new secret: add to `.env.schema` wi
 If a new runtime directory appears, add it to `.gitignore` before committing anything else.
 
 ## Rules
-coding-style · git-workflow · workflow-guide · testing · security · agents · session-context · patterns · package-manager
+coding-style · git-workflow · workflow · workflow-guide · testing · security · agents · session-context · patterns · package-manager · pre-commit-sanitize
