@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import { PROJECTS_DIR, REGISTRY_PATH, saveRegistry } from "../lib/resolveProject.js";
+import { PROJECTS_DIR, REGISTRY_PATH, LTM_DB_PATH, saveRegistry } from "../lib/resolveProject.js";
 import { trimToLines } from "../lib/hookUtils.js";
 import { logHook } from "../lib/hookLogger.js";
 
@@ -13,7 +13,7 @@ import { logHook } from "../lib/hookLogger.js";
 // Never touches context-decisions or context-gotchas (permanent).
 const STALE_DAYS = 14;
 const MAX_PROGRESS_ITEMS = 20;
-const DB_PATH = join(homedir(), ".claude", "plugins", "data", "ltm-ltm", "ltm.db");
+const DB_PATH = LTM_DB_PATH;
 
 function isStaleDir(dirPath: string): boolean {
   try {
@@ -93,8 +93,10 @@ async function main() {
       trimProgressFile(join(dirPath, "context-progress.md"));
     }
 
-    if (isStaleDir(dirPath)) {
+    // A .keep file opts a project out of stale deletion permanently.
+    if (isStaleDir(dirPath) && !existsSync(join(dirPath, ".keep"))) {
       rmSync(dirPath, { recursive: true, force: true });
+      logHook("Cleanup", "info", `Deleted stale project context (>${STALE_DAYS}d inactive): ${dir}`);
       console.error(`[Cleanup] Deleted stale project context: ${dir}`);
       staleSlugs.add(dir);
     }

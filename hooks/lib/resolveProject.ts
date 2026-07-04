@@ -18,6 +18,11 @@ import { homedir } from "os";
 export const CLAUDE_DIR = join(homedir(), ".claude");
 export const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
 export const REGISTRY_PATH = join(PROJECTS_DIR, "registry.json");
+// DB used by the ~/.claude/memory/*.ts modules that hooks import.
+// Must stay in sync with memory/shared-db.ts DB_PATH.
+// (The old plugins/data/ltm-ltm/ltm.db is dead; the openltm MCP plugin
+// manages its own DB at plugins/data/OpenLtm-openltm/openltm.db.)
+export const LTM_DB_PATH = join(CLAUDE_DIR, "memory", "ltm.db");
 
 export interface ProjectResolution {
   name: string;
