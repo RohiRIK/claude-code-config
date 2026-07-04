@@ -193,118 +193,15 @@ components/Button.tsx (with variant prop)
 }
 ```
 
-## Example Project-Specific Rules
+## Recovery & Best Practices
 
-**CRITICAL - NEVER REMOVE:**
-- Privy authentication code
-- Solana wallet integration
-- Supabase database clients
-- Redis/OpenAI semantic search
-- Market trading logic
-- Real-time subscription handlers
+- One commit per logical removal batch on a feature branch — `git revert` is the rollback.
+- If something breaks: revert, investigate (dynamic import? tooling blind spot?), document the miss, add the item to a NEVER-REMOVE note.
+- Start small, test after each batch, be conservative — when in doubt, don't remove.
+- Log every deletion in DELETION_LOG.md (what, why safe, evidence).
 
-**SAFE TO REMOVE:**
-- Old unused components in components/ folder
-- Deprecated utility functions
-- Test files for deleted features
-- Commented-out code blocks
-- Unused TypeScript types/interfaces
+## When NOT to Use
 
-**ALWAYS VERIFY:**
-- Semantic search functionality (lib/redis.js, lib/openai.js)
-- Market data fetching (api/markets/*, api/market/[slug]/)
-- Authentication flows (HeaderWallet.tsx, UserMenu.tsx)
-- Trading functionality (Meteora SDK integration)
+During active feature development, right before a deployment, on unstable codebases, without test coverage, or on code you don't understand.
 
-## Pull Request Template
-
-When opening PR with deletions:
-
-```markdown
-## Refactor: Code Cleanup
-
-### Summary
-Dead code cleanup removing unused exports, dependencies, and duplicates.
-
-### Changes
-- Removed X unused files
-- Removed Y unused dependencies
-- Consolidated Z duplicate components
-- See docs/DELETION_LOG.md for details
-
-### Testing
-- [x] Build passes
-- [x] All tests pass
-- [x] Manual testing completed
-- [x] No console errors
-
-### Impact
-- Bundle size: -XX KB
-- Lines of code: -XXXX
-- Dependencies: -X packages
-
-### Risk Level
-🟢 LOW - Only removed verifiably unused code
-
-See DELETION_LOG.md for complete details.
-```
-
-## Error Recovery
-
-If something breaks after removal:
-
-1. **Immediate rollback:**
-   ```bash
-   git revert HEAD
-   npm install
-   npm run build
-   npm test
-   ```
-
-2. **Investigate:**
-   - What failed?
-   - Was it a dynamic import?
-   - Was it used in a way detection tools missed?
-
-3. **Fix forward:**
-   - Mark item as "DO NOT REMOVE" in notes
-   - Document why detection tools missed it
-   - Add explicit type annotations if needed
-
-4. **Update process:**
-   - Add to "NEVER REMOVE" list
-   - Improve grep patterns
-   - Update detection methodology
-
-## Best Practices
-
-1. **Start Small** - Remove one category at a time
-2. **Test Often** - Run tests after each batch
-3. **Document Everything** - Update DELETION_LOG.md
-4. **Be Conservative** - When in doubt, don't remove
-5. **Git Commits** - One commit per logical removal batch
-6. **Branch Protection** - Always work on feature branch
-7. **Peer Review** - Have deletions reviewed before merging
-8. **Monitor Production** - Watch for errors after deployment
-
-## When NOT to Use This Agent
-
-- During active feature development
-- Right before a production deployment
-- When codebase is unstable
-- Without proper test coverage
-- On code you don't understand
-
-## Success Metrics
-
-After cleanup session:
-- ✅ All tests passing
-- ✅ Build succeeds
-- ✅ No console errors
-- ✅ DELETION_LOG.md updated
-- ✅ Bundle size reduced
-- ✅ No regressions in production
-
----
-
-**Remember**: Dead code is technical debt. Regular cleanup keeps the codebase maintainable and fast. But safety first - never remove code without understanding why it exists.
+Done = tests pass, build succeeds, DELETION_LOG.md updated, no regressions.

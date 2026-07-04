@@ -42,6 +42,14 @@ if [ -n "$STAGED_SYMLINKS" ]; then
   echo "[pre-commit] .gitignore updated — symlinks removed from this commit" >&2
 fi
 
+# Run hook smoke tests when hook code is staged
+if git diff --cached --name-only | grep -q '^hooks/.*\.ts$'; then
+  if ! bun test "$(git rev-parse --show-toplevel)/hooks/tests" >/dev/null 2>&1; then
+    echo "[pre-commit] hook smoke tests failed — run: bun test hooks/tests" >&2
+    exit 1
+  fi
+fi
+
 # Scan for email addresses
 # Allowlist: README.md (author section), rules/, hooks/git/,
 #            Cargo.toml (package author metadata), SECURITY.md (disclosure contact)

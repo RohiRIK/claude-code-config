@@ -1,6 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "opus",
+  "permissions": {
+    "allow": [
+      "mcp__plugin_openltm_memory"
+    ]
+  },
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -126,27 +131,28 @@
             "command": "\"/Users/rohirikman/.claude/hooks/context-mode-cache-heal.mjs\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun /Users/rohirikman/.claude/hooks/SkillsMountCheck/SkillsMountCheck.ts"
+          }
+        ]
       }
     ]
   },
   "enabledPlugins": {
     "context-mode@context-mode": true,
-    "ltm@ltm": true,
     "dev-team@rohirikman": false,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "openltm@OpenLtm": true
   },
   "extraKnownMarketplaces": {
     "context-mode": {
       "source": {
         "source": "github",
         "repo": "mksglu/context-mode"
-      },
-      "autoUpdate": true
-    },
-    "ltm": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/RohiRIK/claude-ltm-plugin.git"
       },
       "autoUpdate": true
     },
@@ -162,6 +168,12 @@
         "source": "github",
         "repo": "JuliusBrussee/caveman"
       }
+    },
+    "OpenLtm": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/RohiRIK/OpenLtm.git"
+      }
     }
   },
   "syntaxHighlightingDisabled": false,
@@ -169,7 +181,9 @@
   "awaySummaryEnabled": false,
   "autoUpdatesChannel": "latest",
   "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
+  "autoCompactEnabled": false,
   "agentPushNotifEnabled": true,
   "voiceEnabled": true
 }

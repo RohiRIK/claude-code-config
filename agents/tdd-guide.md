@@ -161,40 +161,7 @@ test('user can search and view market', async ({ page }) => {
 
 ## Mocking External Dependencies
 
-### Mock Supabase
-```typescript
-jest.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => Promise.resolve({
-          data: mockMarkets,
-          error: null
-        }))
-      }))
-    }))
-  }
-}))
-```
-
-### Mock Redis
-```typescript
-jest.mock('@/lib/redis', () => ({
-  searchMarketsByVector: jest.fn(() => Promise.resolve([
-    { slug: 'test-1', similarity_score: 0.95 },
-    { slug: 'test-2', similarity_score: 0.90 }
-  ]))
-}))
-```
-
-### Mock OpenAI
-```typescript
-jest.mock('@/lib/openai', () => ({
-  generateEmbedding: jest.fn(() => Promise.resolve(
-    new Array(1536).fill(0.1)
-  ))
-}))
-```
+Mock at the module boundary (`mock.module()` in bun:test, `vi.mock` in vitest). Mock only what crosses the network or filesystem — DB clients, HTTP APIs, embedding providers. Return realistic shapes (match the real client's `{ data, error }` contract), never bare values the real dependency wouldn't produce.
 
 ## Edge Cases You MUST Test
 
