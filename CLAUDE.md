@@ -57,7 +57,7 @@ not calling recall before every sentence.
 **LTM plugin:** SessionStart · PreCompact · EvaluateSession · UpdateContext (managed via plugin hooks.json)
 
 ## Context-Mode MCP
-Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. Full guidance + maintenance: `rules/workflow.md`.
+Use `ctx_execute`/`ctx_batch_execute` instead of Bash for any command with >20 lines output. Full guidance + maintenance: `rules/workflow-guide.md`.
 
 ## Secrets & .gitignore
 `.env` is gitignored. `.env.schema` (committed) defines expected vars with varlock decorators.
@@ -68,4 +68,4 @@ To validate: `bunx varlock load` · To add a new secret: add to `.env.schema` wi
 If a new runtime directory appears, add it to `.gitignore` before committing anything else.
 
 ## Rules
-coding-style · git-workflow · workflow · workflow-guide · testing · security · agents · session-context · patterns · package-manager · pre-commit-sanitize
+coding-style · git-workflow · workflow-guide · testing · security · agents · session-context · patterns · package-manager · pre-commit-sanitize

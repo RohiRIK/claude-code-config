@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Expert planning specialist for complex features and refactoring. Use PROACTIVELY when users request feature implementation, architectural changes, or complex refactoring. Automatically activated for planning tasks.
+description: Codebase-driven planning for complex features and refactoring — plans from code exploration alone. For memory-informed planning that recalls past LTM decisions first, use openltm:planner instead.
 tools:
   read: true
   grep: true

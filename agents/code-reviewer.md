@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes.
+description: General code review for quality and maintainability, immediately after writing or modifying code. Routes: Python changes → python-reviewer; security-sensitive code → security-reviewer; post-impl cleanup → code-simplifier.
 tools:
   read: true
   grep: true

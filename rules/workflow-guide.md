@@ -65,3 +65,38 @@ Entry: `/spec` (or `/test` for bugs). You know what to build and want it spec-dr
 | `/build` | Manual control — review between each task |
 | `/dev` | Full automation — all tasks in one go |
 | `/test` | No plan — standalone bug fix or isolated feature |
+
+---
+
+## Context-Safe Execution (context-mode MCP)
+
+Use the sandbox tools instead of Bash whenever raw output isn't needed directly:
+
+- `ctx_execute` — tests, builds, type-checks, linters, log/error dumps, any command with >~1 KB output
+- `ctx_batch_execute` — multiple independent commands in one call
+- `ctx_execute_file` — process a file without reading raw text into context
+- `ctx_fetch_and_index` + `ctx_search` — large documentation pages (prefer over WebFetch >~5 KB)
+
+Bash stays right for short diagnostics (`git status`, `ls`), commands whose raw output IS the answer, and interactive/TTY work.
+
+Diagnostics: `/context-mode:ctx-stats` · `/context-mode:ctx-doctor`
+
+### Maintaining context-mode
+
+The MCP server runs from a pre-built bundle (`server.bundle.mjs`), NOT from source.
+After editing any file in `~/.claude/plugins/marketplaces/context-mode/src/`:
+
+```bash
+cd ~/.claude/plugins/marketplaces/context-mode
+bunx esbuild src/server.ts --bundle --platform=node --target=node18 --format=esm \
+  --outfile=server.bundle.mjs \
+  --external:better-sqlite3 --external:turndown --external:turndown-plugin-gfm \
+  --external:@mixmark-io/domino --external:zod --external:@modelcontextprotocol/sdk \
+  --minify
+pkill -f "server.bundle.mjs"   # Claude Code auto-restarts it on next tool use
+```
+
+## Writing Prompts or Instructions
+
+When writing system prompts, rule files, instruction sets, or skill content:
+load the **Prompting** skill first to apply prompt-engineering best practices.
