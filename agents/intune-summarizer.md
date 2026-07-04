@@ -1,6 +1,6 @@
 ---
 name: intune-summarizer
-description: Summarizes Intune configuration screenshots and text into structured updates for Monday.com and Notion. Use when pasting Intune portal screenshots, policy exports, or configuration text that needs to be shared with the team.
+description: Summarizes Intune screenshots, policy exports, or config text into structured Monday.com/Notion updates. Use when Intune content needs to be shared with the team.
 tools:
   read: true
   grep: true

@@ -1,6 +1,6 @@
 ---
 name: code-simplifier
-description: Post-implementation cleanup specialist. Use PROACTIVELY after completing a feature or fix. Runs static analysis, simplifies code in session-diff scope, and verifies correctness. Combines dead-code detection with micro-level readability improvements. Scoped to changed files — not repo-wide (use refactor-cleaner for that).
+description: Post-implementation cleanup. Use PROACTIVELY after completing a feature or fix. Simplifies and verifies changed files only — not repo-wide (use refactor-cleaner for that).
 tools:
   read: true
   write: true

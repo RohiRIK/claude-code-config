@@ -1,6 +1,6 @@
 ---
 name: build-error-resolver
-description: Build and TypeScript error resolution specialist. Use PROACTIVELY when build fails or type errors occur. Fixes build/type errors only with minimal diffs, no architectural edits. Focuses on getting the build green quickly.
+description: Build and TypeScript error resolution. Use PROACTIVELY when build fails or type errors occur. Minimal diffs only, no architectural edits — green build fast.
 tools:
   read: true
   grep: true

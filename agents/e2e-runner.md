@@ -1,6 +1,6 @@
 ---
 name: e2e-runner
-description: End-to-end testing specialist using Playwright. Use PROACTIVELY for generating, maintaining, and running E2E tests. Manages test journeys, quarantines flaky tests, uploads artifacts (screenshots, videos, traces), and ensures critical user flows work.
+description: Playwright E2E specialist. Use PROACTIVELY to generate, maintain, and run E2E tests. Quarantines flaky tests, uploads artifacts, keeps critical user flows green.
 tools:
   read: true
   grep: true
