@@ -4,6 +4,31 @@ All notable changes to this global Claude Code configuration.
 
 ---
 
+## 2026-07-04 — Harness audit: hooks hardened, config deduped, dead systems retired
+
+Full audit → fix → re-audit cycle over the whole config (findings/fixes/report in `tmp/harness-audit/`, gitignored).
+
+### Added
+- **Hook smoke tests** (`hooks/tests/hooks.test.ts`) — 7 stdin-fixture tests for WriteBlocker, Cleanup, PostEditCheck, SecretScanOnWrite; pre-commit runs them whenever hook code is staged.
+- **SkillsMountCheck** (SessionStart) — warns when skill symlinks are unreachable (Google Drive unmounted) instead of skills silently vanishing.
+- Weekly self-audit launchd agent (`com.rohirikman.claude-hygiene-audit`, Mondays 09:33) running the Hygiene skill headless.
+
+### Fixed
+- **WriteBlocker** was blocking Claude's persistent-memory writes and all working-doc `.md` files — allowlist now covers `memory/`, `plans/`, `specs/`, `tmp/`, `scratchpad/`, `MEMORY.md`, `SKILL.md`.
+- **PostEditCheck** never surfaced type errors (absolute-vs-relative path filter bug); full-project tsc now capped at 15s per edit.
+- **git post-commit** errored on every commit — pointed at the deleted `marketplaces/ltm` bundle; now targets OpenLtm with an existence guard.
+- **LTM DB gates** in Cleanup and observe-briefing pointed at a dead database; unified behind `LTM_DB_PATH` in `hooks/lib/resolveProject.ts`.
+- Cleanup's stale-context deletion is now logged and opt-out-able via a `.keep` file.
+
+### Changed
+- CLAUDE.md deduped against `rules/` (pointers instead of copies); `rules/workflow.md` merged into `workflow-guide.md`; rules index corrected.
+- Agent roster slimmed: build-error-resolver 537→41 lines, doc-updater 457→44; five bloated descriptions tightened; planner vs openltm:planner differentiated; code-reviewer routes to specialists; stale crypto-project examples purged from refactor-cleaner and tdd-guide.
+
+### Removed
+- 170 stale in-repo skill copies (now symlinks to the skills repo, all gitignored).
+- Six broken/shadow commands (`build`, `spec`, `test`, `tdd`, `simplify`, `verify`) — the skills they shadowed are now user-invocable directly.
+- Home-grown LTM database (`memory/ltm.db`) — 100% of its memories verified present in the openltm plugin DB before deletion; five dead `plugins/data/` dirs removed.
+
 ## 2026-06-07 — Pi + Antigravity delegation skills; Art generates via agy
 
 Two more manual-only CLI-delegation skills modeled on `skills/OpenCode/`, plus a rewire of the Art skill to generate images for free through the Antigravity sub-agent.
