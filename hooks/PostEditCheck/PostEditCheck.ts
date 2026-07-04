@@ -40,12 +40,18 @@ if (isTs) {
         cwd: projectRoot,
         stderr: "pipe",
         stdout: "pipe",
+        // Full-project tsc can take minutes on big repos; cap the per-edit cost.
+        timeout: 15_000,
       });
       const output = tsc.stdout.toString().trim();
       if (output) {
+        // tsc emits paths relative to cwd — match both forms.
+        const relPath = filePath.startsWith(projectRoot + "/")
+          ? filePath.slice(projectRoot.length + 1)
+          : filePath;
         const fileErrors = output
           .split("\n")
-          .filter((line: string) => line.includes(filePath))
+          .filter((line: string) => line.includes(relPath) || line.includes(filePath))
           .slice(0, 10);
         if (fileErrors.length > 0) {
           console.error(fileErrors.join("\n"));

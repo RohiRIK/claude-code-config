@@ -1,2 +1,6 @@
 #!/bin/sh
-CLAUDE_PLUGIN_ROOT=/Users/rohirikman/.claude/plugins/marketplaces/ltm bun /Users/rohirikman/.claude/plugins/marketplaces/ltm/hooks/GitCommit.bundle.mjs "$@"
+# openltm git-learn hook — no-op if the plugin bundle is absent.
+BUNDLE="$HOME/.claude/plugins/marketplaces/OpenLtm/hooks/GitCommit.bundle.mjs"
+if [ -f "$BUNDLE" ]; then
+  CLAUDE_PLUGIN_ROOT="$HOME/.claude/plugins/marketplaces/OpenLtm" bun "$BUNDLE" "$@"
+fi
