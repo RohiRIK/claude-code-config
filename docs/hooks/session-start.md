@@ -1,6 +1,6 @@
 # SessionStart Hook
 
-**File:** `hooks/src/SessionStart.ts` in [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)
+**File:** `hooks/src/SessionStart.ts` in [RohiRIK/OpenLtm](https://github.com/RohiRIK/OpenLtm)
 
 **Trigger:** Session begins
 

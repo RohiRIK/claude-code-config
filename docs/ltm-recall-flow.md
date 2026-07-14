@@ -1,6 +1,6 @@
 # LTM Recall — Historical Reference
 
-> ⚠️ **MOVED** — The LTM recall implementation now lives in **[RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)**.
+> ⚠️ **MOVED** — The LTM recall implementation now lives in **[RohiRIK/OpenLtm](https://github.com/RohiRIK/OpenLtm)**.
 > This document is preserved as historical context. For current recall flow details and FTS5/semantic fallback internals, see the plugin repo.
 > For the integration boundary, see [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
 

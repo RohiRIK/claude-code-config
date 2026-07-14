@@ -1,7 +1,7 @@
 # LTM Migration: Standalone → Plugin
 
-> Migration spec for `RohiRIK/claude-ltm-plugin`.
-> Canonical source: **[RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)**
+> Migration spec for `RohiRIK/OpenLtm`.
+> Canonical source: **[RohiRIK/OpenLtm](https://github.com/RohiRIK/OpenLtm)**
 >
 > *Last updated: 2026-04-16*
 
@@ -201,7 +201,7 @@ Context items added:  2
 
 | Component | Owner |
 |-----------|-------|
-| Migration automation (gaps 1–7) | `RohiRIK/claude-ltm-plugin` |
+| Migration automation (gaps 1–7) | `RohiRIK/OpenLtm` |
 | Manual cleanup already done | `RohiRIK/claude-code-config` (this repo) |
 | Merge script reference | `~/.claude/scripts/merge-ltm-dbs.ts` |
 | Plugin DB (authoritative) | `~/.claude/plugins/data/ltm-ltm/ltm.db` |

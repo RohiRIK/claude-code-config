@@ -6,14 +6,14 @@
 
 ## Ownership Boundary
 
-| This repo (`claude-code-config`) | External repo (`claude-ltm-plugin`) |
+| This repo (`claude-code-config`) | External repo (`OpenLtm`) |
 |----------------------------------|--------------------------------------|
 | Agents, skills, hooks, commands, rules | LTM DB, MCP server, REST API, Graph UI |
 | Context file management (`context-*.md`) | Janitor pipeline, provider system |
 | Hook → LTM integration | Recall / embedding logic |
 | Workflow & architecture docs | LTM settings keys reference |
 
-> **LTM internals have moved** → see [`RohiRIK/claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin) and [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
+> **LTM internals have moved** → see [`RohiRIK/OpenLtm`](https://github.com/RohiRIK/OpenLtm) and [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
 
 ## Overview
 
@@ -295,7 +295,7 @@ The context system persists knowledge across sessions:
 
 ## Related Documentation
 
-- [LTM Migration](LTM_MIGRATION.md) - Ownership boundary and what moved to `claude-ltm-plugin`
+- [LTM Migration](LTM_MIGRATION.md) - Ownership boundary and what moved to `OpenLtm`
 - [Agents](agents/) - Detailed agent documentation
 - [Skills](skills/) - Skill reference and workflows
 - [Hooks](hooks/) - Lifecycle hook documentation

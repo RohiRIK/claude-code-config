@@ -2,7 +2,7 @@
 
 > This log tracks significant code removal sessions in `RohiRIK/claude-code-config`.
 > It covers agents, skills, hooks, and config in this repo only.
-> LTM-related deletions (memory/, graph-app/, janitor/) are tracked in [`RohiRIK/claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin).
+> LTM-related deletions (memory/, graph-app/, janitor/) are tracked in [`RohiRIK/OpenLtm`](https://github.com/RohiRIK/OpenLtm).
 
 ---
 

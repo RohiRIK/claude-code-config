@@ -33,11 +33,11 @@ git clone https://github.com/RohiRIK/claude-code-config.git ~/.claude
 /plugin install context-mode@context-mode
 
 # 3. Install LTM plugin (long-term memory)
-claude plugin marketplace add https://github.com/RohiRIK/claude-ltm-plugin
-claude plugin install ltm
+claude plugin marketplace add https://github.com/RohiRIK/OpenLtm
+claude plugin install openltm@OpenLtm
 ```
 
-> For full LTM setup, commands, and configuration — see [claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin).
+> For full LTM setup, commands, and configuration — see [OpenLtm](https://github.com/RohiRIK/OpenLtm).
 
 ---
 
@@ -49,7 +49,7 @@ This project is three things at once:
 A continuously improved setup — skills, hooks, commands, and flows — built and refined session by session. Not a one-time config. A system that gets smarter the more I use it.
 
 **2. Giving Claude a real brain**
-I wanted Claude to remember. Not just within a session, but across weeks and projects. That meant building a long-term memory layer (SQLite LTM, now [`claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin)) and pairing it with a short-term execution memory ([`context-mode`](https://github.com/mksglu/context-mode) — genuinely awesome plugin). Together they give Claude the context awareness a real collaborator would have.
+I wanted Claude to remember. Not just within a session, but across weeks and projects. That meant building a long-term memory layer (SQLite LTM, now [`OpenLtm`](https://github.com/RohiRIK/OpenLtm)) and pairing it with a short-term execution memory ([`context-mode`](https://github.com/mksglu/context-mode) — genuinely awesome plugin). Together they give Claude the context awareness a real collaborator would have.
 
 **3. Learning in public**
 The LTM stays private — but the process is open. How I work, how I think through problems, how this system evolved session by session — that's what's visible in the git history and the decisions baked into the config. This repo is my process as much as it is a product. If it helps someone else build something better, even better.
@@ -94,7 +94,7 @@ The LTM stays private — but the process is open. How I work, how I think throu
 
 **Short-Term Memory** — [`context-mode`](https://github.com/mksglu/context-mode) plugin. Every command runs in a sandbox subprocess, BM25-indexed, summarized. No context bloat.
 
-**Long-Term Memory** — [`claude-ltm-plugin`](https://github.com/RohiRIK/claude-ltm-plugin). SQLite-backed memory that survives compaction. Stores goals, decisions, gotchas, and patterns — per project and globally. Decays unused memories, promotes important ones, deduplicates with LLM. Visualized as a force-directed graph on `:7332`.
+**Long-Term Memory** — [`OpenLtm`](https://github.com/RohiRIK/OpenLtm). SQLite-backed memory that survives compaction. Stores goals, decisions, gotchas, and patterns — per project and globally. Decays unused memories, promotes important ones, deduplicates with LLM. Visualized as a force-directed graph on `:7332`.
 
 **Lean Observe System** — Before every `/plan`, hooks auto-inject codebase context: git state, recent commits, relevant LTM memories, and target file snippets. No API calls. Claude interprets it in-session.
 
@@ -127,7 +127,7 @@ The LTM stays private — but the process is open. How I work, how I think throu
 | `/e2e` | Generate or run Playwright E2E tests |
 | `/audit` | Security and quality audit |
 
-**LTM plugin commands** (`/learn`, `/recall`, `/decay-report`, `/ltm-server`) live in [claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin).
+**LTM plugin commands** (`/openltm:memory`, `/openltm:health`, `/openltm:admin`, `/openltm:project`) live in [OpenLtm](https://github.com/RohiRIK/OpenLtm).
 
 ---
 

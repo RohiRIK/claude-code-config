@@ -33,7 +33,7 @@ Feature development cycle: `/spec → /plan → /build / /dev → /test → /sim
 ---
 
 ## Layer 4 — Long-Term Memory
-`claude-ltm-plugin` — SQLite-backed memory that survives compaction. Goals, decisions, gotchas, patterns.
+`OpenLtm` — SQLite-backed memory that survives compaction. Goals, decisions, gotchas, patterns.
 
 | Doc | What it covers |
 |-----|---------------|

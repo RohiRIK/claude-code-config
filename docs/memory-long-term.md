@@ -1,6 +1,6 @@
 # Layer 4 — Long-Term Memory (LTM) — Historical Reference
 
-> ⚠️ **MOVED** — The LTM implementation now lives in **[RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin)**.
+> ⚠️ **MOVED** — The LTM implementation now lives in **[RohiRIK/OpenLtm](https://github.com/RohiRIK/OpenLtm)**.
 > This document is preserved as historical context. For current implementation details, setup guides, and troubleshooting, see the plugin repo.
 > For the integration boundary between this repo and the LTM plugin, see [`docs/LTM_MIGRATION.md`](LTM_MIGRATION.md).
 
@@ -312,7 +312,7 @@ Pages: `/` (D3 force graph + sidebar), `/project/[name]` (drill-down), `/setting
 
 ## Starting the System
 
-> ⚠️ **Paths moved** — The LTM system now lives in [RohiRIK/claude-ltm-plugin](https://github.com/RohiRIK/claude-ltm-plugin). Server source is at `<plugin-root>/memory/server.ts` and `<plugin-root>/memory/graph-app/`. For current startup commands, see the plugin repo.
+> ⚠️ **Paths moved** — The LTM system now lives in [RohiRIK/OpenLtm](https://github.com/RohiRIK/OpenLtm). Server source is at `<plugin-root>/memory/server.ts` and `<plugin-root>/memory/graph-app/`. For current startup commands, see the plugin repo.
 
 Use `/ltm-server start` in Claude Code — opens both the API server (:7331) and the Next.js graph UI (:7332) in tmux automatically.
 
