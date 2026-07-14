@@ -9,12 +9,13 @@ if command -v bunx >/dev/null 2>&1; then
 fi
 
 # Scan staged files for hardcoded paths and personal info
-# Allowlist: settings.json (requires absolute paths), .gitignore, hooks/git/, rules/pre-commit-sanitize.md
+# Allowlist: settings.json (requires absolute paths), .gitignore, hooks/git/,
+#            skills/PreCommitSanitize/ (documents the patterns it detects)
 LEAKS=$(git diff --cached --name-only \
   | grep -v '^settings\.json$' \
   | grep -v '^\.gitignore$' \
   | grep -v '^hooks/git/' \
-  | grep -v '^rules/pre-commit-sanitize\.md$' \
+  | grep -v '^skills/PreCommitSanitize/' \
   | grep -v '^plugins/' \
   | xargs grep -n '/Users/\|/home/\|C:\\Users\\' 2>/dev/null \
   | grep -Ev "/(components|pages|app|src|lib|utils|hooks|styles|public|assets|icons|images)/home/" \
@@ -52,11 +53,13 @@ fi
 
 # Scan for email addresses
 # Allowlist: README.md (author section), rules/, hooks/git/,
+#            skills/PreCommitSanitize/ (documents the patterns it detects),
 #            Cargo.toml (package author metadata), SECURITY.md (disclosure contact)
 EMAIL_LEAKS=$(git diff --cached --name-only \
   | grep -v '^README\.md$' \
   | grep -v '^rules/' \
   | grep -v '^hooks/git/' \
+  | grep -v '^skills/PreCommitSanitize/' \
   | grep -v '^Cargo\.toml$' \
   | grep -v 'SECURITY\.md$' \
   | xargs grep -nE '[a-zA-Z0-9._%+-]+@(gmail|hotmail|outlook|yahoo|icloud)\.[a-z]+' 2>/dev/null)

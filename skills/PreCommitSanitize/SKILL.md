@@ -1,8 +1,13 @@
+---
+name: PreCommitSanitize
+description: Scan staged files for hardcoded home paths, personal identifiers, symlinks, and runtime state before committing to the ~/.claude repo. USE WHEN staging or committing in ~/.claude, or before pushing a dotfiles/config repo to a public GitHub remote.
+---
+
 # Pre-Commit Sanitization
 
 ## When This Applies
 
-Before every `git add` or `git commit` in this repo (`~/.claude`), scan staged files for sensitive personal information that should not be pushed to a public GitHub repository.
+Before every `git add` or `git commit` in `~/.claude`, scan staged files for sensitive personal information that should not be pushed to a public GitHub repository.
 
 ## What to Catch
 
@@ -23,9 +28,9 @@ Exception: `.gitignore` rules may use relative paths that are fine.
 | Pattern | Example | Action |
 |---------|---------|--------|
 | Email addresses | `jane@gmail.com` | Remove or replace with `user@example.com` |
-| Social media handles | `linkedin.com/in/rohi-rikman` | Remove unless intentionally public (README author section) |
-| Machine hostnames | `Rohis-MacBook-Pro-2.local` | Remove |
-| Usernames in paths | `rohirikman` embedded in file content | Replace with `~` or `$HOME` |
+| Social media handles | `linkedin.com/in/<handle>` | Remove unless intentionally public (README author section) |
+| Machine hostnames | `<Name>-MacBook-Pro.local` | Remove |
+| Usernames in paths | username embedded in file content | Replace with `~` or `$HOME` |
 
 Exception: `README.md` author/contact section may intentionally include social links — confirm before removing.
 

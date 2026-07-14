@@ -4,13 +4,11 @@
 
 **Immutability:** Create new objects rather than mutating. Use spread (`{...obj, key: val}`).
 
-**Error Handling:** Wrap async operations in try/catch with actionable error messages.
-
 **Input Validation:** Validate at system boundaries using Zod (TS), Pydantic (Python), or typed params (PS).
 
 **Library Docs (context7):** Always prepend `use context7` before writing code against any external library. Never assume API shapes from training data — library APIs change. context7 output is authoritative.
 
-**File Size:** 200-400 lines typical, 800 max. Organize by feature/domain.
+**File Size:** 200-400 lines typical, 800 max. Functions < 50 lines. Organize by feature/domain.
 
 ## Language Standards
 
@@ -28,20 +26,3 @@ Before writing code, load the relevant CodingStandards file via the Skill tool:
 ## Prompt Caching
 
 When calling the Anthropic API directly from hooks or skills, put stable content (system prompt, tool definitions, reference docs) at the top and volatile content (user input, session state) at the bottom. Anthropic caches from the beginning of the prompt — any volatile content inserted early invalidates the entire cache prefix below it, negating up to 90% cost savings. In-session context injection via SessionStart stdout is cached automatically.
-
-## Memory Integration
-
-Before starting: `/recall [language] patterns` — surface past gotchas and conventions for this stack.
-After discovering a non-obvious pattern: `/learn --category pattern` and tag the language.
-
-## Code Quality Checklist
-
-Before marking work complete:
-- [ ] Readable, well-named
-- [ ] Functions < 50 lines, files < 800 lines
-- [ ] No deep nesting (> 4 levels)
-- [ ] Proper error handling, no hardcoded values, no mutation
-- [ ] No `any` types or unchecked casts
-- [ ] `context7` used for any external library APIs
-- [ ] Input validated at system boundaries
-- [ ] Exported functions have explicit return types

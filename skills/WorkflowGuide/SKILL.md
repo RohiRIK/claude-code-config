@@ -1,3 +1,8 @@
+---
+name: WorkflowGuide
+description: Pick the right workflow path (Layer 1 daily vs Layer 2 spec-driven), and know when to use /build vs /dev vs /test and when to reach for context-mode over Bash. USE WHEN choosing a workflow for a task, or maintaining the context-mode MCP server.
+---
+
 # Workflow Guide
 
 Quick reference for picking the right path. Full detail: `docs/workflow-daily.md` · `docs/workflow-dev.md`
@@ -95,8 +100,3 @@ bunx esbuild src/server.ts --bundle --platform=node --target=node18 --format=esm
   --minify
 pkill -f "server.bundle.mjs"   # Claude Code auto-restarts it on next tool use
 ```
-
-## Writing Prompts or Instructions
-
-When writing system prompts, rule files, instruction sets, or skill content:
-load the **Prompting** skill first to apply prompt-engineering best practices.

@@ -1,6 +1,6 @@
 # Session Context Persistence
 
-Per-project context lives in `~/.claude/memory/ltm.db` (managed by the `~/.claude/memory/*.ts` modules and hooks). Global LTM memories live in the openltm plugin DB at `~/.claude/plugins/data/OpenLtm-openltm/openltm.db`. Hooks manage both automatically — Claude does NOT write context files.
+Per-project context and global LTM memories both live in the openltm plugin DB at `~/.claude/plugins/data/OpenLtm-openltm/openltm.db` (managed by the `~/.claude/memory/*.ts` modules and hooks). Hooks manage it automatically — Claude does NOT write context files.
 
 ## Context Types
 

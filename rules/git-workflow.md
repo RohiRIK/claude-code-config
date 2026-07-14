@@ -10,7 +10,7 @@
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
-Note: Do not add Co-Authored-By footers to commits.
+**Do not add Co-Authored-By footers to commits.**
 
 ## Pull Request Workflow
 
@@ -20,31 +20,3 @@ When creating PRs:
 3. Draft comprehensive PR summary
 4. Include test plan with TODOs
 5. Push with `-u` flag if new branch
-
-## Feature Implementation Workflow
-
-1. **Plan First**
-   - Use **planner** agent to create implementation plan
-   - Identify dependencies and risks
-   - Break down into phases
-
-2. **TDD Approach**
-   - Use **tdd-guide** agent
-   - Write tests first (RED)
-   - Implement to pass tests (GREEN)
-   - Refactor (IMPROVE)
-   - Verify 80%+ coverage
-
-3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
-   - Address CRITICAL and HIGH issues
-   - Fix MEDIUM issues when possible
-
-4. **Commit & Push**
-   - Detailed commit messages
-   - Follow conventional commits format
-
-## Memory Integration
-
-Before PR: `/recall [project] pr conventions` — surface project-specific commit style and PR patterns.
-After learning a project's conventions: `/learn --category preference`.
