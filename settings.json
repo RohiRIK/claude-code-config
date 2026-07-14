@@ -3,9 +3,10 @@
   "permissions": {
     "allow": [
       "mcp__plugin_openltm_memory"
-    ]
+    ],
+    "defaultMode": "auto"
   },
-  "model": "claude-fable-5[1m]",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -185,5 +186,22 @@
   "theme": "dark-ansi",
   "autoCompactEnabled": false,
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "skillOverrides": {
+    "BackendDesign": "off",
+    "CodebaseOnboarding": "off",
+    "DataReportBuilder": "off",
+    "DockerPatterns": "off",
+    "GitWorkflow": "off",
+    "Orchestrate": "off",
+    "Reflect": "off",
+    "SecurityReview": "off",
+    "Simplify": "off",
+    "StrategicCompact": "off",
+    "TddWorkflow": "off",
+    "Verify": "off",
+    "interceptor": "off",
+    "interceptor-research": "off",
+    "interceptor-macos": "off"
+  }
 }
